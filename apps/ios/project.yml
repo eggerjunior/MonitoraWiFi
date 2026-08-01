@@ -69,7 +69,10 @@ schemes:
   EggerNetworkIntelligence:
     build:
       targets:
-        EggerNetworkIntelligence: all
+        # Lista explícita de ações — o shorthand "all" não garantiu de forma
+        # confiável que o app fosse buildado como pré-requisito da ação de
+        # teste (causava "Could not find test host" no xcodebuild headless).
+        EggerNetworkIntelligence: [run, test, profile, analyze, archive]
         EggerNetworkIntelligenceTests: [test]
     test:
       targets:
