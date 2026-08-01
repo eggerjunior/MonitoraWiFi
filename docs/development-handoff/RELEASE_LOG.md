@@ -4,6 +4,30 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-01 — Backend/agente: comandos sob demanda (Fase 5, início)
+
+- Commit `dd63c34`. Primeiro recurso de "teste sob demanda" (ping agora):
+  usuário dispara via `POST /sites/{id}/commands`, backend enfileira em
+  Postgres (`agent_commands`, migração `0004`), agente reivindica via
+  polling (`GET /agents/{id}/commands`, `COMMAND_POLL_INTERVAL_SECONDS`
+  padrão 5s) e reporta o resultado (`POST /agents/{id}/commands/{id}/result`).
+  Usuário consulta status/resultado via `GET /commands/{id}`.
+- Decisão de arquitetura registrada em ADR-011: fila via Postgres, não
+  Redis (documento-fonte original previa Redis; nunca foi implantado em
+  produção, decisão de não introduzi-lo ainda).
+- Achado real corrigido: `apps/local-agent/Dockerfile` (distroless
+  nonroot) não conseguia escrever em `/data` — nenhum agente real via
+  Docker teria funcionado até esta correção.
+- Testado em todas as camadas (fakes/handlers, apiclient, commandLoop do
+  agente) e validado ponta a ponta com containers efêmeros reais —
+  comando de ping real executado por um agente real contra outro
+  container, resultado real (latência/jitter/perda) confirmado via API.
+- CI (`API CI (Go)`, `Local Agent CI (Go)`) verde. OpenAPI atualizado.
+- Não implantado em produção ainda (é infraestrutura de backend/agente,
+  sem UI própria no web/iOS nesta fase — próximo passo natural é expor um
+  botão "ping agora" no dashboard).
+
+## 2026-08-01 — Web: versionamento (paridade com iOS) + redeploy em produção
 ## 2026-08-01 — Web: versionamento (paridade com iOS) + redeploy em produção
 
 - App: web (Next.js), commit `2e54344`
