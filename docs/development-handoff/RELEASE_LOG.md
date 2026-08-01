@@ -4,6 +4,40 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-01 — iOS 0.1.1 (2): corrige URL de produção + assinatura manual
+
+- App: Egger Network Intelligence, bundle id `br.app.egger.network-intelligence`
+- Versão/build: 0.1.1 (2), commit `119db27`
+- Motivo: usuário reportou "Não foi possível entrar. Verifique sua conexão"
+  no app real — o app apontava para `http://localhost:8080/api/v1`
+  (`APIClient.Configuration.developmentDefault`), que no iPhone real não
+  aponta para nada. Corrigido para ler `APIBaseURL` do Info.plist
+  (`https://wifi.egger.app.br/api/v1` por padrão via `project.yml`).
+- Infra necessária para o app funcionar: `apps/api` não tinha rota pública
+  (só o web tinha). Adicionado `location /api/v1/` em
+  `/home/eggerjunior/conf/web/wifi.egger.app.br/nginx.ssl.conf` (proxy para
+  `127.0.0.1:8422`, nova porta publicada pelo container `monitorawifi-api`),
+  nginx recarregado (autorizado pelo usuário). Login confirmado via curl
+  contra `https://wifi.egger.app.br/api/v1/auth/login` antes do rebuild do app.
+- **Achado e resolvido durante o release**: primeira tentativa de archive
+  falhou com "Choose a certificate to revoke" / "No profiles for ... iOS App
+  Development" — cota de certificados de Development esgotada por Automatic
+  signing (mesmo problema documentado em `references/ildemar-ios-release.md`
+  da skill `ildemar_ios-native-testflight`, já resolvido antes no
+  MonitoraVPS). Aplicada a mesma correção: `scripts/create_dist_cert.py`
+  gerou um certificado de distribuição + perfil próprios (secrets
+  `IOS_DIST_CERT_P12_BASE64`/`_PASSWORD`, `IOS_DIST_PROFILE_BASE64`, nunca
+  impressos); Release passou a usar Manual signing; `ios-testflight.yml`
+  importa o certificado num keychain temporário antes do archive.
+  Revogado 1 certificado de distribuição órfão (criado nesta sessão) antes
+  de criar o novo — mantido intacto o certificado mais antigo da conta
+  (provavelmente em uso por outro projeto, MonitoraVPS), pergunta explícita
+  ao usuário antes de revogar (`AskUserQuestion`), autorizado por ele.
+- Status: **enviado com sucesso** — `ARCHIVE SUCCEEDED`, `EXPORT SUCCEEDED`,
+  run https://github.com/eggerjunior/MonitoraWiFi/actions/runs/30683212916
+- Pendências: build em processamento no App Store Connect no momento deste
+  registro; ícone do app ainda é o placeholder gerado programaticamente.
+
 ## 2026-08-01 — Deploy em produção: commit b004a4a (Fase 2 completa)
 
 - App/plataforma: apps/api + apps/web, produção (`wifi.egger.app.br`, host `2.25.189.37`)

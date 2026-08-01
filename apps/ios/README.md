@@ -104,24 +104,24 @@ open EggerNetworkIntelligence.xcodeproj
   configurados no repositório.
 - ✅ Bundle ID `br.app.egger.network-intelligence` criado no App Store Connect
   via API (`scripts/create_app.py`).
-- ❌ **App record ainda não existe em App Store Connect** — a Apple não
-  permite criar isso via API para nenhuma chave (`POST /v1/apps` retorna 403
-  `FORBIDDEN_ERROR`, restrição permanente, não um erro pontual). **Esta etapa
-  é sempre manual, do Ildemar**:
-  1. App Store Connect → Apps → "+" → New App
-  2. Bundle ID: `br.app.egger.network-intelligence` (já aparece na lista)
-  3. SKU: `br.app.egger.network-intelligence`
-  4. Primary Language: pt-BR
-  5. Avisar quando terminar (~1 minuto)
-- Depois disso: rodar `python3 apps/ios/scripts/create_app.py` de novo para
-  confirmar, e então `gh workflow run "iOS TestFlight release" --repo
-  eggerjunior/MonitoraWiFi`.
-- ⚠️ Risco conhecido a observar no primeiro archive de Release: histórico do
-  projeto MonitoraVPS (mesma conta Apple) mostra que `CODE_SIGN_STYLE:
-  Automatic` sob `xcodebuild` headless esgota a cota de certificados de
-  Development da conta após poucas execuções (ver
-  `references/ildemar-ios-release.md` da skill `ildemar_ios-native-testflight`,
-  seção "Certificados de assinatura esgotados"). Se o primeiro
-  `iOS TestFlight release` falhar com erro de certificado/perfil, aplicar a
-  correção documentada lá (Manual signing na config Release) antes de tentar
-  de novo — não é preciso reinvestigar do zero.
+- ✅ App record criado manualmente pelo Ildemar em App Store Connect.
+- ✅ **Certificado de distribuição + perfil de provisionamento próprios**
+  (`scripts/create_dist_cert.py`, secrets `IOS_DIST_CERT_P12_BASE64`/
+  `_PASSWORD`, `IOS_DIST_PROFILE_BASE64`) — Release usa Manual signing,
+  Debug continua Automatic. Resolve o problema conhecido de esgotamento de
+  cota de certificados de Development sob Automatic signing (ver
+  `references/ildemar-ios-release.md` da skill `ildemar_ios-native-testflight`).
+  Um certificado de distribuição órfão (criado durante as primeiras
+  tentativas desta sessão) foi revogado antes de criar o definitivo —
+  mantido intacto o certificado mais antigo da conta (provavelmente usado
+  por outro projeto).
+- ✅ **0.1.1 (Build 2) enviado ao TestFlight com sucesso**
+  (`ARCHIVE SUCCEEDED`, `EXPORT SUCCEEDED`) — corrige o app que apontava
+  para `localhost` em vez de `https://wifi.egger.app.br/api/v1`.
+- Para gerar/regenerar o certificado de distribuição em outra máquina/sessão:
+  `python3 scripts/create_dist_cert.py eggerjunior/MonitoraWiFi` (requer
+  `ASC_KEY_ID`/`ASC_ISSUER_ID`/`ASC_KEY_PATH` no ambiente e `gh` autenticado
+  — nunca imprime os segredos, configura os secrets direto no repositório).
+- Pendência: ícone do app ainda é um placeholder gerado programaticamente
+  (círculo azul + "E") — trocar por um ícone definitivo antes de distribuir
+  além de testadores internos.

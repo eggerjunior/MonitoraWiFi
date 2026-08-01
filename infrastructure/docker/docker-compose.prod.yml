@@ -10,7 +10,8 @@
 #   - Env real: /opt/apps/monitorawifi/.env (nunca commitado)
 #   - Dados persistentes: /opt/data/monitorawifi/
 #   - Serviços escutam em 127.0.0.1; TLS/exposição pública ficam no Hestia/nginx
-#     (wifi.egger.app.br -> 127.0.0.1:8421, ver
+#     (wifi.egger.app.br -> 127.0.0.1:8421 para o web; /api/v1/ ->
+#     127.0.0.1:8422 para a API, consumida diretamente pelo app iOS — ver
 #     /home/eggerjunior/conf/web/wifi.egger.app.br/nginx*.conf)
 name: monitorawifi-prod
 
@@ -35,6 +36,8 @@ services:
       APP_ENV: "production"
       OTEL_SERVICE_NAME: "egger-api"
       SESSION_TTL_HOURS: "168"
+    ports:
+      - "127.0.0.1:8422:8080" # consumido diretamente pelo app iOS via nginx
     depends_on: [postgres]
     networks: [monitorawifi_net]
 
