@@ -362,3 +362,37 @@ func (f *fakeAgentCommands) ListBySite(ctx context.Context, siteID uuid.UUID, pa
 	}
 	return out, len(out), nil
 }
+
+type fakeUniFiDevices struct {
+	bySite map[uuid.UUID][]store.UniFiDevice
+}
+
+func newFakeUniFiDevices() *fakeUniFiDevices {
+	return &fakeUniFiDevices{bySite: map[uuid.UUID][]store.UniFiDevice{}}
+}
+
+func (f *fakeUniFiDevices) ReplaceBySite(ctx context.Context, siteID uuid.UUID, devices []store.UniFiDevice) error {
+	f.bySite[siteID] = devices
+	return nil
+}
+
+func (f *fakeUniFiDevices) ListBySite(ctx context.Context, siteID uuid.UUID) ([]store.UniFiDevice, error) {
+	return f.bySite[siteID], nil
+}
+
+type fakeUniFiClients struct {
+	bySite map[uuid.UUID][]store.UniFiClient
+}
+
+func newFakeUniFiClients() *fakeUniFiClients {
+	return &fakeUniFiClients{bySite: map[uuid.UUID][]store.UniFiClient{}}
+}
+
+func (f *fakeUniFiClients) ReplaceBySite(ctx context.Context, siteID uuid.UUID, clients []store.UniFiClient) error {
+	f.bySite[siteID] = clients
+	return nil
+}
+
+func (f *fakeUniFiClients) ListBySite(ctx context.Context, siteID uuid.UUID) ([]store.UniFiClient, error) {
+	return f.bySite[siteID], nil
+}

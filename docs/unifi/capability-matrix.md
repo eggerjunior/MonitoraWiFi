@@ -74,8 +74,8 @@ adaptador legado opt-in), `indisponível` (confirmado que não existe), `a valid
 
 | Capacidade | Status | Fonte |
 |---|---|---|
-| Inventário de dispositivos (gateway/AP/switch) | confirmado (existência do endpoint) | `developer.ui.com/network/<versão>` |
-| Lista de clientes conectados | confirmado (existência do endpoint) | Endpoint "List Connected Clients" documentado |
+| Inventário de dispositivos (gateway/AP/switch) | confirmado, implementado (2026-08-01) | `NetworkAPIAdapter.ListDevices` (`apps/local-agent/internal/unifi`) — testado contra a instalação real do usuário e validado ponta a ponta |
+| Lista de clientes conectados | confirmado, implementado (2026-08-01) | `NetworkAPIAdapter.ListClients`, com paginação real (confirmado: 80 clientes reais, resposta pagina em blocos de 25) |
 | Detalhe de rádio por AP (canal, largura, potência, airtime, retries) | a validar | Campos exatos variam por versão do UniFi Network — validar contra a versão real do cliente (ver `verificacoes-pendentes-instalacao.md`) |
 | Estatísticas de porta de switch (RX/TX/erros/PoE) | a validar | Depende da versão/modelo do switch exposto pela API dessa instalação |
 | Eventos/alarmes em tempo real | a validar | Confirmar se via polling, webhook ou apenas via UniFi OS syslog |

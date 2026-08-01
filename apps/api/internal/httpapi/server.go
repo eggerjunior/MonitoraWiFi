@@ -39,6 +39,8 @@ type Server struct {
 	pingTests         store.PingTestStore
 	speedTests        store.SpeedTestStore
 	agentCommands     store.AgentCommandStore
+	unifiDevices      store.UniFiDeviceStore
+	unifiClients      store.UniFiClientStore
 
 	sessionTTL   time.Duration
 	loginLimiter *ratelimit.Limiter
@@ -61,6 +63,8 @@ type Deps struct {
 	PingTests         store.PingTestStore
 	SpeedTests        store.SpeedTestStore
 	AgentCommands     store.AgentCommandStore
+	UniFiDevices      store.UniFiDeviceStore
+	UniFiClients      store.UniFiClientStore
 }
 
 func NewServer(d Deps) *Server {
@@ -79,6 +83,8 @@ func NewServer(d Deps) *Server {
 		pingTests:         d.PingTests,
 		speedTests:        d.SpeedTests,
 		agentCommands:     d.AgentCommands,
+		unifiDevices:      d.UniFiDevices,
+		unifiClients:      d.UniFiClients,
 		sessionTTL:        d.SessionTTL,
 		loginLimiter:      ratelimit.New(30, 10), // 30/min por IP, burst 10 — ajustável em produção
 	}
@@ -117,6 +123,11 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/v1/commands/{commandId}", s.withObservability("commands.get",
 		s.requirePermission(auth.PermView, s.handleGetCommand)))
 
+	mux.HandleFunc("GET /api/v1/sites/{siteId}/unifi/devices", s.withObservability("unifi.devices.list",
+		s.requirePermission(auth.PermView, s.handleListUniFiDevices)))
+	mux.HandleFunc("GET /api/v1/sites/{siteId}/unifi/clients", s.withObservability("unifi.clients.list",
+		s.requirePermission(auth.PermView, s.handleListUniFiClients)))
+
 	mux.HandleFunc("POST /api/v1/agents/enroll", s.withObservability("agents.enroll", s.handleEnrollAgent))
 	mux.HandleFunc("POST /api/v1/agents/{agentId}/heartbeat", s.withObservability("agents.heartbeat",
 		s.requireAgentAuth(s.handleAgentHeartbeat)))
@@ -126,6 +137,8 @@ func (s *Server) Routes() http.Handler {
 		s.requireAgentAuth(s.handleClaimAgentCommands)))
 	mux.HandleFunc("POST /api/v1/agents/{agentId}/commands/{commandId}/result", s.withObservability("agents.commands.result",
 		s.requireAgentAuth(s.handleReportCommandResult)))
+	mux.HandleFunc("POST /api/v1/agents/{agentId}/unifi-inventory", s.withObservability("agents.unifi-inventory",
+		s.requireAgentAuth(s.handleUniFiInventory)))
 
 	return mux
 }

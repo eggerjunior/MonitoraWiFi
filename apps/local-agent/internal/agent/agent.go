@@ -14,6 +14,7 @@ import (
 	"egger/local-agent/internal/probes"
 	"egger/local-agent/internal/queue"
 	"egger/local-agent/internal/state"
+	"egger/local-agent/internal/unifi"
 )
 
 type Agent struct {
@@ -23,6 +24,11 @@ type Agent struct {
 	queue      *queue.FileQueue[apiclient.PingTestPayload]
 	speedQueue *queue.FileQueue[apiclient.SpeedTestPayload]
 	logger     *slog.Logger
+
+	// unifiProvider é nil quando a integração UniFi não está configurada
+	// (UNIFI_BASE_URL/UNIFI_API_KEY/UNIFI_SITE_ID) — nunca finge ter uma
+	// integração ativa quando não há credenciais (ADR-007).
+	unifiProvider unifi.UniFiIntegrationProvider
 }
 
 func New(ctx context.Context, cfg config.Config, logger *slog.Logger) (*Agent, error) {
@@ -33,13 +39,19 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger) (*Agent, e
 		return nil, err
 	}
 
+	var unifiProvider unifi.UniFiIntegrationProvider
+	if cfg.UniFiEnabled {
+		unifiProvider = unifi.NewNetworkAPIAdapter(cfg.UniFiBaseURL, cfg.UniFiAPIKey)
+	}
+
 	return &Agent{
-		cfg:        cfg,
-		client:     client,
-		identity:   identity,
-		queue:      queue.NewFileQueue[apiclient.PingTestPayload](cfg.QueueFilePath, cfg.QueueMaxItems),
-		speedQueue: queue.NewFileQueue[apiclient.SpeedTestPayload](cfg.SpeedQueueFilePath, 1000),
-		logger:     logger,
+		cfg:           cfg,
+		client:        client,
+		identity:      identity,
+		queue:         queue.NewFileQueue[apiclient.PingTestPayload](cfg.QueueFilePath, cfg.QueueMaxItems),
+		speedQueue:    queue.NewFileQueue[apiclient.SpeedTestPayload](cfg.SpeedQueueFilePath, 1000),
+		logger:        logger,
+		unifiProvider: unifiProvider,
 	}, nil
 }
 
@@ -54,6 +66,11 @@ func (a *Agent) Run(ctx context.Context) {
 	}
 	if a.cfg.SpeedTestLANEnabled && !probes.Iperf3Available() {
 		a.logger.Warn("SPEEDTEST_LAN_TARGET configurado mas o binário iperf3 não foi encontrado no PATH — modo LAN vai reportar erro a cada execução até isso ser corrigido")
+	}
+	if a.unifiProvider != nil {
+		loops = append(loops, a.unifiLoop)
+	} else {
+		a.logger.Info("integração UniFi desativada — UNIFI_BASE_URL/UNIFI_API_KEY/UNIFI_SITE_ID não configurados")
 	}
 
 	done := make(chan struct{}, len(loops))

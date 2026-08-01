@@ -58,6 +58,16 @@ type Config struct {
 	SpeedTestLANEnabled  bool
 	SpeedTestLANTarget   string
 	SpeedTestLANDuration time.Duration
+
+	// Integração UniFi (Fase 3, início — ADR-007): NetworkAPIAdapter fala
+	// com a Network API local do console, de dentro da LAN (ADR-001). A
+	// API key nunca é enviada ao backend — só vive na config deste
+	// processo, igual a qualquer outro segredo do agente.
+	UniFiEnabled      bool
+	UniFiBaseURL      string
+	UniFiAPIKey       string
+	UniFiSiteID       string
+	UniFiSyncInterval time.Duration
 }
 
 func Load() (Config, error) {
@@ -122,6 +132,17 @@ func Load() (Config, error) {
 
 	cfg.SpeedTestLANTarget = os.Getenv("SPEEDTEST_LAN_TARGET")
 	cfg.SpeedTestLANEnabled = cfg.SpeedTestLANTarget != ""
+
+	cfg.UniFiBaseURL = os.Getenv("UNIFI_BASE_URL")
+	cfg.UniFiAPIKey = os.Getenv("UNIFI_API_KEY")
+	cfg.UniFiSiteID = os.Getenv("UNIFI_SITE_ID")
+	cfg.UniFiEnabled = cfg.UniFiBaseURL != "" && cfg.UniFiAPIKey != "" && cfg.UniFiSiteID != ""
+
+	unifiSyncMinutes, err := parseIntEnv("UNIFI_SYNC_INTERVAL_MINUTES", 5)
+	if err != nil {
+		return cfg, err
+	}
+	cfg.UniFiSyncInterval = time.Duration(unifiSyncMinutes) * time.Minute
 
 	lanDurationSeconds, err := parseIntEnv("SPEEDTEST_LAN_DURATION_SECONDS", 5)
 	if err != nil {

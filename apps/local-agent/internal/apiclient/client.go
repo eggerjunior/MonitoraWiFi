@@ -110,6 +110,42 @@ func (c *Client) sendTelemetryBatch(ctx context.Context, agentID, agentSecret st
 	return c.doJSON(ctx, http.MethodPost, path, agentSecret, body, nil)
 }
 
+// UniFiDevicePayload/UniFiClientPayload espelham só os campos confirmados
+// reais na Network API local (Fase 3, início — ADR-007). O agente envia o
+// snapshot completo a cada sincronização; o backend substitui o inventário
+// anterior daquele site (nunca acumula histórico de inventário — isso é
+// estado atual, não série temporal).
+type UniFiDevicePayload struct {
+	ExternalID      string   `json:"external_id"`
+	MACAddress      string   `json:"mac_address"`
+	IPAddress       string   `json:"ip_address"`
+	Name            string   `json:"name"`
+	Model           string   `json:"model"`
+	State           string   `json:"state"`
+	FirmwareVersion string   `json:"firmware_version"`
+	Features        []string `json:"features"`
+	Interfaces      []string `json:"interfaces"`
+}
+
+type UniFiClientPayload struct {
+	ExternalID     string `json:"external_id"`
+	Type           string `json:"type"`
+	Name           string `json:"name"`
+	IPAddress      string `json:"ip_address"`
+	MACAddress     string `json:"mac_address"`
+	ConnectedAt    string `json:"connected_at"`
+	UplinkDeviceID string `json:"uplink_device_id"`
+}
+
+func (c *Client) SendUniFiInventory(ctx context.Context, agentID, agentSecret string, devices []UniFiDevicePayload, clients []UniFiClientPayload) error {
+	path := fmt.Sprintf("/agents/%s/unifi-inventory", agentID)
+	body := map[string]any{
+		"devices": devices,
+		"clients": clients,
+	}
+	return c.doJSON(ctx, http.MethodPost, path, agentSecret, body, nil)
+}
+
 // Command é um teste sob demanda disparado pelo usuário (Fase 5, início —
 // docs/architecture/03-fluxo-de-dados.md §3.2). Params fica cru (json.RawMessage)
 // porque cada tipo de comando define seu próprio formato.

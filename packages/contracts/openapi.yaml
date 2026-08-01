@@ -30,6 +30,8 @@ tags:
     description: Enrolamento, heartbeat e telemetria do agente local (Fase 2)
   - name: commands
     description: Testes sob demanda disparados pelo usuário e executados pelo agente (Fase 5, início)
+  - name: unifi
+    description: Inventário UniFi sincronizado pelo agente (Fase 3, início — ADR-007)
 
 paths:
   /healthz:
@@ -509,6 +511,94 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+
+  /sites/{siteId}/unifi/devices:
+    get:
+      tags: [unifi]
+      summary: >
+        Lista o inventário de dispositivos UniFi do site (Fase 3, início —
+        ADR-007). Estado atual sincronizado pelo agente, não série temporal.
+      operationId: listUniFiDevices
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Inventário de dispositivos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UniFiDeviceList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /sites/{siteId}/unifi/clients:
+    get:
+      tags: [unifi]
+      summary: Lista os clientes conectados conhecidos pelo UniFi no site
+      operationId: listUniFiClients
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Lista de clientes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UniFiClientList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /agents/{agentId}/unifi-inventory:
+    post:
+      tags: [agents, unifi]
+      summary: >
+        Recebido do agente (nunca chamado pelo backend ao console UniFi
+        diretamente — ADR-001). Substitui todo o inventário anterior do
+        site do agente.
+      operationId: sendUniFiInventory
+      security:
+        - agentSecret: []
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                devices:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/UniFiDevice"
+                clients:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/UniFiClient"
+      responses:
+        "200":
+          description: Inventário substituído
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
 components:
   parameters:
@@ -1000,6 +1090,78 @@ components:
         error:
           type: string
           description: Obrigatório em sentido prático quando status=failed.
+
+    UniFiDevice:
+      type: object
+      required: [external_id, mac_address, name, model, state]
+      properties:
+        external_id:
+          type: string
+          description: id retornado pela Network API local — não é um UUID interno nosso.
+        mac_address:
+          type: string
+        ip_address:
+          type: string
+        name:
+          type: string
+        model:
+          type: string
+        state:
+          type: string
+          description: "ex.: ONLINE, OFFLINE — valor observado real, não um enum fechado por nós."
+        firmware_version:
+          type: string
+        features:
+          type: array
+          items:
+            type: string
+          description: "ex.: accessPoint, switching"
+        interfaces:
+          type: array
+          items:
+            type: string
+          description: "ex.: radios, ports"
+
+    UniFiDeviceList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/UniFiDevice"
+
+    UniFiClient:
+      type: object
+      required: [external_id, type, mac_address]
+      properties:
+        external_id:
+          type: string
+        type:
+          type: string
+          enum: [WIRED, WIRELESS]
+        name:
+          type: string
+        ip_address:
+          type: string
+        mac_address:
+          type: string
+        connected_at:
+          type: string
+          format: date-time
+          nullable: true
+        uplink_device_id:
+          type: string
+          description: external_id do dispositivo UniFi ao qual este cliente está conectado.
+
+    UniFiClientList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/UniFiClient"
 
 security:
   - sessionCookie: []

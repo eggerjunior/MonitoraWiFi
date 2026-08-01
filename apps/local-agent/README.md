@@ -143,3 +143,29 @@ curl -fsSL https://raw.githubusercontent.com/eggerjunior/MonitoraWiFi/main/apps/
 Requer um release publicado via `.github/workflows/local-agent-release.yml`
 (`gh workflow run "Local Agent release"`) — enquanto não houver um release
 disparado, usar o Dockerfile ou compilar localmente.
+
+## Integração UniFi (Fase 3, início)
+
+`internal/unifi` implementa `UniFiIntegrationProvider` (ADR-007) — hoje só
+`NetworkAPIAdapter`, que fala com a Network API local do console (dentro da
+LAN, ADR-001). Sincroniza inventário de dispositivos/clientes
+periodicamente; nunca implementa detalhe de rádio/porta, eventos/alarmes,
+DPI ou topologia dispositivo→dispositivo ainda (continuam "a validar" em
+`docs/unifi/capability-matrix.md`).
+
+```bash
+UNIFI_BASE_URL=https://192.168.110.1    # IP de gerenciamento do console
+UNIFI_API_KEY=<gerada em Settings > Integrations no console>
+UNIFI_SITE_ID=<id do site dentro do console, ex.: 88f7af54-...>
+UNIFI_SYNC_INTERVAL_MINUTES=5           # padrão
+```
+
+Sem essas três variáveis, a integração fica desativada (log explícito na
+inicialização) — nunca finge estar sincronizando. A API key nunca é
+enviada ao backend; vive só na configuração deste processo.
+
+Testado com um servidor HTTPS de teste real simulando a Network API local
+(certificado autoassinado, autenticação X-API-KEY) e validado ponta a
+ponta com containers efêmeros reais (agente + backend Go): inventário
+sincronizado e consultável via `GET /sites/{id}/unifi/devices` e
+`/unifi/clients`.

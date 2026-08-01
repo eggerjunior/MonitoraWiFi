@@ -30,6 +30,8 @@ func newTestServer(pinger Pinger, users *fakeUsers, sessions *fakeSessions, orgs
 		PingTests:         newFakePingTests(),
 		SpeedTests:        newFakeSpeedTests(),
 		AgentCommands:     newFakeAgentCommands(agents),
+		UniFiDevices:      newFakeUniFiDevices(),
+		UniFiClients:      newFakeUniFiClients(),
 	})
 }
 
@@ -45,6 +47,8 @@ type agentTestDeps struct {
 	pingTests         *fakePingTests
 	speedTests        *fakeSpeedTests
 	agentCommands     *fakeAgentCommands
+	unifiDevices      *fakeUniFiDevices
+	unifiClients      *fakeUniFiClients
 }
 
 func newAgentTestServer(users ...store.User) agentTestDeps {
@@ -57,6 +61,8 @@ func newAgentTestServer(users ...store.User) agentTestDeps {
 	fpt := newFakePingTests()
 	fst := newFakeSpeedTests()
 	fac := newFakeAgentCommands(fa)
+	fud := newFakeUniFiDevices()
+	fuc := newFakeUniFiClients()
 
 	server := NewServer(Deps{
 		Logger:            logger,
@@ -74,6 +80,8 @@ func newAgentTestServer(users ...store.User) agentTestDeps {
 		PingTests:         fpt,
 		SpeedTests:        fst,
 		AgentCommands:     fac,
+		UniFiDevices:      fud,
+		UniFiClients:      fuc,
 	})
 
 	return agentTestDeps{
@@ -86,5 +94,7 @@ func newAgentTestServer(users ...store.User) agentTestDeps {
 		pingTests:         fpt,
 		speedTests:        fst,
 		agentCommands:     fac,
+		unifiDevices:      fud,
+		unifiClients:      fuc,
 	}
 }

@@ -73,6 +73,8 @@ func run() error {
 		PingTests:         &store.PostgresPingTests{Pool: pool},
 		SpeedTests:        &store.PostgresSpeedTests{Pool: pool},
 		AgentCommands:     &store.PostgresAgentCommands{Pool: pool},
+		UniFiDevices:      &store.PostgresUniFiDevices{Pool: pool},
+		UniFiClients:      &store.PostgresUniFiClients{Pool: pool},
 	})
 
 	httpServer := &http.Server{
