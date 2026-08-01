@@ -69,7 +69,9 @@ struct RootView: View {
         switch section {
         case .overview:
             OverviewView(client: session.client)
-        case .network, .map, .tools:
+        case .tools:
+            DiagnosticsView(client: session.client)
+        case .network, .map:
             PlaceholderView(section: section)
         case .alerts:
             PlaceholderView(section: section)

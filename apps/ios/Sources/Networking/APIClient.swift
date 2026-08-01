@@ -118,6 +118,30 @@ public actor APIClient {
         try await get("/sites?organization_id=\(organizationId)&page=\(page)&page_size=\(pageSize)")
     }
 
+    /// Dispara um comando de ping sob demanda (Fase 5, início — executado de
+    /// verdade pelo agente do site, nunca simulado localmente).
+    public func createPingCommand(siteId: String, target: String, protocolName: String) async throws -> Command {
+        struct Params: Encodable {
+            let target: String
+            let protocolName: String
+            enum CodingKeys: String, CodingKey {
+                case target
+                case protocolName = "protocol"
+            }
+        }
+        struct Body: Encodable {
+            let type: String
+            let params: Params
+        }
+        return try await postJSON("/sites/\(siteId)/commands", body: Body(type: "ping", params: Params(target: target, protocolName: protocolName)))
+    }
+
+    /// Consulta o status/resultado de um comando — usado para polling
+    /// enquanto status é pending/claimed.
+    public func getCommand(id: String) async throws -> Command {
+        try await get("/commands/\(id)")
+    }
+
     // MARK: - Núcleo HTTP
 
     private struct EmptyResponse: Decodable {}
@@ -129,6 +153,12 @@ public actor APIClient {
 
     private func postNoBody<T: Decodable>(_ path: String) async throws -> T {
         let request = try makeRequest(path: path, method: "POST")
+        return try await send(request)
+    }
+
+    private func postJSON<Body: Encodable, T: Decodable>(_ path: String, body: Body) async throws -> T {
+        var request = try makeRequest(path: path, method: "POST")
+        request.httpBody = try encoder.encode(body)
         return try await send(request)
     }
 
