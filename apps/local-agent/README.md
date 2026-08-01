@@ -42,27 +42,38 @@ sucesso (2x, incluindo após adicionar o speed test).
 
 ## Não testado ainda / pendências reais
 
-- **Sem pipeline de release do binário** — `scripts/install.sh` tenta
-  baixar um binário pré-compilado de um release do GitHub que ainda não
-  existe. Até isso ser criado (Fase 2, próximo passo), instalar via
-  `go build` a partir do checkout ou via `apps/local-agent/Dockerfile`.
 - **Enrolamento/heartbeat/telemetria não validados contra o backend em
   produção real** — testados com fakes (unitário) e com `httptest.Server`
   (contrato HTTP), não com uma chamada real fim a fim contra
   `monitorawifi-api`. Não criei dados de teste em produção para isso
-  deliberadamente (evitar poluir o banco real).
+  deliberadamente (evitar poluir o banco real): confirmado em 2026-08-01
+  que a tabela `agents` em produção está vazia (0 linhas) — nenhum agente
+  real foi enrolado ainda.
 - **ICMP depende de capability do SO** (`CAP_NET_RAW` ou
   `net.ipv4.ping_group_range`) — dentro de containers sem essa capability,
   cai para 100% de perda reportada (nunca finge sucesso). Documentado em
   `internal/probes/icmp.go`.
 - **Speed test modo LAN (iPerf3) e comparação entre resolvedores DNS** ainda
   não implementados — só o modo HTTP (Seção 5.3) está pronto.
-- Migrações `0002_agents` e `0003_speed_tests` **ainda não aplicadas no banco
-  de produção** (`monitorawifi-postgres`) — só testadas localmente contra
-  Postgres descartável. Aplicar exige decisão explícita antes de subir a nova
-  versão do `apps/api` em produção (DEPLOYMENT_STANDARD.md: "migrações de
-  estrutura serão feitas uma aplicação por vez, com backup e autorização
-  específica").
+
+## Resolvido nesta sessão (2026-08-01)
+
+- **Migrações `0002_agents` e `0003_speed_tests` já estão aplicadas em
+  produção** — confirmado inspecionando `monitorawifi-postgres` diretamente
+  (`\d agents`, `\d speed_tests` batem exatamente com as migrações). A nota
+  anterior aqui estava desatualizada.
+- **Pipeline de release do binário criado**
+  (`.github/workflows/local-agent-release.yml`, `workflow_dispatch` manual —
+  mesmo padrão do TestFlight: publicar um binário é decisão, não efeito
+  colateral de push). Lê a versão de `apps/local-agent/VERSION` (fonte
+  única), roda os testes como gate, cross-compila
+  `linux/amd64`, `linux/arm64`, `darwin/amd64`, `darwin/arm64` com
+  `CGO_ENABLED=0` e a versão+commit injetados via `-ldflags -X`, e publica
+  um GitHub Release (`--latest`) com os binários nomeados exatamente como
+  `scripts/install.sh` espera (`egger-agent-<os>-<arch>`) mais um
+  `SHA256SUMS.txt`. Ainda não disparado nenhuma vez — próximo passo real:
+  rodar `gh workflow run "Local Agent release"` e confirmar
+  `install.sh` funcionando ponta a ponta contra o release publicado.
 
 ## Variáveis de ambiente do speed test
 
@@ -95,5 +106,6 @@ curl -fsSL https://raw.githubusercontent.com/eggerjunior/MonitoraWiFi/main/apps/
   | BACKEND_URL=https://sua-api/api/v1 ENROLLMENT_TOKEN=<token> sudo sh
 ```
 
-Requer um release publicado (pendência acima) — enquanto isso, usar o
-Dockerfile ou compilar localmente.
+Requer um release publicado via `.github/workflows/local-agent-release.yml`
+(`gh workflow run "Local Agent release"`) — enquanto não houver um release
+disparado, usar o Dockerfile ou compilar localmente.

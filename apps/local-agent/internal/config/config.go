@@ -11,6 +11,12 @@ import (
 	"time"
 )
 
+// BuildVersion é sobrescrita em tempo de build via ldflags
+// (-X .../config.BuildVersion=1.2.3, ver .github/workflows/local-agent-release.yml
+// e scripts/build.sh) — "dev" é o fallback de builds locais/manuais, igual ao
+// padrão usado no app iOS (skill ildemar_app-versioning).
+var BuildVersion = "dev"
+
 type Target struct {
 	Name     string
 	Protocol string // icmp | tcp | http | dns
@@ -47,7 +53,7 @@ func Load() (Config, error) {
 		EnrollmentToken: os.Getenv("ENROLLMENT_TOKEN"),
 		StateFilePath:   getEnv("STATE_FILE", "/etc/egger-agent/agent.json"),
 		QueueFilePath:   getEnv("QUEUE_FILE", "/var/lib/egger-agent/queue.jsonl"),
-		Version:         getEnv("AGENT_VERSION", "dev"),
+		Version:         getEnv("AGENT_VERSION", BuildVersion),
 		Platform:        detectPlatform(),
 	}
 

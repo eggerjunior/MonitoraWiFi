@@ -28,11 +28,14 @@ de desenvolvimento. Critérios de aceite detalhados em `07-criterios-aceite-fase
 > `GET /sites/{id}/ping-tests` e `GET /sites/{id}/speed-tests`). A página
 > **Internet** do web (`apps/web`) já consome esses dados reais — validado
 > ponta a ponta com um agente enrolado de verdade via containers efêmeros
-> (não simulado). **Faltam**: speed test modo LAN (iPerf3), pipeline de
-> release do binário (`scripts/install.sh` depende de um release do GitHub
-> que ainda não existe), e aplicar as migrações `0002_agents`/
-> `0003_speed_tests` no banco de produção (`monitorawifi-postgres`) — decisão
-> deliberadamente não tomada nesta sessão. Ver `apps/local-agent/README.md`
+> (não simulado). **Atualização (2026-08-01)**: migrações `0002_agents`/
+> `0003_speed_tests` confirmadas já aplicadas em produção
+> (`monitorawifi-postgres`), e o pipeline de release do binário
+> (`.github/workflows/local-agent-release.yml`) foi criado — nenhum release
+> disparado ainda. **Faltam**: disparar o primeiro release e validar
+> `scripts/install.sh` ponta a ponta, speed test modo LAN (iPerf3), e
+> enrolar um agente real em produção (tabela `agents` está vazia — ninguém
+> rodou o agente contra o site real ainda). Ver `apps/local-agent/README.md`
 > para o detalhamento completo.
 
 Registro/enrolamento do agente (ADR-006), heartbeat, ping (ICMP/TCP/HTTP/DNS),

@@ -1,0 +1,74 @@
+name: Local Agent release
+
+# Só manual (workflow_dispatch) — publicar um binário de release é uma
+# decisão, não efeito colateral de um push, mesmo padrão usado no
+# ios-testflight.yml (skill ildemar_app-versioning / ildemar_ios-native-testflight).
+on:
+  workflow_dispatch: {}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: apps/local-agent
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/local-agent/go.mod
+
+      - name: Ler versão (fonte única: VERSION) e commit
+        id: version
+        run: |
+          set -euo pipefail
+          version="$(tr -d '[:space:]' < VERSION)"
+          commit="$(git rev-parse --short=8 HEAD)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          echo "tag=agent-v$version" >> "$GITHUB_OUTPUT"
+
+      - name: Falhar se a tag já existir (build number não pode repetir)
+        run: |
+          set -euo pipefail
+          if git ls-remote --tags origin "refs/tags/${{ steps.version.outputs.tag }}" | grep -q .; then
+            echo "::error::Tag ${{ steps.version.outputs.tag }} já existe — suba a versão em apps/local-agent/VERSION antes de rodar o release de novo."
+            exit 1
+          fi
+
+      - name: Testes (mesmo gate do CI, antes de publicar qualquer binário)
+        run: |
+          go vet ./...
+          go test ./... -race -cover
+
+      - name: Cross-compile
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          version="${{ steps.version.outputs.version }}"
+          commit="${{ steps.version.outputs.commit }}"
+          ldflags="-s -w -X egger/local-agent/internal/config.BuildVersion=${version}+${commit}"
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+            os="${target%/*}"
+            arch="${target#*/}"
+            out="dist/egger-agent-${os}-${arch}"
+            echo "==> building ${out}"
+            CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -ldflags "$ldflags" -o "$out" ./cmd/agent
+          done
+          ( cd dist && sha256sum egger-agent-* > SHA256SUMS.txt )
+
+      - name: Criar GitHub Release e publicar binários
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "${{ steps.version.outputs.tag }}" \
+            apps/local-agent/dist/egger-agent-* \
+            apps/local-agent/dist/SHA256SUMS.txt \
+            --repo "${{ github.repository }}" \
+            --title "Local agent v${{ steps.version.outputs.version }}" \
+            --notes "Build automático a partir do commit ${{ steps.version.outputs.commit }}. Binários: linux/amd64, linux/arm64, darwin/amd64, darwin/arm64 (CGO desativado, estático). Ver apps/local-agent/README.md para instalação (scripts/install.sh)." \
+            --latest
