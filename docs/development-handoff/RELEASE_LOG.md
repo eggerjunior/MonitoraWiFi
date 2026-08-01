@@ -4,6 +4,23 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-01 — Fase 3 (início): integração UniFi + deploy em produção
+
+- Commit `7d6fd33` (API/agente), `f2d0232` (bump versão do agente).
+- `NetworkAPIAdapter` real (ADR-007) sincroniza inventário de
+  dispositivos/clientes via Network API local, autenticado por API key
+  gerada pelo próprio usuário na instalação real. Migração `0005` aplicada
+  em produção (backup prévio em `/opt/data/monitorawifi/backups/`).
+- API de produção reimplantada com o commit `7d6fd339`.
+- Release do binário do agente `agent-v0.2.0` publicado
+  (https://github.com/eggerjunior/MonitoraWiFi/releases).
+- Pendência real: nenhum agente rodando na rede real do usuário ainda —
+  a integração está pronta e validada com um console fake em containers
+  efêmeros, mas não testada contra o console de verdade (192.168.110.1).
+  Próximo passo natural: usuário rodar o agente na rede real com
+  `UNIFI_BASE_URL=https://192.168.110.1`, `UNIFI_API_KEY` (a key
+  "MonitoraWiFi" já gerada), `UNIFI_SITE_ID=88f7af54-98f8-306a-a1c7-c9349722b1f6`.
+
 ## 2026-08-01 — iOS 0.1.5 (6): "ping sob demanda" em Ferramentas (paridade com web)
 
 - Commit `6e17f15`. `DiagnosticsView` substitui o placeholder de
