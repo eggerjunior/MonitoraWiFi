@@ -114,6 +114,23 @@ export interface SslCheckCommandResult {
   executed_at: string;
 }
 
+export interface RdapEvent {
+  action: string;
+  date: string;
+}
+
+export interface RdapResult {
+  query: string;
+  server: string;
+  object_class_name: string;
+  handle: string;
+  name: string;
+  status: string[];
+  events: RdapEvent[];
+  nameservers?: string[];
+  raw: Record<string, unknown>;
+}
+
 export interface Command {
   id: string;
   site_id: string;

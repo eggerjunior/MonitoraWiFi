@@ -219,6 +219,33 @@ public struct Command: Decodable, Sendable, Identifiable {
     }
 }
 
+public struct RdapEvent: Codable, Sendable {
+    public let action: String
+    public let date: String
+}
+
+public struct RdapResult: Codable, Sendable {
+    public let query: String
+    public let server: String
+    public let objectClassName: String
+    public let handle: String
+    public let name: String
+    public let status: [String]
+    public let events: [RdapEvent]
+    public let nameservers: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case query
+        case server
+        case objectClassName = "object_class_name"
+        case handle
+        case name
+        case status
+        case events
+        case nameservers
+    }
+}
+
 public struct UniFiDevice: Codable, Sendable, Identifiable {
     public let id: String
     public let externalId: String

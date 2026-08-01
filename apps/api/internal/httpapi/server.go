@@ -14,6 +14,7 @@ import (
 
 	"egger/api/internal/auth"
 	"egger/api/internal/ratelimit"
+	"egger/api/internal/rdap"
 	"egger/api/internal/store"
 )
 
@@ -21,6 +22,12 @@ import (
 // permite exercitar /readyz sem um PostgreSQL real (Seção 21).
 type Pinger interface {
 	Ping(ctx context.Context) error
+}
+
+// RDAPLookuper é satisfeito por *rdap.Client em produção; em teste, um fake
+// evita depender de bootstrap/servidores RDAP reais na internet.
+type RDAPLookuper interface {
+	Lookup(ctx context.Context, query string) (rdap.Result, error)
 }
 
 type Server struct {
@@ -43,9 +50,12 @@ type Server struct {
 	unifiClients      store.UniFiClientStore
 	anomalies         store.AnomalyStore
 
+	rdapClient RDAPLookuper
+
 	sessionTTL     time.Duration
 	loginLimiter   *ratelimit.Limiter
 	commandLimiter *ratelimit.Limiter
+	rdapLimiter    *ratelimit.Limiter
 }
 
 type Deps struct {
@@ -68,6 +78,8 @@ type Deps struct {
 	UniFiDevices      store.UniFiDeviceStore
 	UniFiClients      store.UniFiClientStore
 	Anomalies         store.AnomalyStore
+
+	RDAPClient RDAPLookuper
 }
 
 func NewServer(d Deps) *Server {
@@ -89,6 +101,7 @@ func NewServer(d Deps) *Server {
 		unifiDevices:      d.UniFiDevices,
 		unifiClients:      d.UniFiClients,
 		anomalies:         d.Anomalies,
+		rdapClient:        d.RDAPClient,
 		sessionTTL:        d.SessionTTL,
 		loginLimiter:      ratelimit.New(30, 10), // 30/min por IP, burst 10 — ajustável em produção
 		// Threat model §5 ("Especificar rate limiting... antes de abrir
@@ -99,6 +112,10 @@ func NewServer(d Deps) *Server {
 		// (não IP): a ameaça aqui é abuso de uma conta autenticada, não
 		// tentativa de login anônima.
 		commandLimiter: ratelimit.New(20, 5), // 20/min por usuário, burst 5
+		// RDAP consulta serviços de terceiros (IANA + RIRs/registries) —
+		// limite prudente para não transformar o backend num proxy de
+		// abuso contra esses serviços públicos.
+		rdapLimiter: ratelimit.New(20, 5),
 	}
 }
 
@@ -142,6 +159,9 @@ func (s *Server) Routes() http.Handler {
 
 	mux.HandleFunc("GET /api/v1/sites/{siteId}/anomalies", s.withObservability("anomalies.list",
 		s.requirePermission(auth.PermView, s.handleListAnomalies)))
+
+	mux.HandleFunc("GET /api/v1/rdap/lookup", s.withObservability("rdap.lookup",
+		s.requirePermission(auth.PermRunTests, s.handleRDAPLookup)))
 
 	mux.HandleFunc("POST /api/v1/agents/enroll", s.withObservability("agents.enroll", s.handleEnrollAgent))
 	mux.HandleFunc("POST /api/v1/agents/{agentId}/heartbeat", s.withObservability("agents.heartbeat",

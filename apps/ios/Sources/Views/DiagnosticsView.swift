@@ -21,12 +21,16 @@ final class DiagnosticsViewModel {
     var tracerouteTarget = "1.1.1.1"
     var sslCheckTarget = "example.com"
     var sslCheckPort = "443"
+    var rdapQuery = "example.com"
 
     private(set) var pingCommand: Command?
     private(set) var batchPingCommand: Command?
     private(set) var dnsCommand: Command?
     private(set) var tracerouteCommand: Command?
     private(set) var sslCheckCommand: Command?
+    private(set) var rdapResult: RdapResult?
+    private(set) var rdapError: String?
+    private(set) var isRdapLoading = false
 
     static let maxBatchTargets = 20
 
@@ -150,6 +154,20 @@ final class DiagnosticsViewModel {
         isSubmitting = false
     }
 
+    func runRdapLookup() async {
+        rdapError = nil
+        rdapResult = nil
+        isRdapLoading = true
+        do {
+            rdapResult = try await client.rdapLookup(query: rdapQuery)
+        } catch let error as APIClient.ClientError {
+            rdapError = Self.message(for: error)
+        } catch {
+            rdapError = "Erro de rede ao consultar RDAP."
+        }
+        isRdapLoading = false
+    }
+
     private func startPolling(commandId: String, onUpdate: @escaping (Command) -> Void) {
         pollTasks[commandId]?.cancel()
         pollTasks[commandId] = Task { [weak self] in
@@ -206,6 +224,8 @@ struct DiagnosticsView: View {
                         .foregroundStyle(Color.egger(.critical, scheme: colorScheme))
                 }
             }
+
+            rdapSection
 
             SubnetCalculatorSection()
         }
@@ -384,6 +404,38 @@ struct DiagnosticsView: View {
                     Text(command.error ?? "Falha não especificada.")
                         .foregroundStyle(Color.egger(.critical, scheme: colorScheme))
                 }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var rdapSection: some View {
+        Section("RDAP / WHOIS") {
+            TextField("Domínio ou IP", text: $viewModel.rdapQuery)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button {
+                Task { await viewModel.runRdapLookup() }
+            } label: {
+                Text(viewModel.isRdapLoading ? "Consultando…" : "Consultar")
+            }
+            .disabled(viewModel.isRdapLoading || viewModel.rdapQuery.isEmpty)
+
+            if let result = viewModel.rdapResult {
+                LabeledContent("Nome", value: result.name.isEmpty ? result.query : result.name)
+                if !result.handle.isEmpty {
+                    LabeledContent("Handle", value: result.handle)
+                }
+                if !result.status.isEmpty {
+                    LabeledContent("Status", value: result.status.joined(separator: ", "))
+                }
+                ForEach(result.events, id: \.action) { event in
+                    LabeledContent(event.action, value: event.date)
+                }
+            }
+            if let rdapError = viewModel.rdapError {
+                Text(rdapError)
+                    .foregroundStyle(Color.egger(.critical, scheme: colorScheme))
             }
         }
     }

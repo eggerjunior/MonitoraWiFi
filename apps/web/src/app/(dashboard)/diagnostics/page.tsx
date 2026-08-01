@@ -4,12 +4,14 @@ import { BatchPingTool } from "@/components/BatchPingTool";
 import { DnsLookupTool } from "@/components/DnsLookupTool";
 import { TracerouteTool } from "@/components/TracerouteTool";
 import { SslCheckTool } from "@/components/SslCheckTool";
+import { RdapTool } from "@/components/RdapTool";
 import { SubnetCalculator } from "@/components/SubnetCalculator";
 
-// Ferramentas de diagnóstico sob demanda (Fase 5): ping, DNS lookup e
-// traceroute disparam um comando de verdade executado pelo agente do site —
-// nunca simulam um resultado antes de o agente responder (Seção 2.1). A
-// calculadora de sub-rede é cálculo puro (sem agente/rede envolvida).
+// Ferramentas de diagnóstico sob demanda (Fase 5): ping, DNS lookup,
+// traceroute e SSL/TLS checker disparam um comando de verdade executado pelo
+// agente do site — nunca simulam um resultado antes de o agente responder
+// (Seção 2.1). RDAP/WHOIS roda direto no backend (informação pública da
+// internet, não da LAN). A calculadora de sub-rede é cálculo puro.
 export default async function DiagnosticsPage() {
   const current = await getCurrentSite();
 
@@ -37,6 +39,7 @@ export default async function DiagnosticsPage() {
         </>
       )}
 
+      <RdapTool />
       <SubnetCalculator />
     </div>
   );

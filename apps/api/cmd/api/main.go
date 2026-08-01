@@ -15,6 +15,7 @@ import (
 	"egger/api/internal/db"
 	"egger/api/internal/httpapi"
 	"egger/api/internal/logging"
+	"egger/api/internal/rdap"
 	"egger/api/internal/store"
 	"egger/api/internal/telemetry"
 )
@@ -76,6 +77,7 @@ func run() error {
 		UniFiDevices:      &store.PostgresUniFiDevices{Pool: pool},
 		UniFiClients:      &store.PostgresUniFiClients{Pool: pool},
 		Anomalies:         &store.PostgresAnomalies{Pool: pool},
+		RDAPClient:        rdap.NewClient(),
 	})
 
 	httpServer := &http.Server{

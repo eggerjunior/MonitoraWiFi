@@ -593,6 +593,46 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /rdap/lookup:
+    get:
+      tags: [commands]
+      summary: >
+        Consulta RDAP/WHOIS (Fase 5) para um domínio ou IP — resolvida via
+        bootstrap real da IANA (RFC 7484). Roda direto no backend, sem
+        envolver o agente do site (a informação é pública da internet, não
+        da LAN do usuário).
+      operationId: rdapLookup
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Domínio (ex.; example.com) ou endereço IP
+      responses:
+        "200":
+          description: Resultado RDAP normalizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RdapResult"
+        "400":
+          description: Parâmetro query ausente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Nenhum servidor RDAP autoritativo encontrado para a consulta
+        "429":
+          description: Muitas consultas RDAP em pouco tempo
+        "502":
+          description: Erro ao consultar o servidor RDAP autoritativo
+
   /agents/{agentId}/unifi-inventory:
     post:
       tags: [agents, unifi]
@@ -1110,6 +1150,47 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Command"
+
+    RdapEvent:
+      type: object
+      properties:
+        action:
+          type: string
+        date:
+          type: string
+          format: date-time
+
+    RdapResult:
+      type: object
+      required: [query, server, object_class_name, status, events]
+      properties:
+        query:
+          type: string
+        server:
+          type: string
+          description: URL do servidor RDAP autoritativo que respondeu
+        object_class_name:
+          type: string
+          description: Tipo do objeto RDAP (ex.; "domain", "ip network")
+        handle:
+          type: string
+        name:
+          type: string
+        status:
+          type: array
+          items:
+            type: string
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/RdapEvent"
+        nameservers:
+          type: array
+          items:
+            type: string
+        raw:
+          type: object
+          description: Resposta RDAP completa, para campos não normalizados
 
     CommandResultRequest:
       type: object

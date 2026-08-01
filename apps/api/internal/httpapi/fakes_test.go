@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"egger/api/internal/rdap"
 	"egger/api/internal/store"
 )
 
@@ -408,4 +409,21 @@ func newFakeAnomalies() *fakeAnomalies {
 func (f *fakeAnomalies) ListBySite(ctx context.Context, siteID uuid.UUID, page store.Page) ([]store.Anomaly, int, error) {
 	items := f.bySite[siteID]
 	return items, len(items), nil
+}
+
+// fakeRDAPClient evita depender de bootstrap/servidores RDAP reais na
+// internet nos testes de handler — o cliente real (egger/api/internal/rdap)
+// já tem seus próprios testes com servidores HTTP locais reais.
+type fakeRDAPClient struct {
+	result rdap.Result
+	err    error
+}
+
+func (f *fakeRDAPClient) Lookup(ctx context.Context, query string) (rdap.Result, error) {
+	if f.err != nil {
+		return rdap.Result{}, f.err
+	}
+	result := f.result
+	result.Query = query
+	return result, nil
 }

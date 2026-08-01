@@ -177,6 +177,14 @@ public actor APIClient {
         return try await postJSON("/sites/\(siteId)/commands", body: Body(type: "ssl_check", params: Params(target: target, port: port)))
     }
 
+    /// RDAP/WHOIS (Fase 5) — consulta pública sobre domínio/IP, resolvida
+    /// pelo backend via bootstrap real da IANA. Não passa pelo agente do
+    /// site (a informação é da internet, não da LAN).
+    public func rdapLookup(query: String) async throws -> RdapResult {
+        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        return try await get("/rdap/lookup?query=\(encoded)")
+    }
+
     /// Inventário UniFi (Fase 3/4, início) — sincronizado pelo agente local,
     /// nunca chamado diretamente pelo app (ADR-001).
     public func uniFiDevices(siteId: String) async throws -> UniFiDeviceList {
