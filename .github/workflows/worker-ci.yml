@@ -1,0 +1,59 @@
+name: Worker CI (Go)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/worker/**"
+      - ".github/workflows/worker-ci.yml"
+  pull_request:
+    paths:
+      - "apps/worker/**"
+  workflow_dispatch: {}
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/worker
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/worker/go.mod
+
+      - name: Format check (gofmt)
+        run: |
+          set -euo pipefail
+          unformatted="$(gofmt -l .)"
+          if [[ -n "$unformatted" ]]; then
+            echo "Arquivos não formatados (rode 'gofmt -w .'):"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test ./... -race -cover
+
+  vulnerability-scan:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/worker/go.mod
+      - name: govulncheck (informativo — não bloqueia o merge nesta fase)
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./... || echo "::warning::govulncheck encontrou avisos — revisar antes da Fase 8 (produção)"

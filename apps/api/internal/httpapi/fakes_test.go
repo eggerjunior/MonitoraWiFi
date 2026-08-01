@@ -396,3 +396,16 @@ func (f *fakeUniFiClients) ReplaceBySite(ctx context.Context, siteID uuid.UUID, 
 func (f *fakeUniFiClients) ListBySite(ctx context.Context, siteID uuid.UUID) ([]store.UniFiClient, error) {
 	return f.bySite[siteID], nil
 }
+
+type fakeAnomalies struct {
+	bySite map[uuid.UUID][]store.Anomaly
+}
+
+func newFakeAnomalies() *fakeAnomalies {
+	return &fakeAnomalies{bySite: map[uuid.UUID][]store.Anomaly{}}
+}
+
+func (f *fakeAnomalies) ListBySite(ctx context.Context, siteID uuid.UUID, page store.Page) ([]store.Anomaly, int, error) {
+	items := f.bySite[siteID]
+	return items, len(items), nil
+}

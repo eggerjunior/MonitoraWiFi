@@ -32,6 +32,8 @@ tags:
     description: Testes sob demanda disparados pelo usuário e executados pelo agente (Fase 5, início)
   - name: unifi
     description: Inventário UniFi sincronizado pelo agente (Fase 3, início — ADR-007)
+  - name: anomalies
+    description: Anomalias estatísticas detectadas pelo worker (Fase 7, início)
 
 paths:
   /healthz:
@@ -557,6 +559,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UniFiClientList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /sites/{siteId}/anomalies:
+    get:
+      tags: [anomalies]
+      summary: >
+        Lista anomalias estatísticas detectadas (Fase 7, início) — calculadas
+        pelo worker (baseline por hora/dia da semana), nunca geradas sem
+        histórico suficiente naquele bucket.
+      operationId: listAnomalies
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Lista paginada de anomalias
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnomalyPage"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -1162,6 +1193,49 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/UniFiClient"
+
+    Anomaly:
+      type: object
+      required: [id, metric, observed_at, value, bucket_mean, bucket_size, z_score, detected_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        metric:
+          type: string
+          description: "ex.: ping_latency_ms_p50"
+        observed_at:
+          type: string
+          format: date-time
+        value:
+          type: number
+        bucket_mean:
+          type: number
+          description: Média histórica do bucket (mesma hora do dia + dia da semana) no momento da detecção.
+        bucket_size:
+          type: integer
+          description: Quantas amostras históricas sustentam esse baseline.
+        z_score:
+          type: number
+          description: Desvios-padrão de distância da média do bucket.
+        detected_at:
+          type: string
+          format: date-time
+
+    AnomalyPage:
+      type: object
+      required: [items, page, page_size, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Anomaly"
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
 
 security:
   - sessionCookie: []

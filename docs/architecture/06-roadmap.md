@@ -57,11 +57,49 @@ real (agente + UniFi), com badge de proveniência (`02-arquitetura-proposta.md` 
 em cada card.
 
 ## Fase 5 — Diagnósticos
+
+> **Status (2026-08-01)**: ping, DNS lookup e traceroute sob demanda
+> implementados de ponta a ponta (usuário→backend→agente→backend→usuário,
+> mesmo ciclo de comandos da Fase 5) e testados com sondas reais (traceroute
+> com socket ICMP real contra loopback, DNS lookup real). Calculadora de
+> sub-rede (cálculo puro, sem agente) também pronta em web e iOS. **Faltam**:
+> batch ping, port scanner (com allowlist e auditoria), SSL/TLS checker,
+> RDAP/WHOIS, HTTP client, LAN scanner, Wake-on-LAN (ADR-008) — nenhum
+> começado ainda.
+
 Ping, batch ping, DNS lookup, traceroute, port scanner (com allowlist e auditoria),
 SSL/TLS checker, RDAP/WHOIS, HTTP client, LAN scanner, subnet calculator,
 Wake-on-LAN (via agente, ADR-008).
 
 ## Fase 6 — LiDAR
+
+> **Status (2026-08-01)**: **não iniciada, deliberadamente** — decisão
+> registrada aqui, não uma pendência esquecida. Esta fase exige ARKit rodando
+> em hardware real com sensor LiDAR (iPhone/iPad Pro) para produzir qualquer
+> dado real de verdade; o ambiente desta sessão de desenvolvimento não tem
+> Xcode, simulador com câmera funcional, nem um dispositivo físico. Escrever
+> a UI de captura AR/RealityKit sem conseguir validar contra uma sessão de
+> câmera real violaria o princípio central do projeto ("nunca simular
+> dado", Seção 2.1) na pior forma possível: código que parece funcionar mas
+> nunca rodou de verdade. Pelo mesmo motivo, a modelagem de dados do lado
+> backend (armazenar amostras espaciais/heatmap) não foi antecipada
+> especulativamente — sem o fluxo de captura real para popular com
+> coordenadas de verdade, seria infraestrutura sem consumidor real (design
+> especulativo que o próprio projeto instrui a evitar).
+>
+> **Pré-requisito já satisfeito**: Fases 2 (agente) e 3 (UniFi, início)
+> já entregam métricas de rede reais (latência/perda/jitter, inventário de
+> dispositivos) que um levantamento espacial precisaria sincronizar — a
+> dependência declarada abaixo ("Fase 6 depende da Fase 2 e 3") está
+> tecnicamente desbloqueada.
+>
+> **Próximo passo real**: uma sessão com Xcode em um Mac de verdade e um
+> iPhone/iPad Pro com LiDAR — implementar e testar a captura guiada
+> (`ARWorldTrackingConfiguration` com reconstrução de cena), validar contra
+> um espaço físico real, e só então desenhar o modelo de dados do lado
+> backend a partir do que a captura realmente produz (não do que a Seção 6
+> do documento-fonte imaginou antes de qualquer protótipo).
+
 Fluxo completo de `Spatial WiFi Survey` (detecção de LiDAR, captura guiada, malha,
 amostras, sincronização com métricas de rede, heatmap 2D/3D, modo AR, fallback sem
 LiDAR, comparação entre levantamentos).

@@ -75,6 +75,7 @@ func run() error {
 		AgentCommands:     &store.PostgresAgentCommands{Pool: pool},
 		UniFiDevices:      &store.PostgresUniFiDevices{Pool: pool},
 		UniFiClients:      &store.PostgresUniFiClients{Pool: pool},
+		Anomalies:         &store.PostgresAnomalies{Pool: pool},
 	})
 
 	httpServer := &http.Server{

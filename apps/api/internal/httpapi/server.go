@@ -41,6 +41,7 @@ type Server struct {
 	agentCommands     store.AgentCommandStore
 	unifiDevices      store.UniFiDeviceStore
 	unifiClients      store.UniFiClientStore
+	anomalies         store.AnomalyStore
 
 	sessionTTL   time.Duration
 	loginLimiter *ratelimit.Limiter
@@ -65,6 +66,7 @@ type Deps struct {
 	AgentCommands     store.AgentCommandStore
 	UniFiDevices      store.UniFiDeviceStore
 	UniFiClients      store.UniFiClientStore
+	Anomalies         store.AnomalyStore
 }
 
 func NewServer(d Deps) *Server {
@@ -85,6 +87,7 @@ func NewServer(d Deps) *Server {
 		agentCommands:     d.AgentCommands,
 		unifiDevices:      d.UniFiDevices,
 		unifiClients:      d.UniFiClients,
+		anomalies:         d.Anomalies,
 		sessionTTL:        d.SessionTTL,
 		loginLimiter:      ratelimit.New(30, 10), // 30/min por IP, burst 10 — ajustável em produção
 	}
@@ -127,6 +130,9 @@ func (s *Server) Routes() http.Handler {
 		s.requirePermission(auth.PermView, s.handleListUniFiDevices)))
 	mux.HandleFunc("GET /api/v1/sites/{siteId}/unifi/clients", s.withObservability("unifi.clients.list",
 		s.requirePermission(auth.PermView, s.handleListUniFiClients)))
+
+	mux.HandleFunc("GET /api/v1/sites/{siteId}/anomalies", s.withObservability("anomalies.list",
+		s.requirePermission(auth.PermView, s.handleListAnomalies)))
 
 	mux.HandleFunc("POST /api/v1/agents/enroll", s.withObservability("agents.enroll", s.handleEnrollAgent))
 	mux.HandleFunc("POST /api/v1/agents/{agentId}/heartbeat", s.withObservability("agents.heartbeat",
