@@ -26,6 +26,8 @@ tags:
     description: Organizações (tenants)
   - name: sites
     description: Sites dentro de uma organização
+  - name: agents
+    description: Enrolamento, heartbeat e telemetria do agente local (Fase 2)
 
 paths:
   /healthz:
@@ -180,6 +182,140 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /sites/{siteId}/agent-enrollment-tokens:
+    post:
+      tags: [agents]
+      summary: Gera um token de enrolamento de uso único para o agente local do site
+      operationId: createAgentEnrollmentToken
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "201":
+          description: Token gerado (exibido uma única vez)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentEnrollmentTokenResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /sites/{siteId}/agents:
+    get:
+      tags: [agents]
+      summary: Lista agentes locais registrados no site
+      operationId: listAgents
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Lista paginada de agentes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /agents/enroll:
+    post:
+      tags: [agents]
+      summary: Troca um token de enrolamento por uma credencial de agente de longa duração
+      operationId: enrollAgent
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnrollAgentRequest"
+      responses:
+        "201":
+          description: Agente registrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnrollAgentResponse"
+        "401":
+          description: Token inválido, expirado ou já usado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /agents/{agentId}/heartbeat:
+    post:
+      tags: [agents]
+      summary: Heartbeat periódico do agente local
+      operationId: agentHeartbeat
+      security:
+        - agentSecret: []
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentHeartbeatRequest"
+      responses:
+        "200":
+          description: Heartbeat registrado
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /agents/{agentId}/telemetry:
+    post:
+      tags: [agents]
+      summary: Envia um lote de resultados de teste (ex.; ping) — idempotente por chave
+      operationId: agentTelemetry
+      security:
+        - agentSecret: []
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentTelemetryRequest"
+      responses:
+        "202":
+          description: Lote aceito (itens com idempotency_key repetida são ignorados)
+        "400":
+          description: Corpo inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
 components:
   parameters:
     PageParam:
@@ -229,6 +365,12 @@ components:
       type: apiKey
       in: cookie
       name: egger_session
+    agentSecret:
+      type: http
+      scheme: bearer
+      description: >
+        Credencial opaca do agente local, emitida uma única vez por
+        /agents/enroll (ADR-006). Nunca é o mesmo token de sessão de usuário.
 
   schemas:
     HealthStatus:
@@ -377,6 +519,146 @@ components:
           type: integer
         total:
           type: integer
+
+    AgentEnrollmentTokenResponse:
+      type: object
+      required: [enrollment_token, site_id, expires_at]
+      properties:
+        enrollment_token:
+          type: string
+          description: Exibido uma única vez — não recuperável depois.
+        site_id:
+          type: string
+          format: uuid
+        expires_at:
+          type: string
+          format: date-time
+
+    EnrollAgentRequest:
+      type: object
+      required: [enrollment_token, hostname, platform]
+      properties:
+        enrollment_token:
+          type: string
+        hostname:
+          type: string
+        platform:
+          type: string
+          enum: [linux_amd64, linux_arm64, macos]
+        version:
+          type: string
+
+    EnrollAgentResponse:
+      type: object
+      required: [agent_id, agent_secret, site_id]
+      properties:
+        agent_id:
+          type: string
+          format: uuid
+        agent_secret:
+          type: string
+          description: Credencial de longa duração — exibida uma única vez.
+        site_id:
+          type: string
+          format: uuid
+
+    Agent:
+      type: object
+      required: [id, site_id, hostname, version, platform, auth_method, enrolled_at, revoked]
+      properties:
+        id:
+          type: string
+          format: uuid
+        site_id:
+          type: string
+          format: uuid
+        hostname:
+          type: string
+        version:
+          type: string
+        platform:
+          type: string
+        auth_method:
+          type: string
+          enum: [rotating_credential, mtls]
+        enrolled_at:
+          type: string
+          format: date-time
+        last_seen_at:
+          type: string
+          format: date-time
+          nullable: true
+        revoked:
+          type: boolean
+
+    AgentPage:
+      type: object
+      required: [items, page, page_size, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Agent"
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+
+    AgentHeartbeatRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          default: ok
+        queued_items:
+          type: integer
+        cpu_pct:
+          type: number
+          nullable: true
+        mem_pct:
+          type: number
+          nullable: true
+
+    PingTestPayload:
+      type: object
+      required: [target, protocol, executed_at, idempotency_key]
+      properties:
+        target:
+          type: string
+        protocol:
+          type: string
+          enum: [icmp, tcp, http, dns]
+        latency_ms_p50:
+          type: number
+          nullable: true
+        latency_ms_p95:
+          type: number
+          nullable: true
+        latency_ms_p99:
+          type: number
+          nullable: true
+        jitter_ms:
+          type: number
+          nullable: true
+        packet_loss_pct:
+          type: number
+          nullable: true
+        executed_at:
+          type: string
+          format: date-time
+        idempotency_key:
+          type: string
+          description: Estável entre reenvios do mesmo resultado (Seção 3).
+
+    AgentTelemetryRequest:
+      type: object
+      properties:
+        ping_tests:
+          type: array
+          items:
+            $ref: "#/components/schemas/PingTestPayload"
 
 security:
   - sessionCookie: []

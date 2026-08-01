@@ -33,6 +33,11 @@ type Server struct {
 	sessions store.SessionStore
 	audit    store.AuditStore
 
+	agents            store.AgentStore
+	agentEnrollTokens store.AgentEnrollmentTokenStore
+	agentHeartbeats   store.AgentHeartbeatStore
+	pingTests         store.PingTestStore
+
 	sessionTTL   time.Duration
 	loginLimiter *ratelimit.Limiter
 }
@@ -47,20 +52,29 @@ type Deps struct {
 	Sessions   store.SessionStore
 	Audit      store.AuditStore
 	SessionTTL time.Duration
+
+	Agents            store.AgentStore
+	AgentEnrollTokens store.AgentEnrollmentTokenStore
+	AgentHeartbeats   store.AgentHeartbeatStore
+	PingTests         store.PingTestStore
 }
 
 func NewServer(d Deps) *Server {
 	return &Server{
-		logger:       d.Logger,
-		tracer:       d.Tracer,
-		pool:         d.Pool,
-		orgs:         d.Orgs,
-		sites:        d.Sites,
-		users:        d.Users,
-		sessions:     d.Sessions,
-		audit:        d.Audit,
-		sessionTTL:   d.SessionTTL,
-		loginLimiter: ratelimit.New(30, 10), // 30/min por IP, burst 10 — ajustável em produção
+		logger:            d.Logger,
+		tracer:            d.Tracer,
+		pool:              d.Pool,
+		orgs:              d.Orgs,
+		sites:             d.Sites,
+		users:             d.Users,
+		sessions:          d.Sessions,
+		audit:             d.Audit,
+		agents:            d.Agents,
+		agentEnrollTokens: d.AgentEnrollTokens,
+		agentHeartbeats:   d.AgentHeartbeats,
+		pingTests:         d.PingTests,
+		sessionTTL:        d.SessionTTL,
+		loginLimiter:      ratelimit.New(30, 10), // 30/min por IP, burst 10 — ajustável em produção
 	}
 }
 
@@ -81,6 +95,17 @@ func (s *Server) Routes() http.Handler {
 		s.requirePermission(auth.PermView, s.handleListSites)))
 	mux.HandleFunc("GET /api/v1/sites/{siteId}", s.withObservability("sites.get",
 		s.requirePermission(auth.PermView, s.handleGetSite)))
+
+	mux.HandleFunc("POST /api/v1/sites/{siteId}/agent-enrollment-tokens", s.withObservability("agents.create-enrollment-token",
+		s.requirePermission(auth.PermManageIntegrations, s.handleCreateAgentEnrollmentToken)))
+	mux.HandleFunc("GET /api/v1/sites/{siteId}/agents", s.withObservability("agents.list",
+		s.requirePermission(auth.PermView, s.handleListAgents)))
+
+	mux.HandleFunc("POST /api/v1/agents/enroll", s.withObservability("agents.enroll", s.handleEnrollAgent))
+	mux.HandleFunc("POST /api/v1/agents/{agentId}/heartbeat", s.withObservability("agents.heartbeat",
+		s.requireAgentAuth(s.handleAgentHeartbeat)))
+	mux.HandleFunc("POST /api/v1/agents/{agentId}/telemetry", s.withObservability("agents.telemetry",
+		s.requireAgentAuth(s.handleAgentTelemetry)))
 
 	return mux
 }

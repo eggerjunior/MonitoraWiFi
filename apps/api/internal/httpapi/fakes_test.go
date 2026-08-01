@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -119,4 +120,105 @@ type fakePinger struct {
 
 func (f *fakePinger) Ping(ctx context.Context) error {
 	return f.err
+}
+
+type fakeAgents struct {
+	byID map[uuid.UUID]store.Agent
+}
+
+func newFakeAgents() *fakeAgents {
+	return &fakeAgents{byID: map[uuid.UUID]store.Agent{}}
+}
+
+func (f *fakeAgents) Create(ctx context.Context, a store.Agent) error {
+	f.byID[a.ID] = a
+	return nil
+}
+
+func (f *fakeAgents) Get(ctx context.Context, id uuid.UUID) (store.Agent, error) {
+	a, ok := f.byID[id]
+	if !ok {
+		return store.Agent{}, store.ErrNotFound
+	}
+	return a, nil
+}
+
+func (f *fakeAgents) ListBySite(ctx context.Context, siteID uuid.UUID, page store.Page) ([]store.Agent, int, error) {
+	var out []store.Agent
+	for _, a := range f.byID {
+		if a.SiteID == siteID {
+			out = append(out, a)
+		}
+	}
+	return out, len(out), nil
+}
+
+func (f *fakeAgents) UpdateLastSeen(ctx context.Context, id uuid.UUID, at time.Time) error {
+	a, ok := f.byID[id]
+	if !ok {
+		return store.ErrNotFound
+	}
+	a.LastSeenAt = &at
+	f.byID[id] = a
+	return nil
+}
+
+type fakeAgentEnrollmentTokens struct {
+	byHash map[string]store.AgentEnrollmentToken
+}
+
+func newFakeAgentEnrollmentTokens() *fakeAgentEnrollmentTokens {
+	return &fakeAgentEnrollmentTokens{byHash: map[string]store.AgentEnrollmentToken{}}
+}
+
+func (f *fakeAgentEnrollmentTokens) Create(ctx context.Context, t store.AgentEnrollmentToken) error {
+	f.byHash[t.TokenHash] = t
+	return nil
+}
+
+func (f *fakeAgentEnrollmentTokens) GetValidByTokenHash(ctx context.Context, tokenHash string, now time.Time) (store.AgentEnrollmentToken, error) {
+	t, ok := f.byHash[tokenHash]
+	if !ok || t.UsedAt != nil || !t.ExpiresAt.After(now) {
+		return store.AgentEnrollmentToken{}, store.ErrTokenExpiredOrUsed
+	}
+	return t, nil
+}
+
+func (f *fakeAgentEnrollmentTokens) MarkUsed(ctx context.Context, id uuid.UUID, agentID uuid.UUID, at time.Time) error {
+	for hash, t := range f.byHash {
+		if t.ID == id {
+			t.UsedAt = &at
+			t.UsedByAgentID = &agentID
+			f.byHash[hash] = t
+		}
+	}
+	return nil
+}
+
+type fakeAgentHeartbeats struct {
+	entries []store.AgentHeartbeat
+}
+
+func (f *fakeAgentHeartbeats) Record(ctx context.Context, h store.AgentHeartbeat) error {
+	f.entries = append(f.entries, h)
+	return nil
+}
+
+type fakePingTests struct {
+	byKey map[string]store.PingTest
+}
+
+func newFakePingTests() *fakePingTests {
+	return &fakePingTests{byKey: map[string]store.PingTest{}}
+}
+
+func (f *fakePingTests) InsertBatch(ctx context.Context, tests []store.PingTest) error {
+	for _, t := range tests {
+		key := t.AgentID.String() + "|" + t.IdempotencyKey
+		if _, exists := f.byKey[key]; exists {
+			continue
+		}
+		f.byKey[key] = t
+	}
+	return nil
 }

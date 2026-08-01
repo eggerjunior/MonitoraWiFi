@@ -11,6 +11,7 @@ type contextKey int
 const (
 	correlationIDKey contextKey = iota
 	authenticatedUserKey
+	authenticatedAgentKey
 )
 
 func withCorrelationID(ctx context.Context, id string) context.Context {
@@ -31,4 +32,13 @@ func withUser(ctx context.Context, u store.User) context.Context {
 func userFromContext(ctx context.Context) (store.User, bool) {
 	u, ok := ctx.Value(authenticatedUserKey).(store.User)
 	return u, ok
+}
+
+func withAgent(ctx context.Context, a store.Agent) context.Context {
+	return context.WithValue(ctx, authenticatedAgentKey, a)
+}
+
+func agentFromContext(ctx context.Context) (store.Agent, bool) {
+	a, ok := ctx.Value(authenticatedAgentKey).(store.Agent)
+	return a, ok
 }

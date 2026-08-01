@@ -66,6 +66,11 @@ func run() error {
 		Sessions:   &store.PostgresSessions{Pool: pool},
 		Audit:      &store.PostgresAudit{Pool: pool},
 		SessionTTL: cfg.SessionTTL,
+
+		Agents:            &store.PostgresAgents{Pool: pool},
+		AgentEnrollTokens: &store.PostgresAgentEnrollmentTokens{Pool: pool},
+		AgentHeartbeats:   &store.PostgresAgentHeartbeats{Pool: pool},
+		PingTests:         &store.PostgresPingTests{Pool: pool},
 	})
 
 	httpServer := &http.Server{
