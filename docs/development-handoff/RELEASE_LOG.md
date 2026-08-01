@@ -4,6 +4,41 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-01 — iOS 0.1.3 (4): corrige causa real do erro de login (URL absoluta)
+
+- App: Egger Network Intelligence, bundle id `br.app.egger.network-intelligence`
+- Versão/build: 0.1.3 (4), commit `4631f67`
+- Motivo: usuário confirmou que, mesmo já no build 3 (0.1.2), continuava
+  recebendo "Não foi possível falar com o servidor" — ou seja, o fix
+  anterior (Set-Cookie) não resolveu o problema de verdade.
+- Causa raiz real: `APIClient.makeRequest` montava a URL com
+  `URL(string: path, relativeTo: configuration.baseURL)`, onde `path`
+  sempre começa com `/` (ex.: `/auth/login`). Por RFC 3986, uma string
+  começando com `/` é resolvida como **caminho absoluto**, descartando
+  qualquer componente de path do `baseURL` — então
+  `https://wifi.egger.app.br/api/v1` + `/auth/login` virava
+  `https://wifi.egger.app.br/auth/login` (sem `/api/v1`), que bate no
+  domínio raiz servido pelo **Next.js** (web), não na API. Confirmado
+  batendo direto em produção: `POST /auth/login` (sem prefixo) retorna
+  404 em HTML do site; `POST /api/v1/auth/login` retorna 200 em JSON com
+  `Set-Cookie` correto. O app tentava decodificar HTML como JSON e lançava
+  `ClientError.invalidResponse` — exatamente a mensagem reportada,
+  independente de usuário/senha.
+- Correção: `makeRequest` agora monta a URL por concatenação de string
+  (garantindo `/` entre base e path, sem duplicar), preservando o
+  `/api/v1` do `baseURL` (`apps/ios/Sources/Networking/APIClient.swift`).
+- Web: nenhuma mudança necessária — o cliente web usa Route Handlers
+  (BFF) do Next.js com caminho relativo já correto; o bug era específico
+  da resolução de URL do `APIClient` nativo iOS.
+- Status: **enviado com sucesso ao TestFlight** — CI de build (run
+  https://github.com/eggerjunior/MonitoraWiFi/actions/runs/30684037809) e
+  release (`ARCHIVE SUCCEEDED`, `EXPORT SUCCEEDED`, run
+  https://github.com/eggerjunior/MonitoraWiFi/actions/runs/30684070931)
+  verdes.
+- Pendências: aguardando confirmação do usuário testando login no
+  dispositivo real após atualizar para o build 4; ícone do app ainda é o
+  placeholder gerado programaticamente.
+
 ## 2026-08-01 — iOS 0.1.2 (3): corrige login travado por Set-Cookie interceptado
 
 - App: Egger Network Intelligence, bundle id `br.app.egger.network-intelligence`

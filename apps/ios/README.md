@@ -125,6 +125,13 @@ open EggerNetworkIntelligence.xcodeproj
   Resolvido com `httpShouldSetCookies = false` /
   `httpCookieAcceptPolicy = .never` na configuração da sessão
   (`Sources/Networking/APIClient.swift`).
+- ✅ **0.1.3 (Build 4) enviado ao TestFlight com sucesso** — corrige a
+  causa real do mesmo erro (o build 3 sozinho não resolveu): `path` com
+  `/` inicial (ex.: `/auth/login`) era resolvido como caminho absoluto,
+  descartando `/api/v1` do `baseURL` e batendo no domínio raiz (Next.js),
+  não na API — confirmado com `curl` direto em produção. Corrigido
+  montando a URL por concatenação de string em vez de
+  `URL(string:relativeTo:)`.
 - Para gerar/regenerar o certificado de distribuição em outra máquina/sessão:
   `python3 scripts/create_dist_cert.py eggerjunior/MonitoraWiFi` (requer
   `ASC_KEY_ID`/`ASC_ISSUER_ID`/`ASC_KEY_PATH` no ambiente e `gh` autenticado
