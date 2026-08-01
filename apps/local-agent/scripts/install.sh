@@ -40,12 +40,10 @@ if command -v curl >/dev/null 2>&1 && curl -fsSL -o "${INSTALL_DIR}/egger-agent"
   chmod +x "${INSTALL_DIR}/egger-agent"
   echo "==> Binário instalado em ${INSTALL_DIR}/egger-agent"
 else
-  echo "==> Nenhum release publicado ainda (ou download falhou)."
-  echo "    Este projeto ainda não tem um pipeline de release do agente"
-  echo "    (pendência registrada — ver apps/local-agent/README.md)."
-  echo "    Alternativa: compilar localmente com 'go build' a partir do"
-  echo "    checkout do repositório, ou usar o Dockerfile"
-  echo "    (apps/local-agent/Dockerfile) em vez deste script."
+  echo "==> Download falhou ($release_url)."
+  echo "    Confira sua conexão com github.com, ou compile localmente com"
+  echo "    'go build' a partir do checkout do repositório, ou use o"
+  echo "    Dockerfile (apps/local-agent/Dockerfile) em vez deste script."
   exit 1
 fi
 
