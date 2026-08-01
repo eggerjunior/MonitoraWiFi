@@ -4,6 +4,31 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-01 — Web: versionamento (paridade com iOS) + redeploy em produção
+
+- App: web (Next.js), commit `2e54344`
+- Motivo: usuário notou que o web não mostra nenhuma informação de
+  versão/build, ao contrário do iOS (que já tem `VersionManager`/
+  `VersionHistory` desde a Fase 1) — quebra da regra de paridade da skill
+  `ildemar_app-versioning`.
+- Implementado: `src/lib/version.ts` (versão do `package.json`, GIT_COMMIT/
+  BUILD_DATE injetados via `--build-arg` no Dockerfile), `version-history.ts`
+  (changelog em código), e a página Configurações (antes um placeholder
+  vazio) agora mostra versão/build/commit (link pro GitHub) + histórico.
+- Validado ponta a ponta com containers efêmeros reais (Postgres + API Go +
+  web) antes do deploy: login real, cookie de sessão real, HTML
+  confirmando "v0.1.0 — 1 de ago. de 2026, 12:00" e o commit de teste
+  linkado corretamente.
+- **Publicado em produção**: imagem `monitorawifi-web:2e54344e` (build com
+  `GIT_COMMIT=2e54344e`, `BUILD_DATE` real do momento do build), container
+  `monitorawifi-web` substituído mantendo a mesma rede/porta
+  (`127.0.0.1:8421`). Confirmado servindo via `curl` contra
+  `https://wifi.egger.app.br`.
+- Pendência registrada (não resolvida agora): não há pipeline de release
+  automatizado para o web (deploys continuam manuais via SSH — `docker
+  build`/`docker run` — diferente do iOS, que já usa GitHub Actions
+  workflow_dispatch). Considerar um workflow dedicado numa sessão futura.
+
 ## 2026-08-01 — Local agent: pipeline de release + repositório tornado público
 
 - Criado `.github/workflows/local-agent-release.yml` (`workflow_dispatch`
