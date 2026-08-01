@@ -40,7 +40,12 @@ enum SubnetCalculator {
         let usableHosts: Int
     }
 
-    static func parse(_ input: String) -> Result<Info, String> {
+    enum ParseResult {
+        case success(Info)
+        case failure(String)
+    }
+
+    static func parse(_ input: String) -> ParseResult {
         let parts = input.trimmingCharacters(in: .whitespaces).split(separator: "/")
         guard parts.count == 2,
               let prefix = Int(parts[1]), (0...32).contains(prefix)

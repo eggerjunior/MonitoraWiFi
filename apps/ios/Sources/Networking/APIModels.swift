@@ -157,7 +157,7 @@ extension CommandResult: Decodable {
     }
 }
 
-public struct Command: Codable, Sendable, Identifiable {
+public struct Command: Decodable, Sendable, Identifiable {
     public let id: String
     public let siteId: String
     public let agentId: String
