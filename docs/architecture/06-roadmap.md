@@ -34,10 +34,12 @@ de desenvolvimento. Critérios de aceite detalhados em `07-criterios-aceite-fase
 > (`.github/workflows/local-agent-release.yml`) foi criado — nenhum release
 > disparado ainda. **Atualização (2026-08-01, continuação)**: primeiro
 > release publicado e validado ponta a ponta (`agent-v0.1.0`), speed test
-> modo LAN (iPerf3) implementado e testado com servidor real. **Falta**:
-> enrolar um agente real em produção (tabela `agents` está vazia — ninguém
-> rodou o agente contra o site real ainda) e comparação entre resolvedores
-> DNS. Ver `apps/local-agent/README.md` para o detalhamento completo.
+> modo LAN (iPerf3) implementado e testado com servidor real. **Atualização
+> (2026-08-01)**: primeiro agente real enrolado em produção — rodando como
+> container Docker num mini PC (Home Assistant OS) dentro da LAN residencial,
+> heartbeat confirmado (`last_seen_at` atualizando no banco). **Falta**:
+> comparação entre resolvedores DNS. Ver `apps/local-agent/README.md` para o
+> detalhamento completo.
 
 Registro/enrolamento do agente (ADR-006), heartbeat, ping (ICMP/TCP/HTTP/DNS),
 speed test (Internet e LAN), buffer offline com backoff exponencial, streaming de
@@ -49,12 +51,13 @@ agente (não mock).
 > **Status (2026-08-01)**: primeira fatia real implementada —
 > `NetworkAPIAdapter` (`apps/local-agent/internal/unifi`) sincroniza
 > inventário de dispositivos e clientes contra a Network API local,
-> autenticado por API key gerada pela instalação real do usuário (validado
-> com um console fake em containers efêmeros — ainda não testado contra o
-> console real de verdade, `192.168.110.1`, porque nenhum agente foi
-> instalado na rede real ainda). 13 dos 18 itens de
-> `verificacoes-pendentes-instalacao.md` já confirmados com dados reais
-> (versões, autenticação, VLANs ativas, firmwares, topologia
+> autenticado por API key gerada pela instalação real do usuário. **Atualização
+> (2026-08-01)**: validado contra o console real de verdade
+> (`192.168.110.1`) com o primeiro agente enrolado em produção — sincronizou
+> 14 dispositivos e 80 clientes reais, gravados em `unifi_devices`/
+> `unifi_clients` e confirmados via query direta no banco de produção. 13 dos
+> 18 itens de `verificacoes-pendentes-instalacao.md` já confirmados com dados
+> reais (versões, autenticação, VLANs ativas, firmwares, topologia
 > cliente→dispositivo básica). **Faltam**: detecção automática de
 > capability matrix por versão, detalhe de rádio/porta (campos ainda "a
 > validar"), eventos/alarmes, topologia dispositivo→dispositivo, adaptadores

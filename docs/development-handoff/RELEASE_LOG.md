@@ -4,6 +4,29 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-01 — Primeiro agente real enrolado em produção + UniFi validado contra o console real
+
+- Instalação real feita pelo usuário: container Docker (`apps/local-agent/Dockerfile`,
+  buildado direto do repo com `docker build ... https://github.com/eggerjunior/MonitoraWiFi.git#main`)
+  rodando num mini PC com Home Assistant OS 16.2, dentro da LAN residencial
+  (`192.168.110.85`) — não numa VPS/cloud, então alcança de verdade o console
+  UniFi local (`192.168.110.1`).
+- Tentativa inicial na VPS de produção (`painel`) foi revogada (`agents.revoked_at`)
+  sem nenhum dado de telemetria gravado — identificada a tempo antes de poluir
+  métricas reais.
+- Agente `37f8283b-5c29-4b5a-98ec-2ceff5b152e2` enrolado com sucesso via token
+  de uso único; heartbeat confirmado (`last_seen_at` atualizando).
+- Sincronização UniFi (`NetworkAPIAdapter`) validada contra o console real pela
+  primeira vez (antes só testado contra um console fake): **14 dispositivos e
+  80 clientes** sincronizados e gravados em `unifi_devices`/`unifi_clients`,
+  confirmados via query direta no banco de produção.
+- Pendente que fechou: "enrolar um agente real em produção" (Fase 2) e "testar
+  UniFi contra o console real" (Fase 3) — ambos atualizados em
+  `docs/architecture/06-roadmap.md`.
+- Próximo: Fase 7 (worker de anomalias) agora tem histórico real começando a
+  se acumular; ainda precisa de volume/tempo antes do baseline fazer sentido,
+  e o agendamento do worker continua pendente (Fase 8).
+
 ## 2026-08-01 — Fase 7 (início): worker de anomalias + Fase 6 documentada como não iniciada
 
 - Commit `90f1e2b`. `apps/worker` ganha código real pela primeira vez
