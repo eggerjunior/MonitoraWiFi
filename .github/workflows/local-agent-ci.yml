@@ -24,6 +24,9 @@ jobs:
         with:
           go-version-file: apps/local-agent/go.mod
 
+      - name: Instalar iperf3 (para o teste real do speed test modo LAN)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq iperf3
+
       - name: Format check (gofmt)
         run: |
           set -euo pipefail
