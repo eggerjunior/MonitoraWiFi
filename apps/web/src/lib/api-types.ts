@@ -88,6 +88,40 @@ export interface Command {
   completed_at?: string | null;
 }
 
+export interface UniFiDevice {
+  id: string;
+  external_id: string;
+  mac_address: string;
+  ip_address: string;
+  name: string;
+  model: string;
+  state: string;
+  firmware_version: string;
+  features: string[];
+  interfaces: string[];
+}
+
+export interface UniFiDeviceList {
+  items: UniFiDevice[];
+}
+
+export type UniFiClientType = "WIRED" | "WIRELESS";
+
+export interface UniFiClient {
+  id: string;
+  external_id: string;
+  type: UniFiClientType;
+  name: string;
+  ip_address: string;
+  mac_address: string;
+  connected_at: string | null;
+  uplink_device_id: string;
+}
+
+export interface UniFiClientList {
+  items: UniFiClient[];
+}
+
 export type SpeedTestMode = "internet" | "lan" | "http";
 
 export interface SpeedTest {

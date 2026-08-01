@@ -10,12 +10,20 @@ export type VersionEntry = {
 
 export const versionHistory: VersionEntry[] = [
   {
+    version: "0.3.0",
+    date: "2026-08-01",
+    changes: [
+      "Dispositivos, Wi-Fi e Clientes: inventário UniFi real (sincronizado pelo agente local) — deixam de ser placeholders (Fase 3/4)",
+    ],
+    isCurrent: true,
+  },
+  {
     version: "0.2.0",
     date: "2026-08-01",
     changes: [
       "Diagnósticos: ferramenta de ping sob demanda — dispara um comando real executado pelo agente do site e acompanha o resultado (Fase 5, início)",
     ],
-    isCurrent: true,
+    isCurrent: false,
   },
   {
     version: "0.1.0",
