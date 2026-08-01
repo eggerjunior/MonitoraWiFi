@@ -18,14 +18,21 @@ ser assumido/simulado antes de resposta real; a Fase 3 (integração UniFi) trat
 2. ✅ **Confirmado em 2026-08-01**: **UniFi Network 10.5.67** ("Up to Date",
    canal Official). Outras aplicações no mesmo console: Protect 7.1.87,
    InnerSpace 1.3.21 (Access/Talk/Connect não instaladas).
-3. ⏳ **Pendente** — usuário não sabe de cabeça. Próximo passo: buscar "API"
-   na caixa "Pesquisar Configurações" do console (visível no print) ou
-   checar `Settings → Control Plane → Integrations` / ícone do usuário no
-   canto superior direito — versões recentes do UniFi Network (10.x)
-   geralmente expõem geração de API key de "local application" numa dessas
-   duas telas.
-4. ⏳ **Pendente** — depende da resposta ao item 3 (a tela de API/Integrations
-   normalmente já diz se o método é API key, usuário/senha, ou os dois).
+3. ✅ **Confirmado em 2026-08-01**: a Network API local (UniFi Network
+   10.5.67) exige gerar uma API key manualmente — tela `Integrations` do
+   próprio console (Network app), não vem habilitada "por padrão" no
+   sentido de dispensar essa etapa. O console já tinha 3 keys anteriores
+   (Home Assistant x2, uma sem nome claro) — o usuário criou uma nova,
+   nomeada "MonitoraWiFi". **A key em si nunca foi nem será registrada
+   neste repositório** (segredo puro, gerado uma única vez pela UI da
+   Ubiquiti) — guardada só no gerenciador de senhas do usuário.
+4. ✅ **Confirmado em 2026-08-01**: método de autenticação é API key via
+   header `X-API-KEY` (não usuário/senha) — confirmado pelo próprio exemplo
+   de `curl` que a tela de Integrations mostra:
+   `curl -k -X GET 'https://<ip-do-console>/proxy/network/integration/v1/sites' -H 'X-API-KEY: ...' -H 'Accept: application/json'`.
+   **Achado extra**: o IP de gerenciamento do console é `192.168.110.1`,
+   batendo com a sub-rede `Egger_Principal 192.168.110.0/24` esperada
+   (ver item 11) — primeira confirmação real desse dado.
 5. **Parcialmente confirmado em 2026-08-01**: existe conta Ubiquiti vinculada
    (login ativo em `unifi.ui.com`, visível no print). Usuário ainda não
    decidiu se quer habilitar a Site Manager API (cloud, opcional) ou operar
