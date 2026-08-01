@@ -43,8 +43,9 @@ type Server struct {
 	unifiClients      store.UniFiClientStore
 	anomalies         store.AnomalyStore
 
-	sessionTTL   time.Duration
-	loginLimiter *ratelimit.Limiter
+	sessionTTL     time.Duration
+	loginLimiter   *ratelimit.Limiter
+	commandLimiter *ratelimit.Limiter
 }
 
 type Deps struct {
@@ -90,6 +91,14 @@ func NewServer(d Deps) *Server {
 		anomalies:         d.Anomalies,
 		sessionTTL:        d.SessionTTL,
 		loginLimiter:      ratelimit.New(30, 10), // 30/min por IP, burst 10 — ajustável em produção
+		// Threat model §5 ("Especificar rate limiting... antes de abrir
+		// qualquer endpoint de teste ativo"): comandos sob demanda (ping/
+		// dns_lookup/traceroute) rodam de verdade na LAN do usuário — sem
+		// limite, uma conta comprometida poderia usar o agente como
+		// ferramenta de flood contra um único alvo. Chave por usuário
+		// (não IP): a ameaça aqui é abuso de uma conta autenticada, não
+		// tentativa de login anônima.
+		commandLimiter: ratelimit.New(20, 5), // 20/min por usuário, burst 5
 	}
 }
 

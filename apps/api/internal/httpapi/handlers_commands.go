@@ -50,6 +50,12 @@ type tracerouteCommandParams struct {
 func (s *Server) handleCreateCommand(w http.ResponseWriter, r *http.Request) {
 	correlationID := correlationIDFromContext(r.Context())
 
+	user, _ := userFromContext(r.Context())
+	if !s.commandLimiter.Allow(user.ID.String()) {
+		writeError(w, correlationID, http.StatusTooManyRequests, "rate_limited", "muitos comandos em pouco tempo, tente novamente em instantes")
+		return
+	}
+
 	siteID, err := uuid.Parse(r.PathValue("siteId"))
 	if err != nil {
 		writeError(w, correlationID, http.StatusBadRequest, "invalid_site_id", "siteId inválido")
@@ -123,7 +129,6 @@ func (s *Server) handleCreateCommand(w http.ResponseWriter, r *http.Request) {
 		req.Params, _ = json.Marshal(p)
 	}
 
-	user, _ := userFromContext(r.Context())
 	now := time.Now().UTC()
 
 	cmd, err := s.agentCommands.Create(r.Context(), siteID, user.ID, req.Type, req.Params, now)

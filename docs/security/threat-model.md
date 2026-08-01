@@ -107,7 +107,26 @@ UniFi, dados de localização física via LiDAR).
 
 - Definir formalmente o mecanismo de identidade do agente (mTLS vs. credencial
   rotacionável simples) — ver ADR-006.
-- Especificar rate limiting por endpoint antes de abrir qualquer endpoint de teste
-  ativo para uso externo (Fase 5).
-- SAST e dependency scanning entram no pipeline de CI já na Fase 1 (Seção 22),
-  não depois.
+- ✅ **Resolvido em 2026-08-01 (Fase 8)**: rate limiting nos endpoints de teste
+  ativo (`POST /sites/{id}/commands` — ping/dns_lookup/traceroute, Fase 5) — 20
+  comandos/min por usuário autenticado (chave por `user_id`, não IP, porque a
+  ameaça aqui é abuso de uma conta já autenticada, não tentativa de login
+  anônima). Testado de verdade (não só revisão de código): disparando 40
+  criações de comando em sequência, o backend retorna 429 antes de completar
+  todas.
+- ✅ SAST e dependency scanning já rodam no CI desde a Fase 1
+  (`security-scan.yml`, `govulncheck` em cada módulo Go).
+- ⏳ **Gap real identificado, ainda não corrigido**: os comandos sob demanda
+  (ping/dns_lookup/traceroute) aceitam qualquer `target`/`hostname` informado
+  pelo usuário, sem allowlist de RFC 1918 nem confirmação extra para alvos
+  externos — a mitigação descrita na Seção 3.1 ("todo alvo precisa estar
+  cadastrado... alvo externo exige confirmação explícita") ainda não está
+  implementada para essas três ferramentas. Avaliação de risco: aceitável por
+  ora porque (a) são operações de alvo único, não primitivas de varredura em
+  massa; (b) já têm rate limiting (acima) e auditoria (`requested_by` em
+  `agent_commands`); (c) o caso de uso legítimo primário (diagnosticar
+  Internet) exige testar hosts externos por natureza — uma restrição
+  RFC 1918-only quebraria a funcionalidade central. **Vira bloqueante quando
+  um port scanner de verdade for implementado** (Fase 5, ainda não
+  começado) — aí sim a mitigação completa (allowlist + confirmação +
+  auditoria) é obrigatória antes de expor a funcionalidade.

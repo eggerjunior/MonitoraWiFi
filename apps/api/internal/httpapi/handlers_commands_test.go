@@ -344,3 +344,38 @@ func TestCreateCommand_Traceroute_RequerTarget(t *testing.T) {
 		t.Fatalf("esperava 202 com target, recebeu %d: %s", okRec.Code, okRec.Body.String())
 	}
 }
+
+// TestCreateCommand_RateLimit confirma o gap real de segurança encontrado
+// na revisão do threat model (§5, "rate limiting antes de abrir qualquer
+// endpoint de teste ativo"): sem limite, uma conta comprometida poderia
+// usar o agente do site como ferramenta de flood contra um único alvo.
+func TestCreateCommand_RateLimit(t *testing.T) {
+	siteID := uuid.New()
+	admin := store.User{ID: uuid.New(), Email: "admin@example.com", PasswordHash: mustHash(t, "senha12345"), Role: store.RoleAdministrator}
+	deps := newAgentTestServer(admin)
+	cookie := loginAndGetCookie(t, deps.server, "admin@example.com", "senha12345")
+	enrollTestAgent(t, deps, siteID)
+
+	body, _ := json.Marshal(map[string]any{
+		"type":   "ping",
+		"params": map[string]string{"target": "1.1.1.1"},
+	})
+
+	sawRateLimited := false
+	for i := 0; i < 40; i++ {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(body))
+		req.AddCookie(cookie)
+		rec := httptest.NewRecorder()
+		deps.server.Routes().ServeHTTP(rec, req)
+		if rec.Code == http.StatusTooManyRequests {
+			sawRateLimited = true
+			break
+		}
+		if rec.Code != http.StatusAccepted {
+			t.Fatalf("esperava 202 ou 429, recebeu %d: %s", rec.Code, rec.Body.String())
+		}
+	}
+	if !sawRateLimited {
+		t.Fatal("esperava eventualmente receber 429 (rate limit) após várias criações de comando em sequência")
+	}
+}
