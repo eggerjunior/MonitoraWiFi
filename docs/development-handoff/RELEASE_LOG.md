@@ -36,16 +36,15 @@ Record every deploy, TestFlight/App Store upload, web publish and external proce
   `/home/eggerjunior/conf/web/wifi.egger.app.br/nginx.conf` e `nginx.ssl.conf`
   (mesmo padrão já usado em `ged.egger.app.br`/`monitor.egger.app.br`):
   `proxy_pass http://127.0.0.1:8421`
-- **Pendência real**: o ambiente de execução (container `egger-code-server`)
-  não tem `nginx`/`systemctl` — só o mount de arquivo. A mudança de config
-  está no disco mas **precisa de um reload do nginx no host** para entrar em
-  vigor (`nginx -t && systemctl reload nginx`, ou equivalente). Até isso
-  acontecer, `https://wifi.egger.app.br` continua respondendo 421 (backend
-  Apache padrão do Hestia, sem app associado).
+- **Reload do nginx feito** (autorizado explicitamente pelo usuário): via SSH
+  (`root@2.25.189.37`, chave `/config/.ssh/monitoravps_deploy`), `nginx -t`
+  validado e `systemctl reload nginx` executado com sucesso.
+  **`https://wifi.egger.app.br` está no ar**, servindo `/login` real (HTTP
+  200, confirmado por `curl` externo).
 - Rollback: parar/remover os 3 containers `monitorawifi-*` e reverter os dois
   arquivos de nginx para a versão anterior (backup não foi feito
   explicitamente — o conteúdo original é o template padrão do Hestia,
-  regenerável via "Rebuild Web Domain" no painel).
+  regenerável via "Rebuild Web Domain" no painel), depois `systemctl reload nginx`.
 
 ## 2026-07-31 — Fase 0 (Descoberta) concluída
 
