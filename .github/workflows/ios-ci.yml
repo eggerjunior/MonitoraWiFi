@@ -65,6 +65,10 @@ jobs:
             exit 1
           fi
           echo "Usando simulador: $DEVICE_NAME"
+          # -derivedDataPath próprio: build isolado do passo anterior (que usa
+          # destino genérico) evita qualquer estado parcial/incompatível de
+          # DerivedData compartilhado entre os dois xcodebuild.
           xcodebuild -project EggerNetworkIntelligence.xcodeproj -scheme EggerNetworkIntelligence \
+            -derivedDataPath DerivedData-Test \
             -destination "platform=iOS Simulator,name=${DEVICE_NAME}" \
             test
