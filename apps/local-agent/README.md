@@ -62,7 +62,7 @@ sucesso (2x, incluindo após adicionar o speed test).
   produção** — confirmado inspecionando `monitorawifi-postgres` diretamente
   (`\d agents`, `\d speed_tests` batem exatamente com as migrações). A nota
   anterior aqui estava desatualizada.
-- **Pipeline de release do binário criado**
+- **Pipeline de release do binário criado e validado ponta a ponta**
   (`.github/workflows/local-agent-release.yml`, `workflow_dispatch` manual —
   mesmo padrão do TestFlight: publicar um binário é decisão, não efeito
   colateral de push). Lê a versão de `apps/local-agent/VERSION` (fonte
@@ -71,9 +71,22 @@ sucesso (2x, incluindo após adicionar o speed test).
   `CGO_ENABLED=0` e a versão+commit injetados via `-ldflags -X`, e publica
   um GitHub Release (`--latest`) com os binários nomeados exatamente como
   `scripts/install.sh` espera (`egger-agent-<os>-<arch>`) mais um
-  `SHA256SUMS.txt`. Ainda não disparado nenhuma vez — próximo passo real:
-  rodar `gh workflow run "Local Agent release"` e confirmar
-  `install.sh` funcionando ponta a ponta contra o release publicado.
+  `SHA256SUMS.txt`. Primeiro release publicado: `agent-v0.1.0`
+  (https://github.com/eggerjunior/MonitoraWiFi/releases/tag/agent-v0.1.0).
+- **Achado e resolvido durante a validação**: `curl` sem autenticação no
+  link público do asset retornava 404 — o repositório era **privado**, e o
+  GitHub não serve assets de release de repos privados sem autenticação
+  (`gh release download` funcionava, `curl` puro não). Pergunta explícita
+  ao usuário (`AskUserQuestion`: tornar público / hospedar em
+  `wifi.egger.app.br` / manter privado usando `gh` por enquanto) — escolheu
+  tornar o repositório público. Antes de mudar a visibilidade, auditei toda
+  a história do git em busca de segredos reais (chaves privadas, `.env`
+  real, certificados) — não havia nenhum, só `.env.example` com
+  placeholders de desenvolvimento; `.gitignore` já excluía `*.p8`, `*.pem`,
+  `*.key`, `.env*` desde o início. Repositório tornado público
+  (`gh repo edit --visibility public`) e o download não-autenticado
+  confirmado funcionando de verdade (`curl -fsSL .../releases/latest/download/egger-agent-linux-amd64`
+  baixou o binário certo, com a versão `0.1.0+dd95c8a7` embutida).
 
 ## Variáveis de ambiente do speed test
 

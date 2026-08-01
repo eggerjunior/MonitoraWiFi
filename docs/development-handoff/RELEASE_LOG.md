@@ -4,6 +4,47 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-01 — Local agent: pipeline de release + repositório tornado público
+
+- Criado `.github/workflows/local-agent-release.yml` (`workflow_dispatch`
+  manual): lê `apps/local-agent/VERSION` (fonte única), testa, cross-compila
+  `linux/amd64`, `linux/arm64`, `darwin/amd64`, `darwin/arm64`
+  (`CGO_ENABLED=0`, versão+commit injetados via `-ldflags -X`), publica
+  GitHub Release `--latest` com os binários no nome que
+  `scripts/install.sh` espera.
+- Duas correções reais encontradas rodando o workflow de verdade (não só
+  lendo o YAML): (1) erro de sintaxe YAML — `:` sem aspas dentro do `name`
+  de um step quebrava o parser, GitHub registrava o workflow sem nome/sem
+  trigger reconhecido; (2) path duplicado no upload dos assets
+  (`apps/local-agent/dist/...` de dentro de um job cujo
+  `working-directory` já é `apps/local-agent` — `gh release create`
+  recebia `apps/local-agent/apps/local-agent/dist/...` e não encontrava
+  nada). Ambas corrigidas e revalidadas com uma execução real verde.
+- Primeiro release publicado: `agent-v0.1.0`
+  (https://github.com/eggerjunior/MonitoraWiFi/releases/tag/agent-v0.1.0).
+- **Achado durante a validação ponta a ponta**: `curl` sem autenticação
+  contra o link público do asset (exatamente como `install.sh` faz)
+  retornava 404 — o repositório era privado, e o GitHub não serve assets
+  de release de repositórios privados sem autenticação. Perguntei ao
+  usuário como preferia resolver (tornar público / hospedar em
+  `wifi.egger.app.br` / manter privado usando `gh` autenticado por
+  enquanto) — escolheu **tornar o repositório público**.
+- Antes de mudar a visibilidade: auditei toda a história do git (`git log
+  --all -p`) em busca de chaves privadas, certificados, `.env` real —
+  nada encontrado; só `.env.example` com placeholders de desenvolvimento;
+  `.gitignore` já excluía `*.p8`/`*.pem`/`*.key`/`.env*` desde o commit
+  inicial.
+- Repositório tornado público (`gh repo edit --visibility public`).
+  Download público não-autenticado revalidado funcionando de verdade
+  (`curl -fsSL https://github.com/.../releases/latest/download/egger-agent-linux-amd64`
+  baixou o binário correto, versão `0.1.0+dd95c8a7` embutida confirmada
+  via `strings`).
+- Documentação atualizada em `README.md` (raiz), `apps/ios/README.md`,
+  `apps/local-agent/README.md` e `docs/development-handoff/PROJECT_CONTEXT.md`
+  para refletir a mudança de visibilidade.
+- Pendências: nenhum agente real enrolado em produção ainda (tabela
+  `agents` vazia); speed test modo LAN (iPerf3) não implementado.
+
 ## 2026-08-01 — iOS 0.1.4 (5): corrige "Não foi possível carregar organizações/sites"
 
 - App: Egger Network Intelligence, bundle id `br.app.egger.network-intelligence`

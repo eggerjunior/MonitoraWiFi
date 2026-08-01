@@ -5,7 +5,8 @@ Swift, SwiftUI, Swift Concurrency, Observation, ARKit (detecção de LiDAR),
 Keychain. Projeto gerado via **XcodeGen** a partir de `project.yml` — não há
 `.xcodeproj` commitado (gerado, `.gitignore`).
 
-Repositório: https://github.com/eggerjunior/MonitoraWiFi (privado) — branch `main`.
+Repositório: https://github.com/eggerjunior/MonitoraWiFi (público desde
+2026-08-01, ver motivo em `apps/local-agent/README.md`) — branch `main`.
 
 ## Este código foi escrito sem Xcode local, mas já foi compilado de verdade
 
@@ -99,7 +100,8 @@ open EggerNetworkIntelligence.xcodeproj
 
 ## Status de publicação (TestFlight)
 
-- ✅ Repositório GitHub privado criado e código enviado.
+- ✅ Repositório GitHub criado e código enviado (privado inicialmente,
+  tornado público em 2026-08-01 — ver `apps/local-agent/README.md`).
 - ✅ Secrets `IOS_ASC_KEY_ID`, `IOS_ASC_ISSUER_ID`, `IOS_ASC_KEY_P8_BASE64`
   configurados no repositório.
 - ✅ Bundle ID `br.app.egger.network-intelligence` criado no App Store Connect

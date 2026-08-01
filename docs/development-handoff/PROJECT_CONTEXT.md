@@ -7,7 +7,8 @@ Generated: 2026-07-31T22:37:06-03:00
 - Project: `MonitoraWiFi`
 - Root: `/host/opt/projetos/MonitoraWiFi`
 - Branch: `main`
-- Commit: `10f35d0` (repo: https://github.com/eggerjunior/MonitoraWiFi, privado)
+- Commit: `10f35d0` (repo: https://github.com/eggerjunior/MonitoraWiFi — era
+  privado nesta data, tornado público em 2026-08-01, ver RELEASE_LOG.md)
 - Git status: pode haver mudanças de documentação não commitadas após este registro — conferir `git status`
 - Version: iOS `project.yml` MARKETING_VERSION=0.1.0 CURRENT_PROJECT_VERSION=1; api/web sem versionamento formal ainda
 - Build: iOS GIT_COMMIT=dev (nenhum archive de release feito ainda)
@@ -133,9 +134,12 @@ já que este ambiente de desenvolvimento não tem Xcode.
   Ildemar** — Bundle ID já criado via API; app record não pode ser criado
   via API (restrição permanente da Apple). Sem isso, `iOS TestFlight
   release` não pode rodar.
-- Repositório GitHub privado criado (`eggerjunior/MonitoraWiFi`) com CI e
-  secrets configurados — mas nenhuma publicação (TestFlight, deploy web)
-  foi feita ainda.
+- Repositório GitHub criado (`eggerjunior/MonitoraWiFi`, público desde
+  2026-08-01) com CI e secrets configurados — mas nenhuma publicação
+  (TestFlight, deploy web) foi feita ainda.
+  **Nota**: este snapshot é de 2026-07-31 e já está desatualizado em vários
+  pontos (TestFlight e deploy web já aconteceram depois) — ver
+  `RELEASE_LOG.md` para o estado real mais recente.
 - Identidade do agente (Fase 2) ainda usará credencial rotacionável simples,
   não mTLS (débito técnico rastreado, ADR-006).
 - 18 perguntas sobre a instalação UniFi real seguem pendentes

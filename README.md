@@ -21,7 +21,10 @@ validado em CI real** (runner `macos-26`, ver
 CI ficou pendente (limitação documentada, não escondida). Backend e web foram
 validados ponta a ponta com testes reais (não apenas leitura de código).
 
-Repositório: https://github.com/eggerjunior/MonitoraWiFi (privado).
+Repositório: https://github.com/eggerjunior/MonitoraWiFi (público desde
+2026-08-01 — tornado público para que `apps/local-agent/scripts/install.sh`
+consiga baixar releases sem autenticação; histórico auditado antes da
+mudança, sem segredos).
 
 Ver [`docs/architecture/07-criterios-aceite-fase1.md`](docs/architecture/07-criterios-aceite-fase1.md)
 para o detalhamento exato do que foi cumprido, adiado ou bloqueado.
