@@ -16,10 +16,19 @@ public struct VersionEntry: Identifiable, Sendable {
 public enum VersionHistory {
     /// Fallbacks defensivos — usados apenas se o Info.plist não tiver os
     /// valores (não deveria acontecer em um build gerado pelo XcodeGen).
-    public static let fallbackVersionString = "0.1.5 (Build 6)"
+    public static let fallbackVersionString = "0.1.6 (Build 7)"
     public static let fallbackCommit = "dev"
 
     public static let entries: [VersionEntry] = [
+        VersionEntry(
+            version: "0.1.6",
+            build: "7",
+            date: "2026-08-01",
+            changes: [
+                "Rede: inventário UniFi real (dispositivos, Wi-Fi/APs, clientes) — deixa de ser placeholder (Fase 3/4, início; paridade com o web)",
+            ],
+            isCurrent: true
+        ),
         VersionEntry(
             version: "0.1.5",
             build: "6",
@@ -27,7 +36,7 @@ public enum VersionHistory {
             changes: [
                 "Ferramentas: ping sob demanda — dispara um comando real executado pelo agente do site e acompanha o resultado (Fase 5, início; paridade com o web)",
             ],
-            isCurrent: true
+            isCurrent: false
         ),
         VersionEntry(
             version: "0.1.4",

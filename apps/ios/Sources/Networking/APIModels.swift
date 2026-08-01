@@ -123,6 +123,58 @@ public struct Command: Codable, Sendable, Identifiable {
     }
 }
 
+public struct UniFiDevice: Codable, Sendable, Identifiable {
+    public let id: String
+    public let externalId: String
+    public let macAddress: String
+    public let ipAddress: String
+    public let name: String
+    public let model: String
+    public let state: String
+    public let firmwareVersion: String
+    public let features: [String]
+    public let interfaces: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case externalId = "external_id"
+        case macAddress = "mac_address"
+        case ipAddress = "ip_address"
+        case name
+        case model
+        case state
+        case firmwareVersion = "firmware_version"
+        case features
+        case interfaces
+    }
+}
+
+public struct UniFiDeviceList: Codable, Sendable {
+    public let items: [UniFiDevice]
+}
+
+public struct UniFiClient: Codable, Sendable, Identifiable {
+    public let id: String
+    public let type: String
+    public let name: String
+    public let ipAddress: String
+    public let macAddress: String
+    public let uplinkDeviceId: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case type
+        case name
+        case ipAddress = "ip_address"
+        case macAddress = "mac_address"
+        case uplinkDeviceId = "uplink_device_id"
+    }
+}
+
+public struct UniFiClientList: Codable, Sendable {
+    public let items: [UniFiClient]
+}
+
 public struct Page<Item: Codable & Sendable>: Codable, Sendable {
     public let items: [Item]
     public let page: Int

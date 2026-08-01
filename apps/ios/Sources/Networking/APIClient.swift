@@ -142,6 +142,16 @@ public actor APIClient {
         try await get("/commands/\(id)")
     }
 
+    /// Inventário UniFi (Fase 3/4, início) — sincronizado pelo agente local,
+    /// nunca chamado diretamente pelo app (ADR-001).
+    public func uniFiDevices(siteId: String) async throws -> UniFiDeviceList {
+        try await get("/sites/\(siteId)/unifi/devices")
+    }
+
+    public func uniFiClients(siteId: String) async throws -> UniFiClientList {
+        try await get("/sites/\(siteId)/unifi/clients")
+    }
+
     // MARK: - Núcleo HTTP
 
     private struct EmptyResponse: Decodable {}
