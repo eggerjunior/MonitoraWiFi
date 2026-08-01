@@ -10,6 +10,14 @@ export type VersionEntry = {
 
 export const versionHistory: VersionEntry[] = [
   {
+    version: "0.2.0",
+    date: "2026-08-01",
+    changes: [
+      "Diagnósticos: ferramenta de ping sob demanda — dispara um comando real executado pelo agente do site e acompanha o resultado (Fase 5, início)",
+    ],
+    isCurrent: true,
+  },
+  {
     version: "0.1.0",
     date: "2026-07-31",
     changes: [
@@ -17,6 +25,6 @@ export const versionHistory: VersionEntry[] = [
       "Visão geral com organizações/sites reais do backend (Fase 1)",
       "Internet: ping/speed tests reais do agente local, com badge de proveniência por métrica (Fase 2)",
     ],
-    isCurrent: true,
+    isCurrent: false,
   },
 ];

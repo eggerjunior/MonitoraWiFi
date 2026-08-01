@@ -61,6 +61,33 @@ export interface PingTest {
   executed_at: string;
 }
 
+export type CommandStatus = "pending" | "claimed" | "completed" | "failed";
+
+export interface PingCommandResult {
+  target: string;
+  protocol: PingProtocol;
+  latency_ms_p50: number | null;
+  latency_ms_p95: number | null;
+  latency_ms_p99: number | null;
+  jitter_ms: number | null;
+  packet_loss_pct: number | null;
+  executed_at: string;
+}
+
+export interface Command {
+  id: string;
+  site_id: string;
+  agent_id: string;
+  type: string;
+  params: Record<string, unknown>;
+  status: CommandStatus;
+  result: PingCommandResult | null;
+  error?: string | null;
+  created_at: string;
+  claimed_at?: string | null;
+  completed_at?: string | null;
+}
+
 export type SpeedTestMode = "internet" | "lan" | "http";
 
 export interface SpeedTest {
