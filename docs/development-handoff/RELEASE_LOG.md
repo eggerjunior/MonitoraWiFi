@@ -4,6 +4,40 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-01 — iOS 0.1.2 (3): corrige login travado por Set-Cookie interceptado
+
+- App: Egger Network Intelligence, bundle id `br.app.egger.network-intelligence`
+- Versão/build: 0.1.2 (3), commit `0355239`
+- Motivo: após a correção da URL de produção (0.1.1), o usuário reportou um
+  novo erro no app real: "Não foi possível falar com o servidor. Tente
+  novamente." — mensagem diferente da anterior, indicando que a requisição
+  chegava ao servidor mas a resposta não era processada corretamente.
+- Causa raiz: `APIClient.login()` extrai o token de sessão manualmente do
+  header `Set-Cookie` da resposta (para poder persistir no Keychain). Mesmo
+  com `URLSessionConfiguration.ephemeral`, a `URLSession` intercepta e
+  consome esse header para popular seu próprio `HTTPCookieStorage` interno,
+  fazendo com que ele deixe de aparecer via
+  `HTTPURLResponse.value(forHTTPHeaderField: "Set-Cookie")` — o app recebia
+  200 OK mas `ClientError.invalidResponse` era lançado ao tentar ler o
+  cookie.
+- Correção: `sessionConfig.httpShouldSetCookies = false` e
+  `httpCookieAcceptPolicy = .never` na `URLSessionConfiguration` usada pelo
+  `APIClient`, impedindo a URLSession de consumir o header antes do parsing
+  manual (`apps/ios/Sources/Networking/APIClient.swift`).
+- Web: nenhuma mudança necessária — o BFF do Next.js já usa o padrão de
+  proxy de cookie de sessão sem esse problema (paridade mantida; a correção
+  é específica do cliente iOS).
+- Status: **enviado com sucesso ao TestFlight** — CI de build (`iOS CI
+  (build validation)`, run
+  https://github.com/eggerjunior/MonitoraWiFi/actions/runs/30683676042) e
+  release (`ARCHIVE SUCCEEDED`, `EXPORT SUCCEEDED`, run
+  https://github.com/eggerjunior/MonitoraWiFi/actions/runs/30683703105)
+  verdes.
+- Pendências: build em processamento no App Store Connect no momento deste
+  registro; ícone do app ainda é o placeholder gerado programaticamente;
+  ainda não confirmado por teste manual no dispositivo do usuário (próximo
+  passo real: pedir que ele atualize o TestFlight e tente login de novo).
+
 ## 2026-08-01 — iOS 0.1.1 (2): corrige URL de produção + assinatura manual
 
 - App: Egger Network Intelligence, bundle id `br.app.egger.network-intelligence`

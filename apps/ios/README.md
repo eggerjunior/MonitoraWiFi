@@ -118,6 +118,13 @@ open EggerNetworkIntelligence.xcodeproj
 - ✅ **0.1.1 (Build 2) enviado ao TestFlight com sucesso**
   (`ARCHIVE SUCCEEDED`, `EXPORT SUCCEEDED`) — corrige o app que apontava
   para `localhost` em vez de `https://wifi.egger.app.br/api/v1`.
+- ✅ **0.1.2 (Build 3) enviado ao TestFlight com sucesso** — corrige login
+  que falhava com "Não foi possível falar com o servidor": a `URLSession`
+  intercepta o header `Set-Cookie` mesmo em configuração `.ephemeral`,
+  impedindo `APIClient.login()` de ler o token de sessão manualmente.
+  Resolvido com `httpShouldSetCookies = false` /
+  `httpCookieAcceptPolicy = .never` na configuração da sessão
+  (`Sources/Networking/APIClient.swift`).
 - Para gerar/regenerar o certificado de distribuição em outra máquina/sessão:
   `python3 scripts/create_dist_cert.py eggerjunior/MonitoraWiFi` (requer
   `ASC_KEY_ID`/`ASC_ISSUER_ID`/`ASC_KEY_PATH` no ambiente e `gh` autenticado
