@@ -43,7 +43,19 @@ public actor APIClient {
 
     public init(configuration: Configuration = .fromInfoPlist) {
         self.configuration = configuration
-        self.session = URLSession(configuration: .ephemeral)
+
+        // httpShouldSetCookies = false: por padrão, a URLSession intercepta o
+        // cabeçalho Set-Cookie da resposta para popular seu próprio
+        // HTTPCookieStorage — e ao fazer isso, ele deixa de aparecer em
+        // `HTTPURLResponse.value(forHTTPHeaderField: "Set-Cookie")`, mesmo
+        // com configuração `.ephemeral`. Como este cliente gerencia o token
+        // de sessão manualmente (para poder persisti-lo no Keychain), a
+        // URLSession não pode ficar no meio do caminho consumindo o header
+        // antes da gente conseguir lê-lo.
+        let sessionConfig = URLSessionConfiguration.ephemeral
+        sessionConfig.httpShouldSetCookies = false
+        sessionConfig.httpCookieAcceptPolicy = .never
+        self.session = URLSession(configuration: sessionConfig)
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601

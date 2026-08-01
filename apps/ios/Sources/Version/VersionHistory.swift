@@ -16,10 +16,19 @@ public struct VersionEntry: Identifiable, Sendable {
 public enum VersionHistory {
     /// Fallbacks defensivos — usados apenas se o Info.plist não tiver os
     /// valores (não deveria acontecer em um build gerado pelo XcodeGen).
-    public static let fallbackVersionString = "0.1.1 (Build 2)"
+    public static let fallbackVersionString = "0.1.2 (Build 3)"
     public static let fallbackCommit = "dev"
 
     public static let entries: [VersionEntry] = [
+        VersionEntry(
+            version: "0.1.2",
+            build: "3",
+            date: "2026-08-01",
+            changes: [
+                "Corrige login que falhava com 'Não foi possível falar com o servidor': a URLSession interceptava o cabeçalho Set-Cookie antes do app conseguir lê-lo manualmente (httpShouldSetCookies agora desativado no cliente)",
+            ],
+            isCurrent: true
+        ),
         VersionEntry(
             version: "0.1.1",
             build: "2",
@@ -27,7 +36,7 @@ public enum VersionHistory {
             changes: [
                 "Corrige o app apontando para localhost — agora usa a URL de produção (https://wifi.egger.app.br/api/v1) por padrão, configurável via Info.plist sem alterar código",
             ],
-            isCurrent: true
+            isCurrent: false
         ),
         VersionEntry(
             version: "0.1.0",
