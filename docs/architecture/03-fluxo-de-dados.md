@@ -70,6 +70,11 @@ O agente não expõe um servidor de comandos (isso violaria "sem porta de entrad
 ele consulta/assina o backend para saber se há comandos pendentes, usando a mesma
 conexão outbound de telemetria.
 
+> **Nota de implementação (Fase 5, início)**: o diagrama acima mostra Redis como fila
+> de comando. A implementação real usa **Postgres com polling** em vez de Redis —
+> decisão registrada em `adr/ADR-011-fila-de-comando-via-postgres.md`. O fluxo
+> conceitual (usuário→backend→agente→backend→usuário) permanece o mesmo.
+
 ## 3.3 Levantamento LiDAR (Spatial WiFi Survey)
 
 ```mermaid

@@ -12,6 +12,7 @@ import (
 
 func newTestServer(pinger Pinger, users *fakeUsers, sessions *fakeSessions, orgs *fakeOrgs, sites *fakeSites) *Server {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	agents := newFakeAgents()
 	return NewServer(Deps{
 		Logger:     logger,
 		Tracer:     otel.Tracer("test"),
@@ -23,11 +24,12 @@ func newTestServer(pinger Pinger, users *fakeUsers, sessions *fakeSessions, orgs
 		Audit:      &fakeAudit{},
 		SessionTTL: time.Hour,
 
-		Agents:            newFakeAgents(),
+		Agents:            agents,
 		AgentEnrollTokens: newFakeAgentEnrollmentTokens(),
 		AgentHeartbeats:   &fakeAgentHeartbeats{},
 		PingTests:         newFakePingTests(),
 		SpeedTests:        newFakeSpeedTests(),
+		AgentCommands:     newFakeAgentCommands(agents),
 	})
 }
 
@@ -42,6 +44,7 @@ type agentTestDeps struct {
 	agentHeartbeats   *fakeAgentHeartbeats
 	pingTests         *fakePingTests
 	speedTests        *fakeSpeedTests
+	agentCommands     *fakeAgentCommands
 }
 
 func newAgentTestServer(users ...store.User) agentTestDeps {
@@ -53,6 +56,7 @@ func newAgentTestServer(users ...store.User) agentTestDeps {
 	fhb := &fakeAgentHeartbeats{}
 	fpt := newFakePingTests()
 	fst := newFakeSpeedTests()
+	fac := newFakeAgentCommands(fa)
 
 	server := NewServer(Deps{
 		Logger:            logger,
@@ -69,6 +73,7 @@ func newAgentTestServer(users ...store.User) agentTestDeps {
 		AgentHeartbeats:   fhb,
 		PingTests:         fpt,
 		SpeedTests:        fst,
+		AgentCommands:     fac,
 	})
 
 	return agentTestDeps{
@@ -80,5 +85,6 @@ func newAgentTestServer(users ...store.User) agentTestDeps {
 		agentHeartbeats:   fhb,
 		pingTests:         fpt,
 		speedTests:        fst,
+		agentCommands:     fac,
 	}
 }

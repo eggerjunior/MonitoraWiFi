@@ -110,6 +110,45 @@ func (c *Client) sendTelemetryBatch(ctx context.Context, agentID, agentSecret st
 	return c.doJSON(ctx, http.MethodPost, path, agentSecret, body, nil)
 }
 
+// Command é um teste sob demanda disparado pelo usuário (Fase 5, início —
+// docs/architecture/03-fluxo-de-dados.md §3.2). Params fica cru (json.RawMessage)
+// porque cada tipo de comando define seu próprio formato.
+type Command struct {
+	ID     string          `json:"id"`
+	SiteID string          `json:"site_id"`
+	Type   string          `json:"type"`
+	Params json.RawMessage `json:"params"`
+	Status string          `json:"status"`
+}
+
+// ClaimCommands consulta o backend por comandos pendentes endereçados a este
+// agente — o agente nunca expõe porta de entrada, sempre consulta (ADR-001),
+// na mesma conexão outbound usada pelo heartbeat/telemetria.
+func (c *Client) ClaimCommands(ctx context.Context, agentID, agentSecret string) ([]Command, error) {
+	path := fmt.Sprintf("/agents/%s/commands", agentID)
+	var resp struct {
+		Items []Command `json:"items"`
+	}
+	if err := c.doJSON(ctx, http.MethodGet, path, agentSecret, nil, &resp); err != nil {
+		return nil, err
+	}
+	return resp.Items, nil
+}
+
+// ReportCommandResult envia o resultado (ou falha) de um comando previamente
+// reivindicado via ClaimCommands.
+func (c *Client) ReportCommandResult(ctx context.Context, agentID, agentSecret, commandID, status string, result any, errMsg string) error {
+	path := fmt.Sprintf("/agents/%s/commands/%s/result", agentID, commandID)
+	body := map[string]any{"status": status}
+	if result != nil {
+		body["result"] = result
+	}
+	if errMsg != "" {
+		body["error"] = errMsg
+	}
+	return c.doJSON(ctx, http.MethodPost, path, agentSecret, body, nil)
+}
+
 func (c *Client) doJSON(ctx context.Context, method, path, bearerToken string, body any, out any) error {
 	var reader io.Reader
 	if body != nil {

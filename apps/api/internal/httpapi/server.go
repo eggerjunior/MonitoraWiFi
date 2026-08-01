@@ -38,6 +38,7 @@ type Server struct {
 	agentHeartbeats   store.AgentHeartbeatStore
 	pingTests         store.PingTestStore
 	speedTests        store.SpeedTestStore
+	agentCommands     store.AgentCommandStore
 
 	sessionTTL   time.Duration
 	loginLimiter *ratelimit.Limiter
@@ -59,6 +60,7 @@ type Deps struct {
 	AgentHeartbeats   store.AgentHeartbeatStore
 	PingTests         store.PingTestStore
 	SpeedTests        store.SpeedTestStore
+	AgentCommands     store.AgentCommandStore
 }
 
 func NewServer(d Deps) *Server {
@@ -76,6 +78,7 @@ func NewServer(d Deps) *Server {
 		agentHeartbeats:   d.AgentHeartbeats,
 		pingTests:         d.PingTests,
 		speedTests:        d.SpeedTests,
+		agentCommands:     d.AgentCommands,
 		sessionTTL:        d.SessionTTL,
 		loginLimiter:      ratelimit.New(30, 10), // 30/min por IP, burst 10 — ajustável em produção
 	}
@@ -109,11 +112,20 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/v1/sites/{siteId}/speed-tests", s.withObservability("speed-tests.list",
 		s.requirePermission(auth.PermView, s.handleListSpeedTests)))
 
+	mux.HandleFunc("POST /api/v1/sites/{siteId}/commands", s.withObservability("commands.create",
+		s.requirePermission(auth.PermRunTests, s.handleCreateCommand)))
+	mux.HandleFunc("GET /api/v1/commands/{commandId}", s.withObservability("commands.get",
+		s.requirePermission(auth.PermView, s.handleGetCommand)))
+
 	mux.HandleFunc("POST /api/v1/agents/enroll", s.withObservability("agents.enroll", s.handleEnrollAgent))
 	mux.HandleFunc("POST /api/v1/agents/{agentId}/heartbeat", s.withObservability("agents.heartbeat",
 		s.requireAgentAuth(s.handleAgentHeartbeat)))
 	mux.HandleFunc("POST /api/v1/agents/{agentId}/telemetry", s.withObservability("agents.telemetry",
 		s.requireAgentAuth(s.handleAgentTelemetry)))
+	mux.HandleFunc("GET /api/v1/agents/{agentId}/commands", s.withObservability("agents.commands.claim",
+		s.requireAgentAuth(s.handleClaimAgentCommands)))
+	mux.HandleFunc("POST /api/v1/agents/{agentId}/commands/{commandId}/result", s.withObservability("agents.commands.result",
+		s.requireAgentAuth(s.handleReportCommandResult)))
 
 	return mux
 }

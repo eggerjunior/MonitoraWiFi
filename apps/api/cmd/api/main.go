@@ -72,6 +72,7 @@ func run() error {
 		AgentHeartbeats:   &store.PostgresAgentHeartbeats{Pool: pool},
 		PingTests:         &store.PostgresPingTests{Pool: pool},
 		SpeedTests:        &store.PostgresSpeedTests{Pool: pool},
+		AgentCommands:     &store.PostgresAgentCommands{Pool: pool},
 	})
 
 	httpServer := &http.Server{

@@ -46,7 +46,7 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger) (*Agent, e
 // Run bloqueia até o contexto ser cancelado, rodando os laços concorrentemente:
 // sondas, speed test (se configurado), drenagem das filas e heartbeat.
 func (a *Agent) Run(ctx context.Context) {
-	loops := []func(context.Context){a.probeLoop, a.drainLoop, a.heartbeatLoop, a.speedDrainLoop}
+	loops := []func(context.Context){a.probeLoop, a.drainLoop, a.heartbeatLoop, a.speedDrainLoop, a.commandLoop}
 	if a.cfg.SpeedTestEnabled || a.cfg.SpeedTestLANEnabled {
 		loops = append(loops, a.speedTestLoop)
 	} else {

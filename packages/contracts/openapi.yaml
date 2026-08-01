@@ -28,6 +28,8 @@ tags:
     description: Sites dentro de uma organização
   - name: agents
     description: Enrolamento, heartbeat e telemetria do agente local (Fase 2)
+  - name: commands
+    description: Testes sob demanda disparados pelo usuário e executados pelo agente (Fase 5, início)
 
 paths:
   /healthz:
@@ -342,6 +344,146 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /sites/{siteId}/commands:
+    post:
+      tags: [commands]
+      summary: >
+        Dispara um teste sob demanda (Fase 5, início — "rodar ping agora").
+        Enfileirado (Postgres, ver ADR-011) e executado pelo agente ativo do
+        site na mesma conexão outbound do heartbeat.
+      operationId: createCommand
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCommandRequest"
+      responses:
+        "202":
+          description: Comando aceito e enfileirado (status pending)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Command"
+        "400":
+          description: Tipo de comando não suportado ou params inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /commands/{commandId}:
+    get:
+      tags: [commands]
+      summary: Consulta o status/resultado de um comando sob demanda
+      operationId: getCommand
+      parameters:
+        - name: commandId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Comando encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Command"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /agents/{agentId}/commands:
+    get:
+      tags: [agents, commands]
+      summary: >
+        Chamado periodicamente pelo agente para reivindicar comandos
+        pendentes endereçados a ele (polling — o agente nunca expõe porta de
+        entrada, ADR-001).
+      operationId: claimAgentCommands
+      security:
+        - agentSecret: []
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Comandos reivindicados (status muda para claimed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommandList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /agents/{agentId}/commands/{commandId}/result:
+    post:
+      tags: [agents, commands]
+      summary: Reporta o resultado (ou falha) de um comando reivindicado pelo próprio agente
+      operationId: reportCommandResult
+      security:
+        - agentSecret: []
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: commandId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommandResultRequest"
+      responses:
+        "200":
+          description: Resultado registrado
+        "400":
+          description: status inválido (deve ser completed ou failed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: Comando não pertence a este agente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /sites/{siteId}/speed-tests:
     get:
       tags: [agents]
@@ -407,6 +549,12 @@ components:
             $ref: "#/components/schemas/ApiError"
     RateLimited:
       description: Limite de requisições excedido
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    Conflict:
+      description: "Estado do recurso impede a operação (ex.: nenhum agente ativo no site)"
       content:
         application/json:
           schema:
@@ -777,6 +925,81 @@ components:
           type: integer
         total:
           type: integer
+
+    CreateCommandRequest:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [ping]
+          description: Único tipo suportado nesta fase — mais tipos chegam na Fase 5.
+        params:
+          type: object
+          description: >
+            Formato depende de `type`. Para "ping": { target: string,
+            protocol?: icmp|tcp|http|dns (padrão icmp) }.
+
+    Command:
+      type: object
+      required: [id, site_id, agent_id, type, status, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        site_id:
+          type: string
+          format: uuid
+        agent_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+        params:
+          type: object
+        status:
+          type: string
+          enum: [pending, claimed, completed, failed]
+        result:
+          type: object
+          nullable: true
+        error:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        claimed_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    CommandList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Command"
+
+    CommandResultRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [completed, failed]
+        result:
+          type: object
+          description: Obrigatório em sentido prático quando status=completed; formato depende do type do comando.
+        error:
+          type: string
+          description: Obrigatório em sentido prático quando status=failed.
 
 security:
   - sessionCookie: []

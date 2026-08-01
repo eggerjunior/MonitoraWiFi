@@ -257,3 +257,108 @@ func (f *fakeSpeedTests) ListBySite(ctx context.Context, siteID uuid.UUID, page 
 	}
 	return out, len(out), nil
 }
+
+// fakeAgentCommands replica a semântica real (resolver o agente ativo do
+// site na criação, claim atômico) o suficiente para testar os handlers sem
+// depender de SKIP LOCKED de verdade — não precisa ser concorrente aqui.
+type fakeAgentCommands struct {
+	agents *fakeAgents
+	byID   map[uuid.UUID]store.AgentCommand
+}
+
+func newFakeAgentCommands(agents *fakeAgents) *fakeAgentCommands {
+	return &fakeAgentCommands{agents: agents, byID: map[uuid.UUID]store.AgentCommand{}}
+}
+
+func (f *fakeAgentCommands) Create(ctx context.Context, siteID uuid.UUID, requestedBy uuid.UUID, cmdType string, params []byte, now time.Time) (store.AgentCommand, error) {
+	var chosen *store.Agent
+	for _, a := range f.agents.byID {
+		if a.SiteID != siteID || a.RevokedAt != nil {
+			continue
+		}
+		if chosen == nil {
+			c := a
+			chosen = &c
+			continue
+		}
+		if a.LastSeenAt != nil && (chosen.LastSeenAt == nil || a.LastSeenAt.After(*chosen.LastSeenAt)) {
+			c := a
+			chosen = &c
+		}
+	}
+	if chosen == nil {
+		return store.AgentCommand{}, store.ErrNoActiveAgent
+	}
+
+	cmd := store.AgentCommand{
+		ID:          uuid.New(),
+		SiteID:      siteID,
+		AgentID:     chosen.ID,
+		RequestedBy: requestedBy,
+		Type:        cmdType,
+		Params:      params,
+		Status:      store.AgentCommandStatusPending,
+		CreatedAt:   now,
+	}
+	f.byID[cmd.ID] = cmd
+	return cmd, nil
+}
+
+func (f *fakeAgentCommands) Get(ctx context.Context, id uuid.UUID) (store.AgentCommand, error) {
+	c, ok := f.byID[id]
+	if !ok {
+		return store.AgentCommand{}, store.ErrNotFound
+	}
+	return c, nil
+}
+
+func (f *fakeAgentCommands) ClaimPending(ctx context.Context, agentID uuid.UUID, limit int, now time.Time) ([]store.AgentCommand, error) {
+	var out []store.AgentCommand
+	for id, c := range f.byID {
+		if len(out) >= limit {
+			break
+		}
+		if c.AgentID != agentID || c.Status != store.AgentCommandStatusPending {
+			continue
+		}
+		c.Status = store.AgentCommandStatusClaimed
+		c.ClaimedAt = &now
+		f.byID[id] = c
+		out = append(out, c)
+	}
+	return out, nil
+}
+
+func (f *fakeAgentCommands) Complete(ctx context.Context, id uuid.UUID, result []byte, at time.Time) error {
+	c, ok := f.byID[id]
+	if !ok {
+		return store.ErrNotFound
+	}
+	c.Status = store.AgentCommandStatusCompleted
+	c.Result = result
+	c.CompletedAt = &at
+	f.byID[id] = c
+	return nil
+}
+
+func (f *fakeAgentCommands) Fail(ctx context.Context, id uuid.UUID, errMsg string, at time.Time) error {
+	c, ok := f.byID[id]
+	if !ok {
+		return store.ErrNotFound
+	}
+	c.Status = store.AgentCommandStatusFailed
+	c.Error = &errMsg
+	c.CompletedAt = &at
+	f.byID[id] = c
+	return nil
+}
+
+func (f *fakeAgentCommands) ListBySite(ctx context.Context, siteID uuid.UUID, page store.Page) ([]store.AgentCommand, int, error) {
+	var out []store.AgentCommand
+	for _, c := range f.byID {
+		if c.SiteID == siteID {
+			out = append(out, c)
+		}
+	}
+	return out, len(out), nil
+}

@@ -36,6 +36,11 @@ type Config struct {
 	QueueMaxItems      int
 	Targets            []Target
 
+	// Comandos sob demanda (Fase 5, início — docs/architecture/03-fluxo-de-dados.md
+	// §3.2): o agente consulta o backend periodicamente por comandos
+	// pendentes, na mesma conexão outbound do heartbeat.
+	CommandPollInterval time.Duration
+
 	// Speed test (Seção 5.3, modo HTTP) — desativado se DownloadURL e
 	// UploadURL estiverem ambos vazios (nunca escolhemos um servidor de
 	// terceiros por conta própria).
@@ -108,6 +113,12 @@ func Load() (Config, error) {
 		return cfg, err
 	}
 	cfg.SpeedTestInterval = time.Duration(speedIntervalMinutes) * time.Minute
+
+	commandPollSeconds, err := parseIntEnv("COMMAND_POLL_INTERVAL_SECONDS", 5)
+	if err != nil {
+		return cfg, err
+	}
+	cfg.CommandPollInterval = time.Duration(commandPollSeconds) * time.Second
 
 	cfg.SpeedTestLANTarget = os.Getenv("SPEEDTEST_LAN_TARGET")
 	cfg.SpeedTestLANEnabled = cfg.SpeedTestLANTarget != ""
