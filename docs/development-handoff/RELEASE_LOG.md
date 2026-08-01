@@ -51,3 +51,56 @@ Record every deploy, TestFlight/App Store upload, web publish and external proce
   commit; aplicar versionamento formal a `apps/api`/`apps/web`; responder as
   18 perguntas de `docs/unifi/verificacoes-pendentes-instalacao.md` antes da
   Fase 3.
+
+## 2026-08-01 — Git remoto criado, iOS CI validado, Bundle ID criado
+
+- App/plataforma: repositório GitHub + apps/ios (Swift)
+- Versão/build/commit: iOS `project.yml` MARKETING_VERSION=0.1.0
+  CURRENT_PROJECT_VERSION=1 GIT_COMMIT=dev (nenhum archive de release feito
+  ainda); commit `10f35d0` (HEAD no momento deste registro)
+- Status:
+  - Repositório privado criado: https://github.com/eggerjunior/MonitoraWiFi
+    (`gh repo create` via script `ensure_private_github_repo.sh` da skill
+    `ildemar_ios-native-testflight`). Commit inicial (148 arquivos) + 7 commits
+    de correção enviados para `main`.
+  - Secrets configurados no repositório (nunca impressos/logados):
+    `IOS_ASC_KEY_ID`, `IOS_ASC_ISSUER_ID`, `IOS_ASC_KEY_P8_BASE64` (gerado a
+    partir de `/config/.appstoreconnect/private_keys/AuthKey_37943WH8RQ.p8`).
+  - **`iOS CI (build validation)` rodou de verdade em runner `macos-26`
+    (Xcode 26.6) e está verde** — `xcodebuild build` para
+    `generic/platform=iOS Simulator` compila sem erro. 5 problemas reais
+    corrigidos ao longo de 7 iterações de CI (ver commits `6b29341` a
+    `bc29a2c`): API `List(_:selection:rowContent:)` removida do SwiftUI,
+    nome de simulador fixo (`iPhone 16`, não existe mais no lineup atual),
+    `sed -E`/`\s` incompatível com BSD sed do macOS, ambiguidade de
+    arch/UDID de simulador.
+  - Execução de testes unitários (`xcodebuild test`/`build-for-testing`) via
+    CI **não foi resolvida**: falha consistente com "Could not find test
+    host for EggerNetworkIntelligenceTests" mesmo com dependência de target
+    declarada, `-derivedDataPath` isolado, duas fases
+    (`build-for-testing`+`test-without-building`) e destino por UDID único.
+    Removido do `ios-ci.yml` (mantém só build) — mesmo padrão do template de
+    referência da skill. Registrado como pendência real para investigação
+    com Xcode de verdade.
+  - Bundle ID `br.app.egger.network-intelligence` criado via API
+    (`apps/ios/scripts/create_app.py`, `POST /v1/bundleIds`, id
+    `44994AHNQU`). App record em App Store Connect **não existe** —
+    confirmado bloqueio permanente da Apple (`POST /v1/apps` → 403
+    `FORBIDDEN_ERROR` para qualquer chave), pendência manual do Ildemar.
+- Comandos executados: `git init`/`add`/`commit`/`push`; `gh repo create`
+  (via script); `gh secret set` (3x); `gh workflow run "iOS CI (build
+  validation)"` (7x, iterando); `gh run watch`/`gh run view --log-failed`
+  para diagnosticar cada falha; `python3 apps/ios/scripts/create_app.py`
+  (JWT ES256 assinado com a chave real, nunca exibida).
+- Pendências reais:
+  1. **Ildemar**: criar app record em App Store Connect (Bundle ID já
+     existe, aparecerá na lista) — só então `iOS TestFlight release` pode
+     rodar.
+  2. Investigar com Xcode real por que testes unitários não rodam sob
+     `xcodebuild` headless.
+  3. Ao rodar o primeiro archive de Release, observar o risco conhecido de
+     esgotamento de cota de certificados (`Automatic signing`, ver
+     `references/ildemar-ios-release.md` da skill) — aplicar a correção de
+     Manual signing documentada lá se ocorrer, sem reinvestigar do zero.
+  4. Versionamento formal (`ildemar_app-versioning`) ainda não aplicado a
+     `apps/api`/`apps/web`.

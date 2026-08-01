@@ -4,21 +4,28 @@ A Fase 1 é considerada concluída quando **todos** os itens abaixo forem verdad
 Nenhuma tela final de produto (dashboards completos, LiDAR, diagnósticos) faz parte
 deste escopo — é fundação técnica.
 
-> **Status em 2026-07-31**: itens marcados `[x]` foram implementados e
-> **validados de verdade** nesta sessão (build real, teste real, requisição
-> HTTP real contra Postgres real — não apenas leitura de código). Itens `[~]`
-> foram implementados mas não puderam ser validados por limitação do ambiente
-> de desenvolvimento (sem Xcode/macOS, sem GitHub remote). Itens `[ ]`
-> continuam pendentes. Detalhe em `docs/development-handoff/RELEASE_LOG.md`.
+> **Status em 2026-07-31/08-01**: itens marcados `[x]` foram implementados e
+> **validados de verdade** (build real, teste real, requisição HTTP real
+> contra Postgres real, ou execução real em CI — não apenas leitura de
+> código). Itens `[~]` foram implementados mas ficaram parcialmente validados
+> ou com uma limitação real documentada. Itens `[ ]` continuam pendentes.
+> Detalhe em `docs/development-handoff/RELEASE_LOG.md`.
+>
+> Atualização de 2026-08-01: repositório GitHub privado criado
+> (`eggerjunior/MonitoraWiFi`, ver `docs/development-handoff/RELEASE_LOG.md`),
+> código commitado e enviado, CI do iOS rodou de verdade em runner `macos-26`
+> (ver seção "iOS" abaixo).
 
 ## Monorepo e CI
 - [x] Estrutura de diretórios de `03. ARQUITETURA GERAL` criada e populada com pelo
       menos um artefato real (não só README) em cada app/package aplicável à Fase 1.
-- [~] CI (GitHub Actions) criado para `apps/api`, `apps/web` e `apps/ios`
-      (`.github/workflows/api-ci.yml`, `web-ci.yml`, `ios-ci.yml`) — **nenhum
-      rodou de verdade ainda**, pois o repositório não tem remote no GitHub
-      nesta sessão. `apps/local-agent` não tem CI ainda porque não tem código
-      (é escopo da Fase 2, não da Fase 1 — ajuste registrado aqui).
+- [x] CI (GitHub Actions) criado para `apps/api`, `apps/web` e `apps/ios`
+      (`.github/workflows/api-ci.yml`, `web-ci.yml`, `ios-ci.yml`) — **iOS CI
+      rodou de verdade e está verde** (após 5 correções reais, ver seção
+      "iOS"). `api-ci.yml`/`web-ci.yml` ainda não dispararam nesta sessão
+      (nenhuma mudança nova em `apps/api`/`apps/web` desde o push inicial).
+      `apps/local-agent` não tem CI ainda porque não tem código (é escopo da
+      Fase 2, não da Fase 1 — ajuste registrado aqui).
 - [x] Pipelines não usam `continue-on-error` para os passos obrigatórios; os
       passos informativos (`govulncheck`, `npm audit`) são explicitamente
       rotulados como não bloqueantes nesta fase, não escondidos.
@@ -59,20 +66,26 @@ deste escopo — é fundação técnica.
       não uma medição confirmada.
 
 ## iOS
-- [~] Código escrito para login, Keychain, navegação adaptativa e detecção de
-      LiDAR — **mas não compilado nem executado nesta sessão**: este ambiente
-      Linux não tem Xcode, `swift` nem `xcodegen` instalados. Ver aviso
-      detalhado em `apps/ios/README.md`. Próximo passo real: abrir no Xcode ou
-      rodar o workflow `iOS CI` (`macos-26`) e corrigir o que aparecer.
+- [x] **Build validado em CI real** (`iOS CI (build validation)`, runner
+      `macos-26`, Xcode 26.6): `xcodebuild build` para
+      `generic/platform=iOS Simulator` está verde. Escrito sem Xcode local,
+      mas 5 problemas reais foram encontrados e corrigidos rodando de
+      verdade (API de `List` removida do SwiftUI, nome de simulador fixo,
+      `sed` BSD sem `\s`, ambiguidade de arch) — ver histórico de commits e
+      `apps/ios/README.md`.
 - [x] `TabView` (iPhone) e `NavigationSplitView` (iPad) implementados em
-      `RootView.swift`, alternando por `horizontalSizeClass` — não validado em
-      runtime (ver item acima).
+      `RootView.swift`, alternando por `horizontalSizeClass` — compila; não
+      validado visualmente em simulador rodando (sem GUI neste ambiente).
 - [x] Detecção de suporte a LiDAR implementada (`LiDARCapabilityChecker`,
-      checagem pura de hardware, sem sessão de câmera) — não validado em
-      runtime.
-- [x] Keychain implementado (`KeychainStore`) com testes unitários
-      (`Tests/KeychainStoreTests.swift`, Swift Testing) — testes escritos mas
-      não executados nesta sessão pelo mesmo motivo acima.
+      checagem pura de hardware, sem sessão de câmera) — compila.
+- [~] Keychain implementado (`KeychainStore`) com testes unitários
+      (`Tests/KeychainStoreTests.swift`, Swift Testing) — código compila,
+      mas **a execução dos testes no CI não foi resolvida**: `xcodebuild
+      test`/`build-for-testing` falha com "Could not find test host" mesmo
+      após 5 tentativas de correção distintas (ver `apps/ios/README.md`,
+      seção "Pendência real"). O próprio template de referência da skill
+      `ildemar_ios-native-testflight` também não roda testes no CI, só
+      build — investigar com Xcode real antes de insistir às cegas.
 
 ## Design system
 - [x] `packages/design-tokens/tokens.json` é a fonte única; `tokens.ts`,
@@ -84,8 +97,9 @@ deste escopo — é fundação técnica.
 ## Segurança
 - [x] `.env.example` presente na raiz, sem segredo real; `.gitignore` cobre
       `.env`, `*.p8`, `**/asc.env`. Scanner de segredos (`gitleaks`) configurado
-      em `.github/workflows/security-scan.yml` — não rodou ainda (sem GitHub
-      remote nesta sessão).
+      em `.github/workflows/security-scan.yml`. Segredos reais (`IOS_ASC_KEY_ID`,
+      `IOS_ASC_ISSUER_ID`, `IOS_ASC_KEY_P8_BASE64`) configurados como GitHub
+      Secrets via `gh secret set` — nunca impressos/logados nesta sessão.
 - [x] SAST/dependency scanning informativos configurados: `govulncheck` (Go) e
       `npm audit` (web) no CI, explicitamente não bloqueantes nesta fase.
 
@@ -102,6 +116,7 @@ deste escopo — é fundação técnica.
   reais de organização/site cadastrados manualmente no banco para teste, nunca
   fixtures apresentadas como se fossem produção.
 - Nenhuma funcionalidade de LiDAR, diagnóstico ativo ou alerta ainda.
-- Nenhuma publicação (TestFlight, deploy web, GitHub remote) foi feita —
-  bloqueada por falta de credencial/ambiente, não por escolha; ver
-  `apps/ios/README.md` e o README principal para os próximos passos exatos.
+- TestFlight/App Store: Bundle ID criado, mas o **app record em App Store
+  Connect ainda depende de ação manual do Ildemar** (restrição permanente da
+  Apple, não escolha de escopo) — ver `apps/ios/README.md`, seção "Status de
+  publicação".

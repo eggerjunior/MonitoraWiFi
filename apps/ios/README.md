@@ -1,28 +1,57 @@
 # apps/ios — Egger Network Intelligence (iOS/iPadOS)
 
-Status: Fase 1 (shell). Swift, SwiftUI, Swift Concurrency, Observation, ARKit
-(detecção de LiDAR), Keychain. Projeto gerado via **XcodeGen** a partir de
-`project.yml` — não há `.xcodeproj` commitado (gerado, `.gitignore`).
+Status: Fase 1 (shell), **build validado em CI real** (`macos-26`, Xcode 26.6).
+Swift, SwiftUI, Swift Concurrency, Observation, ARKit (detecção de LiDAR),
+Keychain. Projeto gerado via **XcodeGen** a partir de `project.yml` — não há
+`.xcodeproj` commitado (gerado, `.gitignore`).
 
-## ⚠️ Aviso importante sobre esta entrega
+Repositório: https://github.com/eggerjunior/MonitoraWiFi (privado) — branch `main`.
 
-Este código foi escrito em um ambiente Linux **sem Xcode, sem toolchain Swift e
-sem simulador iOS disponível** — não há `swift`, `xcodebuild` nem `xcodegen`
-instalados neste sandbox. Por isso, **este código Swift não foi compilado nem
-executado nesta sessão** — diferente do backend Go e do app web, que foram de
-fato compilados, testados e validados ponta a ponta aqui.
+## Este código foi escrito sem Xcode local, mas já foi compilado de verdade
 
-O que isso significa na prática:
+Este ambiente de desenvolvimento (Linux) não tem Xcode/Swift/XcodeGen — o
+código foi escrito sem poder ser compilado localmente. Mas depois do primeiro
+push, o workflow `iOS CI (build validation)` (`.github/workflows/ios-ci.yml`,
+runner `macos-26` da GitHub) **rodou de verdade** e encontrou (e corrigiu) 5
+problemas reais, todos já resolvidos e no histórico de commits:
 
-- A sintaxe e a arquitetura seguem as convenções corretas de Swift 6 / SwiftUI
-  / Observation / ARKit / Keychain (Security framework) até onde é possível
-  garantir sem um compilador real.
-- Erros de compilação (typos, imports faltando, assinatura de API errada)
-  **podem existir** e só serão pegos ao rodar `xcodegen generate` + build no
-  Xcode (localmente em um Mac) ou no CI (`ios-ci.yml`, runner `macos-26`).
-- Antes de considerar este shell "pronto", rode o build no Xcode ou dispare
-  o workflow `iOS CI (build validation)` e corrija o que aparecer — isso é
-  esperado como próximo passo, não uma falha desta entrega.
+1. `List(_:selection:rowContent:)` com `Binding` não-opcional — API removida
+   do SwiftUI (`RootView.swift`).
+2. Nome de simulador fixo (`iPhone 16`) não existe mais no lineup atual do
+   runner (`iPhone 16e`/`17`/`17 Pro`) — corrigido para seleção em runtime.
+3. Trim de string incompatível com o `sed` BSD do macOS (`\s` não existe fora
+   do GNU sed) — trocado por `awk`.
+4. Ambiguidade de destino arm64/x86_64 no mesmo simulador — mitigada
+   selecionando por UDID.
+5. **Execução de testes unitários no CI não foi resolvida** — ver seção
+   "Pendência real" abaixo.
+
+O build (`xcodebuild ... build` para `generic/platform=iOS Simulator`) está
+**verde**: https://github.com/eggerjunior/MonitoraWiFi/actions/workflows/ios-ci.yml
+
+## Pendência real: testes unitários não rodam no CI
+
+`xcodebuild test`/`build-for-testing` falha consistentemente com:
+
+```
+Could not find test host for EggerNetworkIntelligenceTests: TEST_HOST evaluates to
+".../EggerNetworkIntelligence.app/EggerNetworkIntelligence"
+```
+
+mesmo com a dependência do target do app declarada corretamente em
+`project.yml`, com `-derivedDataPath` isolado, com `build-for-testing` +
+`test-without-building` em duas fases, e com destino de simulador por UDID
+único (5 tentativas registradas no histórico de commits deste workflow). O
+próprio template de referência da skill `ildemar_ios-native-testflight`
+(`references/ios-ci.yml`) também **não** roda testes no CI — só build — o que
+sugere que essa fragilidade de "hosted unit test" sob `xcodebuild` headless é
+conhecida o suficiente para ter sido evitada ali também.
+
+`Tests/` continua com os 3 arquivos de teste (Swift Testing) escritos e
+corretos por inspeção — só não validados por execução ainda. Próximo passo
+real: investigar em uma sessão com Xcode de verdade (abrir o projeto gerado,
+rodar `⌘U`, ver se o problema se reproduz na GUI ou é específico de
+`xcodebuild` headless) antes de tentar mais correções às cegas.
 
 ## Estrutura
 
@@ -34,8 +63,8 @@ Sources/Networking/          # APIClient (URLSession async/await), modelos, pars
 Sources/Views/                # LoginView, RootView (TabView/NavigationSplitView), Overview, Settings, Placeholder
 Sources/Version/             # VersionManager, VersionHistory (skill ildemar_app-versioning)
 Sources/LiDAR/                # Detecção de suporte a LiDAR (ARKit, sem sessão de câmera)
-Tests/                        # Swift Testing (@Test) — CookieParsing, KeychainStore, VersionManager
-scripts/                      # testflight.sh, ExportOptions.plist, asc.env.example (skill ios-native-testflight)
+Tests/                        # Swift Testing (@Test) — escritos, não validados por execução (ver acima)
+scripts/                      # testflight.sh, ExportOptions.plist, asc.env.example, create_app.py
 ```
 
 `../../packages/design-tokens/DesignTokens.swift` é referenciado diretamente
@@ -68,24 +97,31 @@ open EggerNetworkIntelligence.xcodeproj
   `CURRENT_PROJECT_VERSION`/`GIT_COMMIT` em `project.yml`, `VersionManager`,
   `VersionHistory` com changelog, exibidos em Configurações.
 
-## Bloqueado nesta entrega (Fase 1) — decisão do usuário necessária
+## Status de publicação (TestFlight)
 
-Por instrução do skill `ildemar_ios-native-testflight`, publicação/TestFlight
-não é opcional a perguntar depois — mas aqui ela está genuinamente bloqueada
-por falta de ambiente/credencial, o que a própria regra prevê como exceção:
-
-1. **Este projeto ainda não é um repositório git** (`git init` pendente) nem
-   tem remote no GitHub — `ios-testflight.yml` precisa de um repo real para
-   existir como Actions workflow executável.
-2. **Sem credenciais da App Store Connect** (`IOS_ASC_KEY_ID`,
-   `IOS_ASC_ISSUER_ID`, `IOS_ASC_KEY_P8_BASE64`) configuradas como secrets —
-   só o Ildemar tem o arquivo `.p8` real.
-3. **Sem Bundle ID nem app record criados** em App Store Connect ainda
-   (`br.app.egger.network-intelligence`).
-
-Próxima ação exata quando o usuário quiser avançar para publicação (Fase 8,
-ou antes se desejado): `git init` + `gh repo create eggerjunior/MonitoraWiFi
---private` (ou nome equivalente) + criar o Bundle ID + pedir para o Ildemar
-criar o app record em App Store Connect + configurar os três secrets acima +
-disparar `iOS CI` para validar o build antes de qualquer `iOS TestFlight
-release`.
+- ✅ Repositório GitHub privado criado e código enviado.
+- ✅ Secrets `IOS_ASC_KEY_ID`, `IOS_ASC_ISSUER_ID`, `IOS_ASC_KEY_P8_BASE64`
+  configurados no repositório.
+- ✅ Bundle ID `br.app.egger.network-intelligence` criado no App Store Connect
+  via API (`scripts/create_app.py`).
+- ❌ **App record ainda não existe em App Store Connect** — a Apple não
+  permite criar isso via API para nenhuma chave (`POST /v1/apps` retorna 403
+  `FORBIDDEN_ERROR`, restrição permanente, não um erro pontual). **Esta etapa
+  é sempre manual, do Ildemar**:
+  1. App Store Connect → Apps → "+" → New App
+  2. Bundle ID: `br.app.egger.network-intelligence` (já aparece na lista)
+  3. SKU: `br.app.egger.network-intelligence`
+  4. Primary Language: pt-BR
+  5. Avisar quando terminar (~1 minuto)
+- Depois disso: rodar `python3 apps/ios/scripts/create_app.py` de novo para
+  confirmar, e então `gh workflow run "iOS TestFlight release" --repo
+  eggerjunior/MonitoraWiFi`.
+- ⚠️ Risco conhecido a observar no primeiro archive de Release: histórico do
+  projeto MonitoraVPS (mesma conta Apple) mostra que `CODE_SIGN_STYLE:
+  Automatic` sob `xcodebuild` headless esgota a cota de certificados de
+  Development da conta após poucas execuções (ver
+  `references/ildemar-ios-release.md` da skill `ildemar_ios-native-testflight`,
+  seção "Certificados de assinatura esgotados"). Se o primeiro
+  `iOS TestFlight release` falhar com erro de certificado/perfil, aplicar a
+  correção documentada lá (Manual signing na config Release) antes de tentar
+  de novo — não é preciso reinvestigar do zero.

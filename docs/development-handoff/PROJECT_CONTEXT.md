@@ -7,14 +7,13 @@ Generated: 2026-07-31T22:37:06-03:00
 - Project: `MonitoraWiFi`
 - Root: `/host/opt/projetos/MonitoraWiFi`
 - Branch: `main`
-- Commit: `unknown`
-- Git status: dirty
-- Version: `unknown`
-- Build: `unknown`
-- Bundle/package id: `unknown`
-- Detected stack: Go 1.25 (apps/api), Next.js 16/React 19/TypeScript (apps/web), Swift/SwiftUI via XcodeGen (apps/ios, não compilado neste ambiente)
+- Commit: `10f35d0` (repo: https://github.com/eggerjunior/MonitoraWiFi, privado)
+- Git status: pode haver mudanças de documentação não commitadas após este registro — conferir `git status`
+- Version: iOS `project.yml` MARKETING_VERSION=0.1.0 CURRENT_PROJECT_VERSION=1; api/web sem versionamento formal ainda
+- Build: iOS GIT_COMMIT=dev (nenhum archive de release feito ainda)
+- Bundle/package id: iOS `br.app.egger.network-intelligence` (Bundle ID criado no App Store Connect; app record pendente, ver `apps/ios/README.md`)
+- Detected stack: Go 1.25 (apps/api), Next.js 16/React 19/TypeScript (apps/web), Swift/SwiftUI via XcodeGen (apps/ios, build validado em CI real macos-26)
 - Fase atual: **Fase 1 — Fundação** concluída (backend, web e iOS shell); Fase 0 (docs de descoberta) permanece válida em `docs/`
-- Repositório git local inicializado nesta sessão (branch `main`, sem commits ainda) — sem remote GitHub
 
 ## Product Purpose
 
@@ -126,11 +125,17 @@ já que este ambiente de desenvolvimento não tem Xcode.
 
 ## Known Risks And Pending Work
 
-- **iOS não compilado nesta sessão** — validar no Xcode/CI antes de confiar
-  no shell como "pronto"; ver aviso em `apps/ios/README.md`.
-- **Sem git remote / sem publicação** — `git init` local existe, mas não há
-  repositório GitHub nem credenciais Apple configuradas; bloqueio documentado
-  em `apps/ios/README.md` (seção "Bloqueado nesta entrega").
+- **iOS: testes unitários não rodam no CI** — `xcodebuild test`/
+  `build-for-testing` falha com "Could not find test host" mesmo após 5
+  tentativas de correção; build (compilação) está validado e verde. Ver
+  `apps/ios/README.md`, seção "Pendência real".
+- **App record do iOS em App Store Connect pendente de ação manual do
+  Ildemar** — Bundle ID já criado via API; app record não pode ser criado
+  via API (restrição permanente da Apple). Sem isso, `iOS TestFlight
+  release` não pode rodar.
+- Repositório GitHub privado criado (`eggerjunior/MonitoraWiFi`) com CI e
+  secrets configurados — mas nenhuma publicação (TestFlight, deploy web)
+  foi feita ainda.
 - Identidade do agente (Fase 2) ainda usará credencial rotacionável simples,
   não mTLS (débito técnico rastreado, ADR-006).
 - 18 perguntas sobre a instalação UniFi real seguem pendentes

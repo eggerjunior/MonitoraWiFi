@@ -15,10 +15,13 @@ equipamento (ver ADR-002).
 A Fase 0 (documentos de descoberta) está completa em `docs/`. A Fase 1 entregou:
 backend (`apps/api`, Go) com autenticação, RBAC e organizações/sites reais contra
 PostgreSQL; web (`apps/web`, Next.js 16) com login e shell de navegação consumindo
-o backend real; e o shell do app iOS (`apps/ios`, Swift/SwiftUI) — este último
-**escrito mas não compilado nesta sessão**, por falta de Xcode/macOS no ambiente de
-desenvolvimento (ver aviso em [`apps/ios/README.md`](apps/ios/README.md)). Backend
-e web foram validados ponta a ponta com testes reais (não apenas leitura de código).
+o backend real; e o shell do app iOS (`apps/ios`, Swift/SwiftUI), cujo **build foi
+validado em CI real** (runner `macos-26`, ver
+[`apps/ios/README.md`](apps/ios/README.md)) — a execução dos testes unitários no
+CI ficou pendente (limitação documentada, não escondida). Backend e web foram
+validados ponta a ponta com testes reais (não apenas leitura de código).
+
+Repositório: https://github.com/eggerjunior/MonitoraWiFi (privado).
 
 Ver [`docs/architecture/07-criterios-aceite-fase1.md`](docs/architecture/07-criterios-aceite-fase1.md)
 para o detalhamento exato do que foi cumprido, adiado ou bloqueado.
@@ -90,10 +93,13 @@ apenas. Ver [ADR-001](docs/architecture/adr/ADR-001-agente-local-outbound-only.m
 
 ## Próximo passo
 
-1. Validar `apps/ios` num Mac real (ou disparar o workflow `iOS CI`) — ver
-   bloqueio documentado em [`apps/ios/README.md`](apps/ios/README.md).
-2. Decidir sobre criar o repositório remoto no GitHub (há um repo git local
-   nesta máquina, sem remote ainda) antes de qualquer publicação.
+1. **Pendente do Ildemar**: criar o app record em App Store Connect para
+   `br.app.egger.network-intelligence` (Bundle ID já criado via API) — passo
+   manual obrigatório da Apple, ver [`apps/ios/README.md`](apps/ios/README.md)
+   seção "Status de publicação". Depois disso, `gh workflow run "iOS
+   TestFlight release" --repo eggerjunior/MonitoraWiFi`.
+2. Investigar com Xcode real por que os testes unitários do iOS não rodam
+   sob `xcodebuild` headless (ver `apps/ios/README.md`, "Pendência real").
 3. Iniciar a Fase 2 (Agente local) conforme
    [`docs/architecture/06-roadmap.md`](docs/architecture/06-roadmap.md).
 
