@@ -4,6 +4,15 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-01 — Fase 4 (início): dashboards Dispositivos/Wi-Fi/Clientes (web 0.3.0 + iOS 0.1.6)
+
+- Web v0.3.0 publicado em produção (commit `9d3963e`) — Dispositivos, Wi-Fi
+  e Clientes deixam de ser placeholder, consomem inventário UniFi real.
+- iOS 0.1.6 (Build 7) publicado no TestFlight (commit `b595555`) — tela
+  Rede com o mesmo escopo (paridade mantida no mesmo ciclo).
+- Validado ponta a ponta com containers efêmeros antes do deploy web.
+
+## 2026-08-01 — Fase 3 (início): integração UniFi + deploy em produção
 ## 2026-08-01 — Fase 3 (início): integração UniFi + deploy em produção
 
 - Commit `7d6fd33` (API/agente), `f2d0232` (bump versão do agente).
