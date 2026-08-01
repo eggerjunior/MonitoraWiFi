@@ -5,16 +5,22 @@ name: iOS TestFlight release
 # Propositalmente não roda em todo push: arquivar/assinar/enviar um build real
 # ao App Store Connect é uma decisão, não efeito colateral de um commit.
 #
-# Requer três secrets do repositório (Settings -> Secrets and variables ->
+# Requer seis secrets do repositório (Settings -> Secrets and variables ->
 # Actions), nenhum commitado:
-#   IOS_ASC_KEY_ID          - App Store Connect API key id
-#   IOS_ASC_ISSUER_ID       - App Store Connect API issuer id
-#   IOS_ASC_KEY_P8_BASE64   - `base64 < AuthKey_XXXX.p8`, colado como secret
+#   IOS_ASC_KEY_ID            - App Store Connect API key id
+#   IOS_ASC_ISSUER_ID         - App Store Connect API issuer id
+#   IOS_ASC_KEY_P8_BASE64     - `base64 < AuthKey_XXXX.p8`, colado como secret
+#   IOS_DIST_CERT_P12_BASE64  - certificado de distribuição + chave (gerado
+#                               por scripts/create_dist_cert.py)
+#   IOS_DIST_CERT_PASSWORD    - senha do .p12 acima
+#   IOS_DIST_PROFILE_BASE64   - perfil de provisionamento App Store
 #
-# Bloqueado nesta entrega (Fase 1): este projeto ainda não é um repositório
-# git, não tem remote no GitHub, e as credenciais da App Store Connect não
-# estão disponíveis neste ambiente de desenvolvimento. Ver apps/ios/README.md
-# para os próximos passos exatos antes deste workflow poder ser executado.
+# Os 3 últimos existem porque Automatic signing cria um certificado de
+# Development novo a cada archive e estoura a cota da conta Apple depois de
+# poucas execuções (ver references/ildemar-ios-release.md da skill
+# ildemar_ios-native-testflight, seção "Certificados de assinatura
+# esgotados") — Release usa Manual signing com um certificado/perfil fixos,
+# importados aqui num keychain temporário.
 on:
   workflow_dispatch: {}
 
@@ -58,9 +64,36 @@ jobs:
           IOS_ASC_ISSUER_ID: ${{ secrets.IOS_ASC_ISSUER_ID }}
           IOS_ASC_KEY_P8_BASE64: ${{ secrets.IOS_ASC_KEY_P8_BASE64 }}
 
+      - name: Import Distribution certificate and provisioning profile
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
+          P12_PATH="$RUNNER_TEMP/dist.p12"
+          echo "$IOS_DIST_CERT_P12_BASE64" | base64 --decode > "$P12_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$P12_PATH" -k "$KEYCHAIN" -P "$IOS_DIST_CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | sed 's/"//g')
+
+          PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILES_DIR"
+          echo "$IOS_DIST_PROFILE_BASE64" | base64 --decode > "$PROFILES_DIR/dist.mobileprovision"
+          echo "SIGNING_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+        env:
+          IOS_DIST_CERT_P12_BASE64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
+          IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+          IOS_DIST_PROFILE_BASE64: ${{ secrets.IOS_DIST_PROFILE_BASE64 }}
+
       - name: Release to TestFlight
         run: ./scripts/testflight.sh
 
       - name: Clean up key material
         if: always()
-        run: rm -f "$RUNNER_TEMP"/AuthKey_*.p8 scripts/asc.env
+        run: |
+          rm -f "$RUNNER_TEMP"/AuthKey_*.p8 scripts/asc.env "$RUNNER_TEMP"/dist.p12
+          rm -f "$HOME/Library/MobileDevice/Provisioning Profiles/dist.mobileprovision"
+          [[ -n "${SIGNING_KEYCHAIN:-}" ]] && security delete-keychain "$SIGNING_KEYCHAIN" || true
