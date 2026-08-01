@@ -21,7 +21,7 @@ jobs:
         with:
           go-version-file: apps/local-agent/go.mod
 
-      - name: Ler versão (fonte única: VERSION) e commit
+      - name: "Ler versão (fonte única: VERSION) e commit"
         id: version
         run: |
           set -euo pipefail
