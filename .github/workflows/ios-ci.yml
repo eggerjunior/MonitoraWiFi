@@ -58,7 +58,7 @@ jobs:
           # runner muda todo ano (ex.: "iPhone 16" parou de existir quando o
           # runner passou a ter só iPhone 16e/17/17 Pro) — escolhemos em
           # runtime o primeiro simulador de iPhone disponível.
-          DEVICE_NAME="$(xcrun simctl list devices available iPhone | grep -m1 -oE '^\s*iPhone [^(]+' | sed -E 's/^\s+|\s+$//g')"
+          DEVICE_NAME="$(xcrun simctl list devices available iPhone | awk -F'[()]' '/iPhone/{gsub(/^[ \t]+|[ \t]+$/,"",$1); print $1; exit}')"
           if [[ -z "$DEVICE_NAME" ]]; then
             echo "::error::Nenhum simulador de iPhone disponível neste runner."
             xcrun simctl list devices available
