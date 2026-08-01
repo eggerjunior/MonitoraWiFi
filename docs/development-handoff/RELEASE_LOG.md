@@ -4,6 +4,19 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-01 — Fase 5: DNS lookup + traceroute + calculadora de sub-rede (deploy completo)
+
+- Commit `351afa8` (fix real de compilação encontrado pela CI real do iOS —
+  `Command` não podia ser `Codable` com `CommandResult` só `Decodable`;
+  `Result<Info, String>` exigia `String: Error`). CI iOS verde só na
+  segunda tentativa — primeira falhou de verdade, não foi simulada.
+- API/migração 0006 aplicada em produção (backup prévio).
+- Web v0.4.0 publicado em produção.
+- iOS 0.1.7 (Build 8) publicado no TestFlight.
+- Agente `agent-v0.3.0` publicado (release do binário).
+- Todos os 4 componentes confirmados saudáveis em produção após o deploy.
+
+## 2026-08-01 — Fase 3 (início): integração UniFi + deploy em produção
 ## 2026-08-01 — Fase 4 (início): dashboards Dispositivos/Wi-Fi/Clientes (web 0.3.0 + iOS 0.1.6)
 
 - Web v0.3.0 publicado em produção (commit `9d3963e`) — Dispositivos, Wi-Fi
