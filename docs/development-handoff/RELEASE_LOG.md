@@ -4,6 +4,36 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-01 — iOS 0.1.4 (5): corrige "Não foi possível carregar organizações/sites"
+
+- App: Egger Network Intelligence, bundle id `br.app.egger.network-intelligence`
+- Versão/build: 0.1.4 (5), commit `f6f7c74`
+- Motivo: usuário confirmou (print) que o login já funcionou no build 4
+  (0.1.3) — a tela "Visão geral" abriu, mostrou versão/commit/LiDAR
+  corretamente, mas exibiu "Não foi possível carregar organizações/sites.
+  Verifique a conexão com o backend."
+- Causa raiz: `OverviewViewModel` (usado por `OverviewView`) criava sua
+  própria instância de `APIClient()` via parâmetro default do
+  inicializador, em vez de reusar o client autenticado guardado pela
+  `SessionStore` (que recebeu o token de sessão no login). Todo request a
+  `/organizations`/`/sites` saía sem o cookie de sessão e voltava 401,
+  caindo no `catch` genérico do ViewModel.
+- Correção: `SessionStore.client` deixou de ser `private` (acessível no
+  módulo); `RootView` passa `session.client` para `OverviewView`, que
+  agora tem um `init(client:)` explícito em vez de depender do default
+  parameterless (`apps/ios/Sources/Auth/SessionStore.swift`,
+  `Views/OverviewView.swift`, `Views/RootView.swift`). Revisadas também
+  `SettingsView`/`LoginView` — ambas já usavam `session.client`
+  corretamente, não tinham o mesmo bug.
+- Status: **enviado com sucesso ao TestFlight** — CI de build (run
+  https://github.com/eggerjunior/MonitoraWiFi/actions/runs/30684308024) e
+  release (run
+  https://github.com/eggerjunior/MonitoraWiFi/actions/runs/30684345801)
+  verdes.
+- Pendências: aguardando confirmação do usuário no dispositivo real após
+  atualizar para o build 5; ícone do app ainda é o placeholder gerado
+  programaticamente.
+
 ## 2026-08-01 — iOS 0.1.3 (4): corrige causa real do erro de login (URL absoluta)
 
 - App: Egger Network Intelligence, bundle id `br.app.egger.network-intelligence`

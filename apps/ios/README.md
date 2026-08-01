@@ -132,6 +132,13 @@ open EggerNetworkIntelligence.xcodeproj
   não na API — confirmado com `curl` direto em produção. Corrigido
   montando a URL por concatenação de string em vez de
   `URL(string:relativeTo:)`.
+- ✅ **Login confirmado funcionando no dispositivo real (build 4)** —
+  usuário reportou novo erro secundário na Visão geral: "Não foi possível
+  carregar organizações/sites".
+- ✅ **0.1.4 (Build 5) enviado ao TestFlight com sucesso** — corrige esse
+  erro secundário: `OverviewViewModel` criava um `APIClient()` próprio
+  sem o token de sessão do login (todo request voltava 401). Agora
+  `OverviewView` recebe e reusa o `client` autenticado da `SessionStore`.
 - Para gerar/regenerar o certificado de distribuição em outra máquina/sessão:
   `python3 scripts/create_dist_cert.py eggerjunior/MonitoraWiFi` (requer
   `ASC_KEY_ID`/`ASC_ISSUER_ID`/`ASC_KEY_PATH` no ambiente e `gh` autenticado
