@@ -6,8 +6,8 @@ options:
   createIntermediateGroups: true
 
 settings:
-  MARKETING_VERSION: "0.1.6"
-  CURRENT_PROJECT_VERSION: 7
+  MARKETING_VERSION: "0.1.7"
+  CURRENT_PROJECT_VERSION: 8
   GIT_COMMIT: dev # sobrescrito na linha de comando por scripts/testflight.sh
   API_BASE_URL: "https://wifi.egger.app.br/api/v1"
 

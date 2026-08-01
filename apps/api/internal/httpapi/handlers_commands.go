@@ -17,7 +17,9 @@ import (
 )
 
 var supportedCommandTypes = map[string]bool{
-	store.AgentCommandTypePing: true,
+	store.AgentCommandTypePing:       true,
+	store.AgentCommandTypeDNSLookup:  true,
+	store.AgentCommandTypeTraceroute: true,
 }
 
 type createCommandRequest struct {
@@ -32,6 +34,14 @@ type pingCommandParams struct {
 
 var supportedPingProtocols = map[string]bool{
 	"icmp": true, "tcp": true, "http": true, "dns": true,
+}
+
+type dnsLookupCommandParams struct {
+	Hostname string `json:"hostname"`
+}
+
+type tracerouteCommandParams struct {
+	Target string `json:"target"`
 }
 
 // handleCreateCommand valida o tipo/params antes de persistir — nunca
@@ -76,6 +86,38 @@ func (s *Server) handleCreateCommand(w http.ResponseWriter, r *http.Request) {
 		}
 		if !supportedPingProtocols[p.Protocol] {
 			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.protocol inválido (icmp, tcp, http ou dns)")
+			return
+		}
+		req.Params, _ = json.Marshal(p)
+
+	case store.AgentCommandTypeDNSLookup:
+		var p dnsLookupCommandParams
+		if len(req.Params) == 0 {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.hostname é obrigatório para type=dns_lookup")
+			return
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params inválido")
+			return
+		}
+		if p.Hostname == "" {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.hostname é obrigatório")
+			return
+		}
+		req.Params, _ = json.Marshal(p)
+
+	case store.AgentCommandTypeTraceroute:
+		var p tracerouteCommandParams
+		if len(req.Params) == 0 {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.target é obrigatório para type=traceroute")
+			return
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params inválido")
+			return
+		}
+		if p.Target == "" {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.target é obrigatório")
 			return
 		}
 		req.Params, _ = json.Marshal(p)

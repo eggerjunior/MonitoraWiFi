@@ -103,13 +103,67 @@ public struct PingCommandResult: Codable, Sendable {
     }
 }
 
+public struct DnsLookupCommandResult: Codable, Sendable {
+    public let hostname: String
+    public let addresses: [String]
+    public let durationMs: Double
+
+    enum CodingKeys: String, CodingKey {
+        case hostname
+        case addresses
+        case durationMs = "duration_ms"
+    }
+}
+
+public struct TracerouteHop: Codable, Sendable, Identifiable {
+    public let hop: Int
+    public let address: String
+    public let rttMs: Double?
+    public var id: Int { hop }
+
+    enum CodingKeys: String, CodingKey {
+        case hop
+        case address
+        case rttMs = "rtt_ms"
+    }
+}
+
+public struct TracerouteCommandResult: Codable, Sendable {
+    public let target: String
+    public let reached: Bool
+    public let hops: [TracerouteHop]
+}
+
+/// Formato do resultado depende de `Command.type` — cada caso só decodifica
+/// com sucesso a partir do JSON do tipo correspondente (os três shapes têm
+/// campos obrigatórios mutuamente exclusivos), nunca inventamos qual é.
+public enum CommandResult: Sendable {
+    case ping(PingCommandResult)
+    case dnsLookup(DnsLookupCommandResult)
+    case traceroute(TracerouteCommandResult)
+}
+
+extension CommandResult: Decodable {
+    public init(from decoder: Decoder) throws {
+        if let v = try? PingCommandResult(from: decoder) {
+            self = .ping(v)
+        } else if let v = try? DnsLookupCommandResult(from: decoder) {
+            self = .dnsLookup(v)
+        } else if let v = try? TracerouteCommandResult(from: decoder) {
+            self = .traceroute(v)
+        } else {
+            throw DecodingError.dataCorruptedError(in: try decoder.singleValueContainer(), debugDescription: "Formato de resultado de comando não reconhecido")
+        }
+    }
+}
+
 public struct Command: Codable, Sendable, Identifiable {
     public let id: String
     public let siteId: String
     public let agentId: String
     public let type: String
     public let status: String
-    public let result: PingCommandResult?
+    public let result: CommandResult?
     public let error: String?
 
     enum CodingKeys: String, CodingKey {

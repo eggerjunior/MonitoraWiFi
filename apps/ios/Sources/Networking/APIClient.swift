@@ -142,6 +142,18 @@ public actor APIClient {
         try await get("/commands/\(id)")
     }
 
+    public func createDNSLookupCommand(siteId: String, hostname: String) async throws -> Command {
+        struct Params: Encodable { let hostname: String }
+        struct Body: Encodable { let type: String; let params: Params }
+        return try await postJSON("/sites/\(siteId)/commands", body: Body(type: "dns_lookup", params: Params(hostname: hostname)))
+    }
+
+    public func createTracerouteCommand(siteId: String, target: String) async throws -> Command {
+        struct Params: Encodable { let target: String }
+        struct Body: Encodable { let type: String; let params: Params }
+        return try await postJSON("/sites/\(siteId)/commands", body: Body(type: "traceroute", params: Params(target: target)))
+    }
+
     /// Inventário UniFi (Fase 3/4, início) — sincronizado pelo agente local,
     /// nunca chamado diretamente pelo app (ADR-001).
     public func uniFiDevices(siteId: String) async throws -> UniFiDeviceList {

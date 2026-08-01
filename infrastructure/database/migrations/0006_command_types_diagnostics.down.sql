@@ -1,0 +1,3 @@
+ALTER TABLE agent_commands DROP CONSTRAINT agent_commands_type_check;
+ALTER TABLE agent_commands ADD CONSTRAINT agent_commands_type_check
+    CHECK (type IN ('ping'));

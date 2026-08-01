@@ -74,6 +74,26 @@ export interface PingCommandResult {
   executed_at: string;
 }
 
+export interface DnsLookupCommandResult {
+  hostname: string;
+  addresses: string[];
+  duration_ms: number;
+  executed_at: string;
+}
+
+export interface TracerouteHop {
+  hop: number;
+  address: string;
+  rtt_ms: number | null;
+}
+
+export interface TracerouteCommandResult {
+  target: string;
+  reached: boolean;
+  hops: TracerouteHop[];
+  executed_at: string;
+}
+
 export interface Command {
   id: string;
   site_id: string;
@@ -81,7 +101,9 @@ export interface Command {
   type: string;
   params: Record<string, unknown>;
   status: CommandStatus;
-  result: PingCommandResult | null;
+  // Formato depende de `type` — ver PingCommandResult, DnsLookupCommandResult,
+  // TracerouteCommandResult para os shapes conhecidos.
+  result: Record<string, unknown> | null;
   error?: string | null;
   created_at: string;
   claimed_at?: string | null;

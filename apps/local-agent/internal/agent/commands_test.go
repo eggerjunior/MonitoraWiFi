@@ -121,7 +121,7 @@ func TestPollAndRunCommands_TipoNaoSuportado(t *testing.T) {
 			claimed = true
 			json.NewEncoder(w).Encode(map[string]any{
 				"items": []map[string]any{
-					{"id": "cmd-2", "site_id": "site-1", "type": "traceroute", "params": json.RawMessage(`{}`), "status": "claimed"},
+					{"id": "cmd-2", "site_id": "site-1", "type": "port_scan", "params": json.RawMessage(`{}`), "status": "claimed"},
 				},
 			})
 		case r.Method == http.MethodPost && r.URL.Path == "/agents/agent-1/commands/cmd-2/result":
@@ -144,5 +144,99 @@ func TestPollAndRunCommands_TipoNaoSuportado(t *testing.T) {
 	}
 	if reportedBody["error"] == nil || reportedBody["error"] == "" {
 		t.Fatal("esperava mensagem de erro explicando o tipo não suportado")
+	}
+}
+
+func TestPollAndRunCommands_DNSLookup(t *testing.T) {
+	var reportedBody map[string]any
+	claimed := false
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/agents/agent-1/commands":
+			if claimed {
+				json.NewEncoder(w).Encode(map[string]any{"items": []map[string]any{}})
+				return
+			}
+			claimed = true
+			params, _ := json.Marshal(map[string]string{"hostname": "localhost"})
+			json.NewEncoder(w).Encode(map[string]any{
+				"items": []map[string]any{
+					{"id": "cmd-3", "site_id": "site-1", "type": "dns_lookup", "params": json.RawMessage(params), "status": "claimed"},
+				},
+			})
+		case r.Method == http.MethodPost && r.URL.Path == "/agents/agent-1/commands/cmd-3/result":
+			json.NewDecoder(r.Body).Decode(&reportedBody)
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Errorf("requisição inesperada: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	a := newTestAgentForCommands(t, server.URL)
+	a.pollAndRunCommands(t.Context())
+
+	if reportedBody == nil {
+		t.Fatal("esperava que o agente reportasse um resultado, nenhum recebido")
+	}
+	if reportedBody["status"] != "completed" {
+		t.Fatalf("status reportado = %v, esperado completed", reportedBody["status"])
+	}
+	result, ok := reportedBody["result"].(map[string]any)
+	if !ok {
+		t.Fatalf("esperava campo result no reporte, recebi: %+v", reportedBody)
+	}
+	addrs, ok := result["addresses"].([]any)
+	if !ok || len(addrs) == 0 {
+		t.Fatalf("esperava pelo menos um endereço resolvido para localhost, obtive: %+v", result["addresses"])
+	}
+}
+
+func TestPollAndRunCommands_Traceroute(t *testing.T) {
+	var reportedBody map[string]any
+	claimed := false
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/agents/agent-1/commands":
+			if claimed {
+				json.NewEncoder(w).Encode(map[string]any{"items": []map[string]any{}})
+				return
+			}
+			claimed = true
+			params, _ := json.Marshal(map[string]string{"target": "127.0.0.1"})
+			json.NewEncoder(w).Encode(map[string]any{
+				"items": []map[string]any{
+					{"id": "cmd-4", "site_id": "site-1", "type": "traceroute", "params": json.RawMessage(params), "status": "claimed"},
+				},
+			})
+		case r.Method == http.MethodPost && r.URL.Path == "/agents/agent-1/commands/cmd-4/result":
+			json.NewDecoder(r.Body).Decode(&reportedBody)
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Errorf("requisição inesperada: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	a := newTestAgentForCommands(t, server.URL)
+	a.pollAndRunCommands(t.Context())
+
+	if reportedBody == nil {
+		t.Fatal("esperava que o agente reportasse um resultado, nenhum recebido")
+	}
+	if reportedBody["status"] == "failed" {
+		t.Skipf("ICMP indisponível neste ambiente de teste: %v", reportedBody["error"])
+	}
+	if reportedBody["status"] != "completed" {
+		t.Fatalf("status reportado = %v, esperado completed", reportedBody["status"])
+	}
+	result, ok := reportedBody["result"].(map[string]any)
+	if !ok {
+		t.Fatalf("esperava campo result no reporte, recebi: %+v", reportedBody)
+	}
+	if result["reached"] != true {
+		t.Fatalf("esperava reached=true para traceroute até 127.0.0.1, obtive: %+v", result)
 	}
 }

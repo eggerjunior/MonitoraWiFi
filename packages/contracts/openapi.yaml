@@ -1022,13 +1022,13 @@ components:
       properties:
         type:
           type: string
-          enum: [ping]
-          description: Único tipo suportado nesta fase — mais tipos chegam na Fase 5.
+          enum: [ping, dns_lookup, traceroute]
         params:
           type: object
           description: >
-            Formato depende de `type`. Para "ping": { target: string,
-            protocol?: icmp|tcp|http|dns (padrão icmp) }.
+            Formato depende de `type`. "ping": { target: string, protocol?:
+            icmp|tcp|http|dns (padrão icmp) }. "dns_lookup": { hostname:
+            string }. "traceroute": { target: string }.
 
     Command:
       type: object

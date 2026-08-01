@@ -191,13 +191,20 @@ func TestCreateCommand_UnsupportedType(t *testing.T) {
 	deps := newAgentTestServer(admin)
 	cookie := loginAndGetCookie(t, deps.server, "admin@example.com", "senha12345")
 
-	body, _ := json.Marshal(map[string]any{"type": "traceroute"})
+	body, _ := json.Marshal(map[string]any{"type": "port_scan"})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(body))
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
 	deps.server.Routes().ServeHTTP(rec, req)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("esperava 400 para tipo não suportado, recebeu %d: %s", rec.Code, rec.Body.String())
+	}
+	var errResp struct {
+		Error string `json:"error"`
+	}
+	json.Unmarshal(rec.Body.Bytes(), &errResp)
+	if errResp.Error != "unsupported_command_type" {
+		t.Fatalf("esperava error=unsupported_command_type, recebeu %q", errResp.Error)
 	}
 }
 
@@ -281,5 +288,59 @@ func TestGetCommand_NaoEncontrado(t *testing.T) {
 	deps.server.Routes().ServeHTTP(rec, req)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("esperava 404, recebeu %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestCreateCommand_DNSLookup_RequerHostname(t *testing.T) {
+	siteID := uuid.New()
+	admin := store.User{ID: uuid.New(), Email: "admin@example.com", PasswordHash: mustHash(t, "senha12345"), Role: store.RoleAdministrator}
+	deps := newAgentTestServer(admin)
+	cookie := loginAndGetCookie(t, deps.server, "admin@example.com", "senha12345")
+	enrollTestAgent(t, deps, siteID)
+
+	// Sem hostname deve falhar.
+	badBody, _ := json.Marshal(map[string]any{"type": "dns_lookup"})
+	badReq := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(badBody))
+	badReq.AddCookie(cookie)
+	badRec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(badRec, badReq)
+	if badRec.Code != http.StatusBadRequest {
+		t.Fatalf("esperava 400 sem hostname, recebeu %d: %s", badRec.Code, badRec.Body.String())
+	}
+
+	// Com hostname deve ser aceito.
+	okBody, _ := json.Marshal(map[string]any{"type": "dns_lookup", "params": map[string]string{"hostname": "example.com"}})
+	okReq := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(okBody))
+	okReq.AddCookie(cookie)
+	okRec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(okRec, okReq)
+	if okRec.Code != http.StatusAccepted {
+		t.Fatalf("esperava 202 com hostname, recebeu %d: %s", okRec.Code, okRec.Body.String())
+	}
+}
+
+func TestCreateCommand_Traceroute_RequerTarget(t *testing.T) {
+	siteID := uuid.New()
+	admin := store.User{ID: uuid.New(), Email: "admin@example.com", PasswordHash: mustHash(t, "senha12345"), Role: store.RoleAdministrator}
+	deps := newAgentTestServer(admin)
+	cookie := loginAndGetCookie(t, deps.server, "admin@example.com", "senha12345")
+	enrollTestAgent(t, deps, siteID)
+
+	badBody, _ := json.Marshal(map[string]any{"type": "traceroute"})
+	badReq := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(badBody))
+	badReq.AddCookie(cookie)
+	badRec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(badRec, badReq)
+	if badRec.Code != http.StatusBadRequest {
+		t.Fatalf("esperava 400 sem target, recebeu %d: %s", badRec.Code, badRec.Body.String())
+	}
+
+	okBody, _ := json.Marshal(map[string]any{"type": "traceroute", "params": map[string]string{"target": "1.1.1.1"}})
+	okReq := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(okBody))
+	okReq.AddCookie(cookie)
+	okRec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(okRec, okReq)
+	if okRec.Code != http.StatusAccepted {
+		t.Fatalf("esperava 202 com target, recebeu %d: %s", okRec.Code, okRec.Body.String())
 	}
 }

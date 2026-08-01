@@ -39,7 +39,11 @@ const (
 	AgentCommandStatusFailed    = "failed"
 )
 
-const AgentCommandTypePing = "ping"
+const (
+	AgentCommandTypePing       = "ping"
+	AgentCommandTypeDNSLookup  = "dns_lookup"
+	AgentCommandTypeTraceroute = "traceroute"
+)
 
 type AgentCommandStore interface {
 	// Create resolve o agente ativo do site (mais recente por last_seen_at,

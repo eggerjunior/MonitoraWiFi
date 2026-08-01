@@ -1,10 +1,11 @@
 import Observation
 import SwiftUI
 
-/// Primeira ferramenta real da Fase 5 (diagnósticos sob demanda): dispara um
-/// comando de ping executado de verdade pelo agente do site — nunca simula
-/// um resultado antes de o agente responder (Seção 2.1). Paridade com a
-/// mesma ferramenta no web (apps/web/src/components/PingTool.tsx).
+/// Ferramentas de diagnóstico sob demanda (Fase 5): ping, DNS lookup e
+/// traceroute disparam um comando real executado pelo agente do site —
+/// nunca simulam um resultado antes de o agente responder (Seção 2.1). A
+/// calculadora de sub-rede é cálculo puro (sem agente/rede envolvida).
+/// Paridade com apps/web/src/components/{Ping,DnsLookup,Traceroute}Tool.tsx.
 @MainActor
 @Observable
 final class DiagnosticsViewModel {
@@ -14,12 +15,17 @@ final class DiagnosticsViewModel {
 
     var target = "1.1.1.1"
     var protocolName = "icmp"
-    private(set) var command: Command?
+    var hostname = "example.com"
+    var tracerouteTarget = "1.1.1.1"
+
+    private(set) var pingCommand: Command?
+    private(set) var dnsCommand: Command?
+    private(set) var tracerouteCommand: Command?
     private(set) var isSubmitting = false
     private(set) var submitError: String?
 
     private let client: APIClient
-    private var pollTask: Task<Void, Never>?
+    private var pollTasks: [String: Task<Void, Never>] = [:]
 
     init(client: APIClient) {
         self.client = client
@@ -50,14 +56,12 @@ final class DiagnosticsViewModel {
 
     func runPing() async {
         guard let siteId else { return }
-        pollTask?.cancel()
         submitError = nil
-        command = nil
         isSubmitting = true
         do {
             let created = try await client.createPingCommand(siteId: siteId, target: target, protocolName: protocolName)
-            command = created
-            startPolling(commandId: created.id)
+            pingCommand = created
+            startPolling(commandId: created.id) { [weak self] updated in self?.pingCommand = updated }
         } catch let error as APIClient.ClientError {
             submitError = Self.message(for: error)
         } catch {
@@ -66,13 +70,46 @@ final class DiagnosticsViewModel {
         isSubmitting = false
     }
 
-    private func startPolling(commandId: String) {
-        pollTask = Task { [weak self] in
+    func runDNSLookup() async {
+        guard let siteId else { return }
+        submitError = nil
+        isSubmitting = true
+        do {
+            let created = try await client.createDNSLookupCommand(siteId: siteId, hostname: hostname)
+            dnsCommand = created
+            startPolling(commandId: created.id) { [weak self] updated in self?.dnsCommand = updated }
+        } catch let error as APIClient.ClientError {
+            submitError = Self.message(for: error)
+        } catch {
+            submitError = "Erro de rede ao criar o comando."
+        }
+        isSubmitting = false
+    }
+
+    func runTraceroute() async {
+        guard let siteId else { return }
+        submitError = nil
+        isSubmitting = true
+        do {
+            let created = try await client.createTracerouteCommand(siteId: siteId, target: tracerouteTarget)
+            tracerouteCommand = created
+            startPolling(commandId: created.id) { [weak self] updated in self?.tracerouteCommand = updated }
+        } catch let error as APIClient.ClientError {
+            submitError = Self.message(for: error)
+        } catch {
+            submitError = "Erro de rede ao criar o comando."
+        }
+        isSubmitting = false
+    }
+
+    private func startPolling(commandId: String, onUpdate: @escaping (Command) -> Void) {
+        pollTasks[commandId]?.cancel()
+        pollTasks[commandId] = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1))
                 guard let self, !Task.isCancelled else { return }
                 guard let updated = try? await self.client.getCommand(id: commandId) else { continue }
-                self.command = updated
+                onUpdate(updated)
                 if updated.status != "pending" && updated.status != "claimed" {
                     return
                 }
@@ -108,51 +145,19 @@ struct DiagnosticsView: View {
                 Text(loadError)
                     .foregroundStyle(Color.egger(.critical, scheme: colorScheme))
             } else {
-                Section("Ping sob demanda") {
-                    TextField("Alvo (ex.: 1.1.1.1)", text: $viewModel.target)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
+                pingSection
+                dnsLookupSection
+                tracerouteSection
+            }
 
-                    Picker("Protocolo", selection: $viewModel.protocolName) {
-                        ForEach(Self.protocols, id: \.self) { p in
-                            Text(p.uppercased()).tag(p)
-                        }
-                    }
-
-                    Button {
-                        Task { await viewModel.runPing() }
-                    } label: {
-                        if viewModel.isSubmitting {
-                            ProgressView()
-                        } else {
-                            Text("Executar")
-                        }
-                    }
-                    .disabled(viewModel.isSubmitting || viewModel.target.isEmpty)
-                }
-
-                if let submitError = viewModel.submitError {
-                    Section {
-                        Text(submitError)
-                            .foregroundStyle(Color.egger(.critical, scheme: colorScheme))
-                    }
-                }
-
-                if let command = viewModel.command {
-                    Section("Resultado") {
-                        LabeledContent("Status", value: statusLabel(command.status))
-                        if command.status == "completed", let result = command.result {
-                            LabeledContent("p50", value: formatMs(result.latencyMsP50))
-                            LabeledContent("Perda", value: formatPct(result.packetLossPct))
-                            LabeledContent("Jitter", value: formatMs(result.jitterMs))
-                        }
-                        if command.status == "failed" {
-                            Text(command.error ?? "Falha não especificada.")
-                                .foregroundStyle(Color.egger(.critical, scheme: colorScheme))
-                        }
-                    }
+            if let submitError = viewModel.submitError {
+                Section {
+                    Text(submitError)
+                        .foregroundStyle(Color.egger(.critical, scheme: colorScheme))
                 }
             }
+
+            SubnetCalculatorSection()
         }
         .navigationTitle("Ferramentas")
         .task {
@@ -160,13 +165,100 @@ struct DiagnosticsView: View {
         }
     }
 
-    private func statusLabel(_ status: String) -> String {
-        switch status {
-        case "pending": return "Aguardando agente…"
-        case "claimed": return "Executando…"
-        case "completed": return "Concluído"
-        case "failed": return "Falhou"
-        default: return status
+    @ViewBuilder
+    private var pingSection: some View {
+        Section("Ping sob demanda") {
+            TextField("Alvo (ex.: 1.1.1.1)", text: $viewModel.target)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Picker("Protocolo", selection: $viewModel.protocolName) {
+                ForEach(Self.protocols, id: \.self) { p in Text(p.uppercased()).tag(p) }
+            }
+            Button {
+                Task { await viewModel.runPing() }
+            } label: {
+                Text("Executar")
+            }
+            .disabled(viewModel.isSubmitting || viewModel.target.isEmpty)
+
+            if let command = viewModel.pingCommand {
+                StatusRow(status: command.status, colorScheme: colorScheme)
+                if command.status == "completed", case .ping(let result) = command.result {
+                    LabeledContent("p50", value: formatMs(result.latencyMsP50))
+                    LabeledContent("Perda", value: formatPct(result.packetLossPct))
+                    LabeledContent("Jitter", value: formatMs(result.jitterMs))
+                }
+                if command.status == "failed" {
+                    Text(command.error ?? "Falha não especificada.")
+                        .foregroundStyle(Color.egger(.critical, scheme: colorScheme))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var dnsLookupSection: some View {
+        Section("DNS lookup sob demanda") {
+            TextField("Hostname (ex.: example.com)", text: $viewModel.hostname)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button {
+                Task { await viewModel.runDNSLookup() }
+            } label: {
+                Text("Executar")
+            }
+            .disabled(viewModel.isSubmitting || viewModel.hostname.isEmpty)
+
+            if let command = viewModel.dnsCommand {
+                StatusRow(status: command.status, colorScheme: colorScheme)
+                if command.status == "completed", case .dnsLookup(let result) = command.result {
+                    ForEach(result.addresses, id: \.self) { addr in
+                        Text(addr).font(.system(.body, design: .monospaced))
+                    }
+                }
+                if command.status == "failed" {
+                    Text(command.error ?? "Falha não especificada.")
+                        .foregroundStyle(Color.egger(.critical, scheme: colorScheme))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var tracerouteSection: some View {
+        Section("Traceroute sob demanda") {
+            TextField("Alvo (ex.: 1.1.1.1)", text: $viewModel.tracerouteTarget)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button {
+                Task { await viewModel.runTraceroute() }
+            } label: {
+                Text("Executar")
+            }
+            .disabled(viewModel.isSubmitting || viewModel.tracerouteTarget.isEmpty)
+
+            if let command = viewModel.tracerouteCommand {
+                StatusRow(status: command.status, colorScheme: colorScheme)
+                if command.status == "completed", case .traceroute(let result) = command.result {
+                    Text(result.reached ? "Destino alcançado" : "Destino não alcançado dentro do limite de saltos")
+                        .font(.caption)
+                        .foregroundStyle(Color.egger(.textSecondary, scheme: colorScheme))
+                    ForEach(result.hops) { hop in
+                        HStack {
+                            Text("\(hop.hop).")
+                            Spacer()
+                            Text(hop.address.isEmpty ? "* sem resposta *" : hop.address)
+                            Spacer()
+                            Text(hop.rttMs.map { String(format: "%.1f ms", $0) } ?? "—")
+                        }
+                        .font(.system(.caption, design: .monospaced))
+                    }
+                }
+                if command.status == "failed" {
+                    Text(command.error ?? "Falha não especificada.")
+                        .foregroundStyle(Color.egger(.critical, scheme: colorScheme))
+                }
+            }
         }
     }
 
@@ -178,6 +270,25 @@ struct DiagnosticsView: View {
     private func formatPct(_ value: Double?) -> String {
         guard let value else { return "Indisponível" }
         return String(format: "%.1f%%", value)
+    }
+}
+
+private struct StatusRow: View {
+    let status: String
+    let colorScheme: ColorScheme
+
+    var body: some View {
+        LabeledContent("Status", value: label)
+    }
+
+    private var label: String {
+        switch status {
+        case "pending": return "Aguardando agente…"
+        case "claimed": return "Executando…"
+        case "completed": return "Concluído"
+        case "failed": return "Falhou"
+        default: return status
+        }
     }
 }
 

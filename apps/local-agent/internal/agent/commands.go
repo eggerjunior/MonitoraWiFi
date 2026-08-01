@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
 	"time"
 
 	"egger/local-agent/internal/apiclient"
@@ -45,6 +46,10 @@ func (a *Agent) runCommand(ctx context.Context, cmd apiclient.Command) {
 	switch cmd.Type {
 	case "ping":
 		a.runPingCommand(ctx, cmd)
+	case "dns_lookup":
+		a.runDNSLookupCommand(ctx, cmd)
+	case "traceroute":
+		a.runTracerouteCommand(ctx, cmd)
 	default:
 		// O backend já valida o tipo na criação (CHECK constraint +
 		// validação no handler) — chegar aqui com um tipo desconhecido só
@@ -93,6 +98,75 @@ func (a *Agent) runPingCommand(ctx context.Context, cmd apiclient.Command) {
 		"executed_at":     result.ExecutedAt.Format(time.RFC3339Nano),
 	}
 
+	if err := a.client.ReportCommandResult(ctx, a.identity.AgentID, a.identity.AgentSecret, cmd.ID, "completed", payload, ""); err != nil {
+		a.logger.Error("erro ao reportar resultado do comando", slog.String("command_id", cmd.ID), slog.Any("error", err))
+	}
+}
+
+type dnsLookupCommandParams struct {
+	Hostname string `json:"hostname"`
+}
+
+func (a *Agent) runDNSLookupCommand(ctx context.Context, cmd apiclient.Command) {
+	var params dnsLookupCommandParams
+	if err := json.Unmarshal(cmd.Params, &params); err != nil {
+		a.reportCommandFailure(ctx, cmd.ID, "params inválido: "+err.Error())
+		return
+	}
+
+	start := time.Now()
+	resolver := net.DefaultResolver
+	addrs, err := resolver.LookupHost(ctx, params.Hostname)
+	durationMs := float64(time.Since(start).Microseconds()) / 1000
+
+	if err != nil {
+		a.reportCommandFailure(ctx, cmd.ID, "falha ao resolver "+params.Hostname+": "+err.Error())
+		return
+	}
+
+	payload := map[string]any{
+		"hostname":    params.Hostname,
+		"addresses":   addrs,
+		"duration_ms": durationMs,
+		"executed_at": time.Now().UTC().Format(time.RFC3339Nano),
+	}
+	if err := a.client.ReportCommandResult(ctx, a.identity.AgentID, a.identity.AgentSecret, cmd.ID, "completed", payload, ""); err != nil {
+		a.logger.Error("erro ao reportar resultado do comando", slog.String("command_id", cmd.ID), slog.Any("error", err))
+	}
+}
+
+type tracerouteCommandParams struct {
+	Target string `json:"target"`
+}
+
+func (a *Agent) runTracerouteCommand(ctx context.Context, cmd apiclient.Command) {
+	var params tracerouteCommandParams
+	if err := json.Unmarshal(cmd.Params, &params); err != nil {
+		a.reportCommandFailure(ctx, cmd.ID, "params inválido: "+err.Error())
+		return
+	}
+
+	result := probes.Traceroute(ctx, params.Target, 30, 2*time.Second)
+	if result.Error != "" {
+		a.reportCommandFailure(ctx, cmd.ID, result.Error)
+		return
+	}
+
+	hops := make([]map[string]any, 0, len(result.Hops))
+	for _, h := range result.Hops {
+		hops = append(hops, map[string]any{
+			"hop":     h.Hop,
+			"address": h.Address,
+			"rtt_ms":  h.RTTMs,
+		})
+	}
+
+	payload := map[string]any{
+		"target":      result.Target,
+		"reached":     result.Reached,
+		"hops":        hops,
+		"executed_at": result.ExecutedAt.Format(time.RFC3339Nano),
+	}
 	if err := a.client.ReportCommandResult(ctx, a.identity.AgentID, a.identity.AgentSecret, cmd.ID, "completed", payload, ""); err != nil {
 		a.logger.Error("erro ao reportar resultado do comando", slog.String("command_id", cmd.ID), slog.Any("error", err))
 	}
