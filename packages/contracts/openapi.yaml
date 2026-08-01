@@ -1053,7 +1053,7 @@ components:
       properties:
         type:
           type: string
-          enum: [ping, dns_lookup, traceroute, batch_ping]
+          enum: [ping, dns_lookup, traceroute, batch_ping, ssl_check]
         params:
           type: object
           description: >
@@ -1061,7 +1061,8 @@ components:
             icmp|tcp|http|dns (padrão icmp) }. "dns_lookup": { hostname:
             string }. "traceroute": { target: string }. "batch_ping": {
             targets: string[] (1 a 20 itens), protocol?: icmp|tcp|http|dns
-            (padrão icmp) }.
+            (padrão icmp) }. "ssl_check": { target: string, port?: integer
+            (padrão 443, 1-65535) }.
 
     Command:
       type: object

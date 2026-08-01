@@ -22,6 +22,7 @@ var supportedCommandTypes = map[string]bool{
 	store.AgentCommandTypeDNSLookup:  true,
 	store.AgentCommandTypeTraceroute: true,
 	store.AgentCommandTypeBatchPing:  true,
+	store.AgentCommandTypeSSLCheck:   true,
 }
 
 // maxBatchPingTargets é um limite de sanidade, não uma primitiva de
@@ -55,6 +56,11 @@ type tracerouteCommandParams struct {
 type batchPingCommandParams struct {
 	Targets  []string `json:"targets"`
 	Protocol string   `json:"protocol"`
+}
+
+type sslCheckCommandParams struct {
+	Target string `json:"target"`
+	Port   int    `json:"port"`
 }
 
 // handleCreateCommand valida o tipo/params antes de persistir — nunca
@@ -170,6 +176,29 @@ func (s *Server) handleCreateCommand(w http.ResponseWriter, r *http.Request) {
 		}
 		if !supportedPingProtocols[p.Protocol] {
 			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.protocol inválido (icmp, tcp, http ou dns)")
+			return
+		}
+		req.Params, _ = json.Marshal(p)
+
+	case store.AgentCommandTypeSSLCheck:
+		var p sslCheckCommandParams
+		if len(req.Params) == 0 {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.target é obrigatório para type=ssl_check")
+			return
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params inválido")
+			return
+		}
+		if p.Target == "" {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.target é obrigatório")
+			return
+		}
+		if p.Port == 0 {
+			p.Port = 443
+		}
+		if p.Port < 1 || p.Port > 65535 {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.port precisa estar entre 1 e 65535")
 			return
 		}
 		req.Params, _ = json.Marshal(p)

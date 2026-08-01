@@ -3,6 +3,7 @@ import { PingTool } from "@/components/PingTool";
 import { BatchPingTool } from "@/components/BatchPingTool";
 import { DnsLookupTool } from "@/components/DnsLookupTool";
 import { TracerouteTool } from "@/components/TracerouteTool";
+import { SslCheckTool } from "@/components/SslCheckTool";
 import { SubnetCalculator } from "@/components/SubnetCalculator";
 
 // Ferramentas de diagnóstico sob demanda (Fase 5): ping, DNS lookup e
@@ -32,6 +33,7 @@ export default async function DiagnosticsPage() {
           <BatchPingTool siteId={current.site.id} />
           <DnsLookupTool siteId={current.site.id} />
           <TracerouteTool siteId={current.site.id} />
+          <SslCheckTool siteId={current.site.id} />
         </>
       )}
 

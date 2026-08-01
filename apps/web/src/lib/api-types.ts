@@ -100,6 +100,20 @@ export interface TracerouteCommandResult {
   executed_at: string;
 }
 
+export interface SslCheckCommandResult {
+  target: string;
+  port: number;
+  valid_now: boolean;
+  verify_error: string;
+  not_before: string;
+  not_after: string;
+  days_until_expiry: number;
+  issuer: string;
+  subject: string;
+  dns_names: string[];
+  executed_at: string;
+}
+
 export interface Command {
   id: string;
   site_id: string;

@@ -52,6 +52,8 @@ func (a *Agent) runCommand(ctx context.Context, cmd apiclient.Command) {
 		a.runTracerouteCommand(ctx, cmd)
 	case "batch_ping":
 		a.runBatchPingCommand(ctx, cmd)
+	case "ssl_check":
+		a.runSSLCheckCommand(ctx, cmd)
 	default:
 		// O backend já valida o tipo na criação (CHECK constraint +
 		// validação no handler) — chegar aqui com um tipo desconhecido só
@@ -229,6 +231,45 @@ func (a *Agent) runBatchPingCommand(ctx context.Context, cmd apiclient.Command) 
 		"protocol":    protocol,
 		"results":     results,
 		"executed_at": time.Now().UTC().Format(time.RFC3339Nano),
+	}
+	if err := a.client.ReportCommandResult(ctx, a.identity.AgentID, a.identity.AgentSecret, cmd.ID, "completed", payload, ""); err != nil {
+		a.logger.Error("erro ao reportar resultado do comando", slog.String("command_id", cmd.ID), slog.Any("error", err))
+	}
+}
+
+type sslCheckCommandParams struct {
+	Target string `json:"target"`
+	Port   int    `json:"port"`
+}
+
+func (a *Agent) runSSLCheckCommand(ctx context.Context, cmd apiclient.Command) {
+	var params sslCheckCommandParams
+	if err := json.Unmarshal(cmd.Params, &params); err != nil {
+		a.reportCommandFailure(ctx, cmd.ID, "params inválido: "+err.Error())
+		return
+	}
+	if params.Port == 0 {
+		params.Port = 443
+	}
+
+	result := probes.CheckTLS(ctx, params.Target, params.Port, 5*time.Second)
+	if !result.Reached {
+		a.reportCommandFailure(ctx, cmd.ID, result.Error)
+		return
+	}
+
+	payload := map[string]any{
+		"target":            result.Target,
+		"port":              result.Port,
+		"valid_now":         result.ValidNow,
+		"verify_error":      result.VerifyError,
+		"not_before":        result.NotBefore.Format(time.RFC3339),
+		"not_after":         result.NotAfter.Format(time.RFC3339),
+		"days_until_expiry": result.DaysUntilExpiry,
+		"issuer":            result.Issuer,
+		"subject":           result.Subject,
+		"dns_names":         result.DNSNames,
+		"executed_at":       result.ExecutedAt.Format(time.RFC3339Nano),
 	}
 	if err := a.client.ReportCommandResult(ctx, a.identity.AgentID, a.identity.AgentSecret, cmd.ID, "completed", payload, ""); err != nil {
 		a.logger.Error("erro ao reportar resultado do comando", slog.String("command_id", cmd.ID), slog.Any("error", err))

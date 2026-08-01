@@ -19,11 +19,14 @@ final class DiagnosticsViewModel {
     var batchProtocolName = "icmp"
     var hostname = "example.com"
     var tracerouteTarget = "1.1.1.1"
+    var sslCheckTarget = "example.com"
+    var sslCheckPort = "443"
 
     private(set) var pingCommand: Command?
     private(set) var batchPingCommand: Command?
     private(set) var dnsCommand: Command?
     private(set) var tracerouteCommand: Command?
+    private(set) var sslCheckCommand: Command?
 
     static let maxBatchTargets = 20
 
@@ -130,6 +133,23 @@ final class DiagnosticsViewModel {
         isSubmitting = false
     }
 
+    func runSslCheck() async {
+        guard let siteId else { return }
+        let port = Int(sslCheckPort) ?? 443
+        submitError = nil
+        isSubmitting = true
+        do {
+            let created = try await client.createSslCheckCommand(siteId: siteId, target: sslCheckTarget, port: port)
+            sslCheckCommand = created
+            startPolling(commandId: created.id) { [weak self] updated in self?.sslCheckCommand = updated }
+        } catch let error as APIClient.ClientError {
+            submitError = Self.message(for: error)
+        } catch {
+            submitError = "Erro de rede ao criar o comando."
+        }
+        isSubmitting = false
+    }
+
     private func startPolling(commandId: String, onUpdate: @escaping (Command) -> Void) {
         pollTasks[commandId]?.cancel()
         pollTasks[commandId] = Task { [weak self] in
@@ -177,6 +197,7 @@ struct DiagnosticsView: View {
                 batchPingSection
                 dnsLookupSection
                 tracerouteSection
+                sslCheckSection
             }
 
             if let submitError = viewModel.submitError {
@@ -326,6 +347,38 @@ struct DiagnosticsView: View {
                         }
                         .font(.system(.caption, design: .monospaced))
                     }
+                }
+                if command.status == "failed" {
+                    Text(command.error ?? "Falha não especificada.")
+                        .foregroundStyle(Color.egger(.critical, scheme: colorScheme))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var sslCheckSection: some View {
+        Section("SSL/TLS checker") {
+            TextField("Host (ex.: example.com)", text: $viewModel.sslCheckTarget)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            TextField("Porta", text: $viewModel.sslCheckPort)
+                .keyboardType(.numberPad)
+            Button {
+                Task { await viewModel.runSslCheck() }
+            } label: {
+                Text("Executar")
+            }
+            .disabled(viewModel.isSubmitting || viewModel.sslCheckTarget.isEmpty)
+
+            if let command = viewModel.sslCheckCommand {
+                StatusRow(status: command.status, colorScheme: colorScheme)
+                if command.status == "completed", case .sslCheck(let result) = command.result {
+                    Text(result.validNow ? "Cadeia de certificado válida" : "Cadeia inválida: \(result.verifyError)")
+                        .foregroundStyle(Color.egger(result.validNow ? .success : .critical, scheme: colorScheme))
+                    LabeledContent("Emissor", value: result.issuer)
+                    LabeledContent("Assunto", value: result.subject)
+                    LabeledContent("Expira em", value: "\(result.daysUntilExpiry) dia(s)")
                 }
                 if command.status == "failed" {
                     Text(command.error ?? "Falha não especificada.")

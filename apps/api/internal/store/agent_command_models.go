@@ -44,6 +44,7 @@ const (
 	AgentCommandTypeDNSLookup  = "dns_lookup"
 	AgentCommandTypeTraceroute = "traceroute"
 	AgentCommandTypeBatchPing  = "batch_ping"
+	AgentCommandTypeSSLCheck   = "ssl_check"
 )
 
 type AgentCommandStore interface {

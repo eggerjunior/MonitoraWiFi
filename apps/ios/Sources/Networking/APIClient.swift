@@ -169,6 +169,14 @@ public actor APIClient {
         return try await postJSON("/sites/\(siteId)/commands", body: Body(type: "batch_ping", params: Params(targets: targets, protocolName: protocolName)))
     }
 
+    /// Verificação de certificado SSL/TLS sob demanda (Fase 5) — handshake
+    /// real feito pelo agente do site, nunca simulado localmente.
+    public func createSslCheckCommand(siteId: String, target: String, port: Int) async throws -> Command {
+        struct Params: Encodable { let target: String; let port: Int }
+        struct Body: Encodable { let type: String; let params: Params }
+        return try await postJSON("/sites/\(siteId)/commands", body: Body(type: "ssl_check", params: Params(target: target, port: port)))
+    }
+
     /// Inventário UniFi (Fase 3/4, início) — sincronizado pelo agente local,
     /// nunca chamado diretamente pelo app (ADR-001).
     public func uniFiDevices(siteId: String) async throws -> UniFiDeviceList {

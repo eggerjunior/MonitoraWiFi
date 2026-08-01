@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"egger/local-agent/internal/config"
@@ -104,6 +105,73 @@ func TestPollAndRunCommands_Ping(t *testing.T) {
 	}
 	if result["packet_loss_pct"] != 0.0 {
 		t.Fatalf("esperava 0%% de perda contra um listener real, obtive %v", result["packet_loss_pct"])
+	}
+}
+
+func TestPollAndRunCommands_SSLCheck(t *testing.T) {
+	// Servidor TLS real (httptest) — o comando ssl_check precisa fazer um
+	// handshake TLS de verdade e extrair os metadados reais do certificado
+	// apresentado, nunca inventar validade/emissor.
+	tlsServer := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer tlsServer.Close()
+	host, portStr, err := net.SplitHostPort(tlsServer.Listener.Addr().String())
+	if err != nil {
+		t.Fatalf("erro ao separar host/porta: %v", err)
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		t.Fatalf("porta inválida: %v", err)
+	}
+
+	var reportedBody map[string]any
+	claimed := false
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/agents/agent-1/commands":
+			if claimed {
+				json.NewEncoder(w).Encode(map[string]any{"items": []map[string]any{}})
+				return
+			}
+			claimed = true
+			params, _ := json.Marshal(map[string]any{"target": host, "port": port})
+			json.NewEncoder(w).Encode(map[string]any{
+				"items": []map[string]any{
+					{"id": "cmd-6", "site_id": "site-1", "type": "ssl_check", "params": json.RawMessage(params), "status": "claimed"},
+				},
+			})
+		case r.Method == http.MethodPost && r.URL.Path == "/agents/agent-1/commands/cmd-6/result":
+			json.NewDecoder(r.Body).Decode(&reportedBody)
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Errorf("requisição inesperada: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	a := newTestAgentForCommands(t, server.URL)
+	a.pollAndRunCommands(t.Context())
+
+	if reportedBody == nil {
+		t.Fatal("esperava que o agente reportasse um resultado, nenhum recebido")
+	}
+	if reportedBody["status"] != "completed" {
+		t.Fatalf("status reportado = %v, esperado completed: %+v", reportedBody["status"], reportedBody)
+	}
+	result, ok := reportedBody["result"].(map[string]any)
+	if !ok {
+		t.Fatalf("esperava campo result no reporte, recebi: %+v", reportedBody)
+	}
+	if result["valid_now"] != false {
+		t.Fatalf("esperava valid_now=false para certificado autoassinado, obtive: %+v", result)
+	}
+	if result["issuer"] == "" || result["issuer"] == nil {
+		t.Fatalf("esperava issuer extraído do certificado real, obtive: %+v", result)
+	}
+	if result["not_after"] == "" || result["not_after"] == nil {
+		t.Fatalf("esperava not_after extraído do certificado real, obtive: %+v", result)
 	}
 }
 

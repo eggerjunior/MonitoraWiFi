@@ -401,6 +401,55 @@ func TestCreateCommand_BatchPing_LimiteDeAlvos(t *testing.T) {
 	}
 }
 
+func TestCreateCommand_SSLCheck_RequerTarget(t *testing.T) {
+	siteID := uuid.New()
+	admin := store.User{ID: uuid.New(), Email: "admin@example.com", PasswordHash: mustHash(t, "senha12345"), Role: store.RoleAdministrator}
+	deps := newAgentTestServer(admin)
+	cookie := loginAndGetCookie(t, deps.server, "admin@example.com", "senha12345")
+	enrollTestAgent(t, deps, siteID)
+
+	badBody, _ := json.Marshal(map[string]any{"type": "ssl_check"})
+	badReq := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(badBody))
+	badReq.AddCookie(cookie)
+	badRec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(badRec, badReq)
+	if badRec.Code != http.StatusBadRequest {
+		t.Fatalf("esperava 400 sem target, recebeu %d: %s", badRec.Code, badRec.Body.String())
+	}
+
+	okBody, _ := json.Marshal(map[string]any{"type": "ssl_check", "params": map[string]any{"target": "example.com"}})
+	okReq := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(okBody))
+	okReq.AddCookie(cookie)
+	okRec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(okRec, okReq)
+	if okRec.Code != http.StatusAccepted {
+		t.Fatalf("esperava 202 com target, recebeu %d: %s", okRec.Code, okRec.Body.String())
+	}
+	var created map[string]any
+	json.Unmarshal(okRec.Body.Bytes(), &created)
+	params, _ := created["params"].(map[string]any)
+	if params["port"] != float64(443) {
+		t.Fatalf("esperava porta padrão 443 quando não informada, recebi: %+v", params)
+	}
+}
+
+func TestCreateCommand_SSLCheck_PortaInvalida(t *testing.T) {
+	siteID := uuid.New()
+	admin := store.User{ID: uuid.New(), Email: "admin@example.com", PasswordHash: mustHash(t, "senha12345"), Role: store.RoleAdministrator}
+	deps := newAgentTestServer(admin)
+	cookie := loginAndGetCookie(t, deps.server, "admin@example.com", "senha12345")
+	enrollTestAgent(t, deps, siteID)
+
+	body, _ := json.Marshal(map[string]any{"type": "ssl_check", "params": map[string]any{"target": "example.com", "port": 70000}})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(body))
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("esperava 400 com porta fora do intervalo, recebeu %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
 // TestCreateCommand_RateLimit confirma o gap real de segurança encontrado
 // na revisão do threat model (§5, "rate limiting antes de abrir qualquer
 // endpoint de teste ativo"): sem limite, uma conta comprometida poderia

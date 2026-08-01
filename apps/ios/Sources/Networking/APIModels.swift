@@ -144,6 +144,32 @@ public struct TracerouteCommandResult: Codable, Sendable {
     public let hops: [TracerouteHop]
 }
 
+public struct SslCheckCommandResult: Codable, Sendable {
+    public let target: String
+    public let port: Int
+    public let validNow: Bool
+    public let verifyError: String
+    public let notBefore: String
+    public let notAfter: String
+    public let daysUntilExpiry: Int
+    public let issuer: String
+    public let subject: String
+    public let dnsNames: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case target
+        case port
+        case validNow = "valid_now"
+        case verifyError = "verify_error"
+        case notBefore = "not_before"
+        case notAfter = "not_after"
+        case daysUntilExpiry = "days_until_expiry"
+        case issuer
+        case subject
+        case dnsNames = "dns_names"
+    }
+}
+
 /// Formato do resultado depende de `Command.type` — cada caso só decodifica
 /// com sucesso a partir do JSON do tipo correspondente (os três shapes têm
 /// campos obrigatórios mutuamente exclusivos), nunca inventamos qual é.
@@ -152,6 +178,7 @@ public enum CommandResult: Sendable {
     case batchPing(BatchPingCommandResult)
     case dnsLookup(DnsLookupCommandResult)
     case traceroute(TracerouteCommandResult)
+    case sslCheck(SslCheckCommandResult)
 }
 
 extension CommandResult: Decodable {
@@ -164,6 +191,8 @@ extension CommandResult: Decodable {
             self = .dnsLookup(v)
         } else if let v = try? TracerouteCommandResult(from: decoder) {
             self = .traceroute(v)
+        } else if let v = try? SslCheckCommandResult(from: decoder) {
+            self = .sslCheck(v)
         } else {
             throw DecodingError.dataCorruptedError(in: try decoder.singleValueContainer(), debugDescription: "Formato de resultado de comando não reconhecido")
         }
