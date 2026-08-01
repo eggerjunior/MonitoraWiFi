@@ -30,7 +30,17 @@ struct RootView: View {
     var body: some View {
         if horizontalSizeClass == .regular {
             NavigationSplitView {
-                List(AppSection.allCases, selection: $selection) { section in
+                // `List(_:selection:rowContent:)` com Binding não-opcional foi
+                // removido do SwiftUI — a API de seleção de lista exige
+                // Binding<SelectionValue?>. `selection` aqui nunca é nil na
+                // prática (sempre há uma seção selecionada), então o setter
+                // simplesmente ignora um nil vindo da lista.
+                List(AppSection.allCases, selection: Binding(
+                    get: { selection },
+                    set: { newValue in
+                        if let newValue { selection = newValue }
+                    }
+                )) { section in
                     Label(section.rawValue, systemImage: section.systemImage)
                         .tag(section)
                 }
