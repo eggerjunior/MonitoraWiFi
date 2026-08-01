@@ -17,7 +17,11 @@ public final class SessionStore {
     public private(set) var state: State = .checking
     public private(set) var lastError: String?
 
-    private let client: APIClient
+    /// Não-privado: as telas autenticadas (ex.: `OverviewView`) precisam
+    /// reusar esta mesma instância — ela carrega o token de sessão obtido no
+    /// login. Uma `APIClient()` nova não teria o token e todo request
+    /// autenticado falharia com 401.
+    let client: APIClient
     private let keychain: KeychainStore
 
     public init(client: APIClient = APIClient(), keychain: KeychainStore = KeychainStore()) {

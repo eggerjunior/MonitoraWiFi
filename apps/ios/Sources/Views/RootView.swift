@@ -25,6 +25,7 @@ enum AppSection: String, CaseIterable, Identifiable {
 /// só muda o chrome de navegação.
 struct RootView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(SessionStore.self) private var session
     @State private var selection: AppSection = .overview
 
     var body: some View {
@@ -67,7 +68,7 @@ struct RootView: View {
     private func destination(for section: AppSection) -> some View {
         switch section {
         case .overview:
-            OverviewView()
+            OverviewView(client: session.client)
         case .network, .map, .tools:
             PlaceholderView(section: section)
         case .alerts:

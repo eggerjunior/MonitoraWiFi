@@ -16,10 +16,19 @@ public struct VersionEntry: Identifiable, Sendable {
 public enum VersionHistory {
     /// Fallbacks defensivos — usados apenas se o Info.plist não tiver os
     /// valores (não deveria acontecer em um build gerado pelo XcodeGen).
-    public static let fallbackVersionString = "0.1.3 (Build 4)"
+    public static let fallbackVersionString = "0.1.4 (Build 5)"
     public static let fallbackCommit = "dev"
 
     public static let entries: [VersionEntry] = [
+        VersionEntry(
+            version: "0.1.4",
+            build: "5",
+            date: "2026-08-01",
+            changes: [
+                "Corrige 'Não foi possível carregar organizações/sites': a tela Visão geral criava um APIClient próprio (sem o token de sessão do login), então todo request voltava 401 — agora reusa o client autenticado da SessionStore",
+            ],
+            isCurrent: true
+        ),
         VersionEntry(
             version: "0.1.3",
             build: "4",
@@ -27,7 +36,7 @@ public enum VersionHistory {
             changes: [
                 "Corrige a causa real de 'Não foi possível falar com o servidor': caminhos com \"/\" inicial (ex.: \"/auth/login\") eram resolvidos como absolutos, descartando \"/api/v1\" do endereço do servidor e batendo na URL errada (o site, não a API)",
             ],
-            isCurrent: true
+            isCurrent: false
         ),
         VersionEntry(
             version: "0.1.2",

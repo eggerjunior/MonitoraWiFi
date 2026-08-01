@@ -32,10 +32,16 @@ final class OverviewViewModel {
 }
 
 struct OverviewView: View {
-    @Environment(SessionStore.self) private var session
     @Environment(\.colorScheme) private var colorScheme
-    @State private var viewModel = OverviewViewModel()
+    @State private var viewModel: OverviewViewModel
     @State private var showingSettings = false
+
+    /// Recebe o `APIClient` já autenticado da `SessionStore` — um
+    /// `APIClient()` novo não teria o token de sessão do login e todo
+    /// request aqui falharia com 401.
+    init(client: APIClient) {
+        _viewModel = State(initialValue: OverviewViewModel(client: client))
+    }
 
     var body: some View {
         List {
@@ -120,7 +126,7 @@ struct OverviewView: View {
 
 #Preview {
     NavigationStack {
-        OverviewView()
+        OverviewView(client: APIClient())
     }
     .environment(SessionStore())
 }
