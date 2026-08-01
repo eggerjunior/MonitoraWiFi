@@ -47,10 +47,13 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger) (*Agent, e
 // sondas, speed test (se configurado), drenagem das filas e heartbeat.
 func (a *Agent) Run(ctx context.Context) {
 	loops := []func(context.Context){a.probeLoop, a.drainLoop, a.heartbeatLoop, a.speedDrainLoop}
-	if a.cfg.SpeedTestEnabled {
+	if a.cfg.SpeedTestEnabled || a.cfg.SpeedTestLANEnabled {
 		loops = append(loops, a.speedTestLoop)
 	} else {
-		a.logger.Info("speed test desativado — SPEEDTEST_DOWNLOAD_URL/SPEEDTEST_UPLOAD_URL não configurados")
+		a.logger.Info("speed test desativado — nem SPEEDTEST_DOWNLOAD_URL/SPEEDTEST_UPLOAD_URL nem SPEEDTEST_LAN_TARGET configurados")
+	}
+	if a.cfg.SpeedTestLANEnabled && !probes.Iperf3Available() {
+		a.logger.Warn("SPEEDTEST_LAN_TARGET configurado mas o binário iperf3 não foi encontrado no PATH — modo LAN vai reportar erro a cada execução até isso ser corrigido")
 	}
 
 	done := make(chan struct{}, len(loops))
@@ -157,20 +160,32 @@ func (a *Agent) speedTestLoop(ctx context.Context) {
 }
 
 func (a *Agent) runSpeedTestOnce(ctx context.Context) {
-	opts := probes.DefaultSpeedTestOptions(a.cfg.SpeedTestDownloadURL, a.cfg.SpeedTestUploadURL, a.cfg.SpeedTestLatencyTarget)
-	opts.UploadSizeBytes = a.cfg.SpeedTestUploadSizeBytes
+	if a.cfg.SpeedTestEnabled {
+		opts := probes.DefaultSpeedTestOptions(a.cfg.SpeedTestDownloadURL, a.cfg.SpeedTestUploadURL, a.cfg.SpeedTestLatencyTarget)
+		opts.UploadSizeBytes = a.cfg.SpeedTestUploadSizeBytes
 
-	result := probes.RunHTTPSpeedTest(ctx, opts)
+		result := probes.RunHTTPSpeedTest(ctx, opts)
+		a.enqueueSpeedTestResult(result)
+	}
+
+	if a.cfg.SpeedTestLANEnabled {
+		result := probes.RunIperf3SpeedTest(ctx, a.cfg.SpeedTestLANTarget, a.cfg.SpeedTestLANDuration)
+		a.enqueueSpeedTestResult(result)
+	}
+}
+
+func (a *Agent) enqueueSpeedTestResult(result probes.SpeedTestResult) {
 	for _, e := range result.Errors {
-		a.logger.Warn("speed test com falha parcial", slog.String("detail", e))
+		a.logger.Warn("speed test com falha parcial", slog.String("mode", result.Mode), slog.String("detail", e))
 	}
 
 	payload := toSpeedTestPayload(result)
 	if _, err := a.speedQueue.Enqueue(payload); err != nil {
-		a.logger.Error("erro ao enfileirar resultado de speed test", slog.Any("error", err))
+		a.logger.Error("erro ao enfileirar resultado de speed test", slog.String("mode", result.Mode), slog.Any("error", err))
 		return
 	}
 	a.logger.Info("speed test executado",
+		slog.String("mode", result.Mode),
 		slog.Any("download_mbps", result.DownloadMbps),
 		slog.Any("upload_mbps", result.UploadMbps),
 		slog.Any("bufferbloat_ms", result.BufferbloatMs))

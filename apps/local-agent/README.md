@@ -28,6 +28,15 @@ Status: Fase 2 (parcial). Go, binário único + imagem Docker. Conexão
   (`SPEEDTEST_ENABLED` implícito por `SPEEDTEST_DOWNLOAD_URL`/
   `SPEEDTEST_UPLOAD_URL` não vazios) — fila e reenvio próprios, mesmo padrão
   do buffer de ping.
+- **Speed test LAN via iPerf3** (`internal/probes/iperf3.go`): download (`-R`)
+  e upload contra um servidor iperf3 já em execução em outro nó da LAN —
+  o agente nunca sobe seu próprio servidor nem escolhe um alvo por conta
+  própria. Chama o binário `iperf3` via subprocesso e parseia a saída
+  `-J` (reimplementar o protocolo em Go não valeria o risco frente ao
+  binário oficial). Se o binário não existir no PATH, cada execução reporta
+  erro explícito (nunca finge throughput) e isso é logado uma vez na
+  inicialização do agente. Desativado por padrão
+  (`SPEEDTEST_LAN_TARGET` vazio).
 
 ## Testado nesta sessão
 
@@ -53,8 +62,7 @@ sucesso (2x, incluindo após adicionar o speed test).
   `net.ipv4.ping_group_range`) — dentro de containers sem essa capability,
   cai para 100% de perda reportada (nunca finge sucesso). Documentado em
   `internal/probes/icmp.go`.
-- **Speed test modo LAN (iPerf3) e comparação entre resolvedores DNS** ainda
-  não implementados — só o modo HTTP (Seção 5.3) está pronto.
+- **Comparação entre resolvedores DNS** ainda não implementada.
 
 ## Resolvido nesta sessão (2026-08-01)
 
@@ -87,6 +95,12 @@ sucesso (2x, incluindo após adicionar o speed test).
   (`gh repo edit --visibility public`) e o download não-autenticado
   confirmado funcionando de verdade (`curl -fsSL .../releases/latest/download/egger-agent-linux-amd64`
   baixou o binário certo, com a versão `0.1.0+dd95c8a7` embutida).
+- **Speed test modo LAN (iPerf3) implementado** (`internal/probes/iperf3.go`)
+  — testado com um servidor `iperf3` real (subprocesso) rodando dentro do
+  teste automatizado, não um mock do protocolo: 3 testes cobrindo
+  download+upload reais, servidor indisponível (erro honesto, sem
+  throughput inventado) e alvo inválido. Suite completa continua verde
+  (`go build`/`go vet`/`go test ./...`).
 
 ## Variáveis de ambiente do speed test
 
@@ -96,7 +110,14 @@ SPEEDTEST_UPLOAD_URL=https://sua-api/upload-sink
 SPEEDTEST_UPLOAD_SIZE_BYTES=4194304                     # 4 MiB, padrão
 SPEEDTEST_LATENCY_TARGET=1.1.1.1:443                    # host:porta para medir latência ociosa/sob carga
 SPEEDTEST_INTERVAL_MINUTES=30
+
+SPEEDTEST_LAN_TARGET=192.168.1.50:5201  # host:porta de um servidor iperf3 já em execução na LAN — vazio desativa o modo LAN
+SPEEDTEST_LAN_DURATION_SECONDS=5        # duração de cada direção (download/upload), padrão 5s
 ```
+
+Requer o binário `iperf3` instalado no host onde o agente roda (não incluído
+no `Dockerfile` por padrão — ver `apps/local-agent/Dockerfile` se for rodar
+em container).
 
 Sem `SPEEDTEST_DOWNLOAD_URL`/`SPEEDTEST_UPLOAD_URL`, o speed test fica
 desativado — o agente nunca escolhe um servidor de terceiros por conta

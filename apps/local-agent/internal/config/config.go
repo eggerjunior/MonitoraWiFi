@@ -45,6 +45,14 @@ type Config struct {
 	SpeedTestUploadURL       string
 	SpeedTestUploadSizeBytes int
 	SpeedTestLatencyTarget   string
+
+	// Speed test modo LAN (Seção 5, iPerf3) — desativado se
+	// SPEEDTEST_LAN_TARGET estiver vazio. Requer um servidor iperf3 já em
+	// execução em outro nó da LAN (capability-matrix.md §4); o agente nunca
+	// sobe seu próprio servidor nem escolhe um alvo por conta própria.
+	SpeedTestLANEnabled  bool
+	SpeedTestLANTarget   string
+	SpeedTestLANDuration time.Duration
 }
 
 func Load() (Config, error) {
@@ -100,6 +108,15 @@ func Load() (Config, error) {
 		return cfg, err
 	}
 	cfg.SpeedTestInterval = time.Duration(speedIntervalMinutes) * time.Minute
+
+	cfg.SpeedTestLANTarget = os.Getenv("SPEEDTEST_LAN_TARGET")
+	cfg.SpeedTestLANEnabled = cfg.SpeedTestLANTarget != ""
+
+	lanDurationSeconds, err := parseIntEnv("SPEEDTEST_LAN_DURATION_SECONDS", 5)
+	if err != nil {
+		return cfg, err
+	}
+	cfg.SpeedTestLANDuration = time.Duration(lanDurationSeconds) * time.Second
 
 	return cfg, nil
 }

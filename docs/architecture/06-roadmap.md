@@ -32,11 +32,12 @@ de desenvolvimento. Critérios de aceite detalhados em `07-criterios-aceite-fase
 > `0003_speed_tests` confirmadas já aplicadas em produção
 > (`monitorawifi-postgres`), e o pipeline de release do binário
 > (`.github/workflows/local-agent-release.yml`) foi criado — nenhum release
-> disparado ainda. **Faltam**: disparar o primeiro release e validar
-> `scripts/install.sh` ponta a ponta, speed test modo LAN (iPerf3), e
+> disparado ainda. **Atualização (2026-08-01, continuação)**: primeiro
+> release publicado e validado ponta a ponta (`agent-v0.1.0`), speed test
+> modo LAN (iPerf3) implementado e testado com servidor real. **Falta**:
 > enrolar um agente real em produção (tabela `agents` está vazia — ninguém
-> rodou o agente contra o site real ainda). Ver `apps/local-agent/README.md`
-> para o detalhamento completo.
+> rodou o agente contra o site real ainda) e comparação entre resolvedores
+> DNS. Ver `apps/local-agent/README.md` para o detalhamento completo.
 
 Registro/enrolamento do agente (ADR-006), heartbeat, ping (ICMP/TCP/HTTP/DNS),
 speed test (Internet e LAN), buffer offline com backoff exponencial, streaming de

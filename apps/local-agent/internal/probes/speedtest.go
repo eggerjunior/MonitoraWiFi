@@ -3,8 +3,9 @@
 // Este arquivo implementa o modo "HTTP" (arquivo controlado, tamanho
 // configurável — Seção 5.3): download e upload contra URLs configuráveis,
 // mais bufferbloat medido como o aumento de latência sob carga em relação à
-// latência ociosa. O modo LAN (iPerf3) e a comparação entre resolvedores
-// ficam para uma iteração futura (registrado como pendência, não fingido).
+// latência ociosa. O modo LAN (iPerf3) está em iperf3.go; a comparação
+// entre resolvedores DNS fica para uma iteração futura (registrado como
+// pendência, não fingido).
 package probes
 
 import (
