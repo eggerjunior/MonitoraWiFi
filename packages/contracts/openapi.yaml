@@ -316,6 +316,58 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  /sites/{siteId}/ping-tests:
+    get:
+      tags: [agents]
+      summary: Lista os resultados de ping mais recentes de todos os agentes do site
+      operationId: listPingTests
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Lista paginada de resultados de ping
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PingTestPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /sites/{siteId}/speed-tests:
+    get:
+      tags: [agents]
+      summary: Lista os resultados de speed test mais recentes de todos os agentes do site
+      operationId: listSpeedTests
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Lista paginada de resultados de speed test
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpeedTestPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
 components:
   parameters:
     PageParam:
@@ -652,6 +704,38 @@ components:
           type: string
           description: Estável entre reenvios do mesmo resultado (Seção 3).
 
+    SpeedTestPayload:
+      type: object
+      required: [mode, executed_at, idempotency_key]
+      properties:
+        mode:
+          type: string
+          enum: [internet, lan, http]
+        download_mbps:
+          type: number
+          nullable: true
+        upload_mbps:
+          type: number
+          nullable: true
+        idle_latency_ms:
+          type: number
+          nullable: true
+        loaded_latency_ms:
+          type: number
+          nullable: true
+        bufferbloat_ms:
+          type: number
+          nullable: true
+        jitter_ms:
+          type: number
+          nullable: true
+        executed_at:
+          type: string
+          format: date-time
+        idempotency_key:
+          type: string
+          description: Estável entre reenvios do mesmo resultado (Seção 3).
+
     AgentTelemetryRequest:
       type: object
       properties:
@@ -659,6 +743,40 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PingTestPayload"
+        speed_tests:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpeedTestPayload"
+
+    PingTestPage:
+      type: object
+      required: [items, page, page_size, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PingTestPayload"
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+
+    SpeedTestPage:
+      type: object
+      required: [items, page, page_size, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpeedTestPayload"
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
 
 security:
   - sessionCookie: []

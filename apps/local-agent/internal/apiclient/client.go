@@ -78,9 +78,35 @@ type PingTestPayload struct {
 	IdempotencyKey string   `json:"idempotency_key"`
 }
 
+type SpeedTestPayload struct {
+	Mode            string   `json:"mode"`
+	DownloadMbps    *float64 `json:"download_mbps,omitempty"`
+	UploadMbps      *float64 `json:"upload_mbps,omitempty"`
+	IdleLatencyMs   *float64 `json:"idle_latency_ms,omitempty"`
+	LoadedLatencyMs *float64 `json:"loaded_latency_ms,omitempty"`
+	BufferbloatMs   *float64 `json:"bufferbloat_ms,omitempty"`
+	JitterMs        *float64 `json:"jitter_ms,omitempty"`
+	ExecutedAt      string   `json:"executed_at"`
+	IdempotencyKey  string   `json:"idempotency_key"`
+}
+
 func (c *Client) SendTelemetry(ctx context.Context, agentID, agentSecret string, pingTests []PingTestPayload) error {
+	return c.sendTelemetryBatch(ctx, agentID, agentSecret, pingTests, nil)
+}
+
+func (c *Client) SendSpeedTests(ctx context.Context, agentID, agentSecret string, speedTests []SpeedTestPayload) error {
+	return c.sendTelemetryBatch(ctx, agentID, agentSecret, nil, speedTests)
+}
+
+func (c *Client) sendTelemetryBatch(ctx context.Context, agentID, agentSecret string, pingTests []PingTestPayload, speedTests []SpeedTestPayload) error {
 	path := fmt.Sprintf("/agents/%s/telemetry", agentID)
-	body := map[string]any{"ping_tests": pingTests}
+	body := map[string]any{}
+	if len(pingTests) > 0 {
+		body["ping_tests"] = pingTests
+	}
+	if len(speedTests) > 0 {
+		body["speed_tests"] = speedTests
+	}
 	return c.doJSON(ctx, http.MethodPost, path, agentSecret, body, nil)
 }
 

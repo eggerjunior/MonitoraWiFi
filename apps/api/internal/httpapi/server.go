@@ -37,6 +37,7 @@ type Server struct {
 	agentEnrollTokens store.AgentEnrollmentTokenStore
 	agentHeartbeats   store.AgentHeartbeatStore
 	pingTests         store.PingTestStore
+	speedTests        store.SpeedTestStore
 
 	sessionTTL   time.Duration
 	loginLimiter *ratelimit.Limiter
@@ -57,6 +58,7 @@ type Deps struct {
 	AgentEnrollTokens store.AgentEnrollmentTokenStore
 	AgentHeartbeats   store.AgentHeartbeatStore
 	PingTests         store.PingTestStore
+	SpeedTests        store.SpeedTestStore
 }
 
 func NewServer(d Deps) *Server {
@@ -73,6 +75,7 @@ func NewServer(d Deps) *Server {
 		agentEnrollTokens: d.AgentEnrollTokens,
 		agentHeartbeats:   d.AgentHeartbeats,
 		pingTests:         d.PingTests,
+		speedTests:        d.SpeedTests,
 		sessionTTL:        d.SessionTTL,
 		loginLimiter:      ratelimit.New(30, 10), // 30/min por IP, burst 10 — ajustável em produção
 	}
@@ -100,6 +103,11 @@ func (s *Server) Routes() http.Handler {
 		s.requirePermission(auth.PermManageIntegrations, s.handleCreateAgentEnrollmentToken)))
 	mux.HandleFunc("GET /api/v1/sites/{siteId}/agents", s.withObservability("agents.list",
 		s.requirePermission(auth.PermView, s.handleListAgents)))
+
+	mux.HandleFunc("GET /api/v1/sites/{siteId}/ping-tests", s.withObservability("ping-tests.list",
+		s.requirePermission(auth.PermView, s.handleListPingTests)))
+	mux.HandleFunc("GET /api/v1/sites/{siteId}/speed-tests", s.withObservability("speed-tests.list",
+		s.requirePermission(auth.PermView, s.handleListSpeedTests)))
 
 	mux.HandleFunc("POST /api/v1/agents/enroll", s.withObservability("agents.enroll", s.handleEnrollAgent))
 	mux.HandleFunc("POST /api/v1/agents/{agentId}/heartbeat", s.withObservability("agents.heartbeat",

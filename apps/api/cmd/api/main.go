@@ -71,6 +71,7 @@ func run() error {
 		AgentEnrollTokens: &store.PostgresAgentEnrollmentTokens{Pool: pool},
 		AgentHeartbeats:   &store.PostgresAgentHeartbeats{Pool: pool},
 		PingTests:         &store.PostgresPingTests{Pool: pool},
+		SpeedTests:        &store.PostgresSpeedTests{Pool: pool},
 	})
 
 	httpServer := &http.Server{

@@ -79,4 +79,26 @@ type PingTestStore interface {
 	// já existir são ignorados silenciosamente (reenvio seguro após
 	// reconexão do agente — Seção 3).
 	InsertBatch(ctx context.Context, tests []PingTest) error
+	// ListBySite retorna os mais recentes primeiro, entre todos os agentes
+	// do site (join implícito via agents.site_id).
+	ListBySite(ctx context.Context, siteID uuid.UUID, page Page) ([]PingTest, int, error)
+}
+
+type SpeedTest struct {
+	ID              uuid.UUID
+	AgentID         uuid.UUID
+	Mode            string
+	DownloadMbps    *float64
+	UploadMbps      *float64
+	IdleLatencyMs   *float64
+	LoadedLatencyMs *float64
+	BufferbloatMs   *float64
+	JitterMs        *float64
+	ExecutedAt      time.Time
+	IdempotencyKey  string
+}
+
+type SpeedTestStore interface {
+	InsertBatch(ctx context.Context, tests []SpeedTest) error
+	ListBySite(ctx context.Context, siteID uuid.UUID, page Page) ([]SpeedTest, int, error)
 }

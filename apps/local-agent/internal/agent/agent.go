@@ -17,11 +17,12 @@ import (
 )
 
 type Agent struct {
-	cfg      config.Config
-	client   *apiclient.Client
-	identity state.Identity
-	queue    *queue.FileQueue[apiclient.PingTestPayload]
-	logger   *slog.Logger
+	cfg        config.Config
+	client     *apiclient.Client
+	identity   state.Identity
+	queue      *queue.FileQueue[apiclient.PingTestPayload]
+	speedQueue *queue.FileQueue[apiclient.SpeedTestPayload]
+	logger     *slog.Logger
 }
 
 func New(ctx context.Context, cfg config.Config, logger *slog.Logger) (*Agent, error) {
@@ -33,24 +34,30 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger) (*Agent, e
 	}
 
 	return &Agent{
-		cfg:      cfg,
-		client:   client,
-		identity: identity,
-		queue:    queue.NewFileQueue[apiclient.PingTestPayload](cfg.QueueFilePath, cfg.QueueMaxItems),
-		logger:   logger,
+		cfg:        cfg,
+		client:     client,
+		identity:   identity,
+		queue:      queue.NewFileQueue[apiclient.PingTestPayload](cfg.QueueFilePath, cfg.QueueMaxItems),
+		speedQueue: queue.NewFileQueue[apiclient.SpeedTestPayload](cfg.SpeedQueueFilePath, 1000),
+		logger:     logger,
 	}, nil
 }
 
-// Run bloqueia até o contexto ser cancelado, rodando os três laços
-// concorrentemente: sondas, drenagem da fila e heartbeat.
+// Run bloqueia até o contexto ser cancelado, rodando os laços concorrentemente:
+// sondas, speed test (se configurado), drenagem das filas e heartbeat.
 func (a *Agent) Run(ctx context.Context) {
-	done := make(chan struct{}, 3)
+	loops := []func(context.Context){a.probeLoop, a.drainLoop, a.heartbeatLoop, a.speedDrainLoop}
+	if a.cfg.SpeedTestEnabled {
+		loops = append(loops, a.speedTestLoop)
+	} else {
+		a.logger.Info("speed test desativado — SPEEDTEST_DOWNLOAD_URL/SPEEDTEST_UPLOAD_URL não configurados")
+	}
 
-	go func() { a.probeLoop(ctx); done <- struct{}{} }()
-	go func() { a.drainLoop(ctx); done <- struct{}{} }()
-	go func() { a.heartbeatLoop(ctx); done <- struct{}{} }()
-
-	for i := 0; i < 3; i++ {
+	done := make(chan struct{}, len(loops))
+	for _, loop := range loops {
+		go func(fn func(context.Context)) { fn(ctx); done <- struct{}{} }(loop)
+	}
+	for range loops {
 		<-done
 	}
 }
@@ -134,6 +141,70 @@ func (a *Agent) drainLoop(ctx context.Context) {
 	}
 }
 
+func (a *Agent) speedTestLoop(ctx context.Context) {
+	ticker := time.NewTicker(a.cfg.SpeedTestInterval)
+	defer ticker.Stop()
+
+	a.runSpeedTestOnce(ctx) // primeira rodada imediata
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			a.runSpeedTestOnce(ctx)
+		}
+	}
+}
+
+func (a *Agent) runSpeedTestOnce(ctx context.Context) {
+	opts := probes.DefaultSpeedTestOptions(a.cfg.SpeedTestDownloadURL, a.cfg.SpeedTestUploadURL, a.cfg.SpeedTestLatencyTarget)
+	opts.UploadSizeBytes = a.cfg.SpeedTestUploadSizeBytes
+
+	result := probes.RunHTTPSpeedTest(ctx, opts)
+	for _, e := range result.Errors {
+		a.logger.Warn("speed test com falha parcial", slog.String("detail", e))
+	}
+
+	payload := toSpeedTestPayload(result)
+	if _, err := a.speedQueue.Enqueue(payload); err != nil {
+		a.logger.Error("erro ao enfileirar resultado de speed test", slog.Any("error", err))
+		return
+	}
+	a.logger.Info("speed test executado",
+		slog.Any("download_mbps", result.DownloadMbps),
+		slog.Any("upload_mbps", result.UploadMbps),
+		slog.Any("bufferbloat_ms", result.BufferbloatMs))
+}
+
+func (a *Agent) speedDrainLoop(ctx context.Context) {
+	backoff := NewBackoff(10*time.Second, 10*time.Minute)
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+			err := a.speedQueue.Drain(func(items []apiclient.SpeedTestPayload) error {
+				sendCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+				defer cancel()
+				return a.client.SendSpeedTests(sendCtx, a.identity.AgentID, a.identity.AgentSecret, items)
+			})
+
+			var next time.Duration
+			if err != nil {
+				a.logger.Warn("falha ao enviar speed test — mantido na fila local", slog.Any("error", err))
+				next = backoff.Next()
+			} else {
+				backoff.Reset()
+				next = a.cfg.ProbeInterval
+			}
+			timer.Reset(next)
+		}
+	}
+}
+
 func (a *Agent) heartbeatLoop(ctx context.Context) {
 	ticker := time.NewTicker(a.cfg.HeartbeatInterval)
 	defer ticker.Stop()
@@ -150,11 +221,17 @@ func (a *Agent) heartbeatLoop(ctx context.Context) {
 }
 
 func (a *Agent) sendHeartbeat(ctx context.Context) {
-	queued, err := a.queue.Len()
+	pingQueued, err := a.queue.Len()
 	if err != nil {
-		a.logger.Error("erro ao medir fila local para heartbeat", slog.Any("error", err))
-		queued = -1
+		a.logger.Error("erro ao medir fila de ping para heartbeat", slog.Any("error", err))
+		pingQueued = 0
 	}
+	speedQueued, err := a.speedQueue.Len()
+	if err != nil {
+		a.logger.Error("erro ao medir fila de speed test para heartbeat", slog.Any("error", err))
+		speedQueued = 0
+	}
+	queued := pingQueued + speedQueued
 
 	hbCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()

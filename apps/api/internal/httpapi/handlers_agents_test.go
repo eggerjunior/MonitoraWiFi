@@ -147,3 +147,61 @@ func TestAgentTelemetry_IdempotentReplay(t *testing.T) {
 		t.Fatalf("esperava exatamente 1 ping_test após reenvio idempotente, encontrou %d", len(deps.pingTests.byKey))
 	}
 }
+
+func TestAgentTelemetry_SpeedTestAndListEndpoint(t *testing.T) {
+	admin := store.User{ID: uuid.New(), Email: "admin@example.com", PasswordHash: mustHash(t, "senha12345"), Role: store.RoleAdministrator}
+	deps := newAgentTestServer(admin)
+
+	siteID := uuid.New()
+	agentID := uuid.New()
+	secret, secretHash, _ := auth.GenerateAgentSecret()
+	_ = deps.agents.Create(context.Background(), store.Agent{
+		ID:         agentID,
+		SiteID:     siteID,
+		Hostname:   "gateway",
+		Platform:   "linux_amd64",
+		AuthMethod: "rotating_credential",
+		SecretHash: secretHash,
+		EnrolledAt: time.Now().UTC(),
+	})
+
+	download := 87.5
+	payload := agentTelemetryRequest{
+		SpeedTests: []speedTestPayload{
+			{
+				Mode:           "http",
+				DownloadMbps:   &download,
+				ExecutedAt:     time.Now().UTC().Format(time.RFC3339),
+				IdempotencyKey: "speedtest-1",
+			},
+		},
+	}
+	body, _ := json.Marshal(payload)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/agents/"+agentID.String()+"/telemetry", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+secret)
+	rec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(rec, req)
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("esperava 202, recebeu %d: %s", rec.Code, rec.Body.String())
+	}
+
+	cookie := loginAndGetCookie(t, deps.server, "admin@example.com", "senha12345")
+	listReq := httptest.NewRequest(http.MethodGet, "/api/v1/sites/"+siteID.String()+"/speed-tests", nil)
+	listReq.AddCookie(cookie)
+	listRec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(listRec, listReq)
+	if listRec.Code != http.StatusOK {
+		t.Fatalf("esperava 200 ao listar speed tests, recebeu %d: %s", listRec.Code, listRec.Body.String())
+	}
+
+	var listResp struct {
+		Total int `json:"total"`
+	}
+	if err := json.Unmarshal(listRec.Body.Bytes(), &listResp); err != nil {
+		t.Fatalf("resposta inválida: %v", err)
+	}
+	if listResp.Total != 1 {
+		t.Fatalf("esperava 1 speed test listado, recebeu %d", listResp.Total)
+	}
+}

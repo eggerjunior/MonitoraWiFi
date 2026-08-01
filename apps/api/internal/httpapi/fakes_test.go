@@ -222,3 +222,38 @@ func (f *fakePingTests) InsertBatch(ctx context.Context, tests []store.PingTest)
 	}
 	return nil
 }
+
+func (f *fakePingTests) ListBySite(ctx context.Context, siteID uuid.UUID, page store.Page) ([]store.PingTest, int, error) {
+	var out []store.PingTest
+	for _, t := range f.byKey {
+		out = append(out, t)
+	}
+	return out, len(out), nil
+}
+
+type fakeSpeedTests struct {
+	byKey map[string]store.SpeedTest
+}
+
+func newFakeSpeedTests() *fakeSpeedTests {
+	return &fakeSpeedTests{byKey: map[string]store.SpeedTest{}}
+}
+
+func (f *fakeSpeedTests) InsertBatch(ctx context.Context, tests []store.SpeedTest) error {
+	for _, t := range tests {
+		key := t.AgentID.String() + "|" + t.IdempotencyKey
+		if _, exists := f.byKey[key]; exists {
+			continue
+		}
+		f.byKey[key] = t
+	}
+	return nil
+}
+
+func (f *fakeSpeedTests) ListBySite(ctx context.Context, siteID uuid.UUID, page store.Page) ([]store.SpeedTest, int, error) {
+	var out []store.SpeedTest
+	for _, t := range f.byKey {
+		out = append(out, t)
+	}
+	return out, len(out), nil
+}

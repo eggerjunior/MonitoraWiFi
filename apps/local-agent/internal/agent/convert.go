@@ -26,3 +26,17 @@ func toPingTestPayload(r probes.Result) apiclient.PingTestPayload {
 		IdempotencyKey: fmt.Sprintf("%s|%s|%d", r.Protocol, r.Target, r.ExecutedAt.UnixNano()),
 	}
 }
+
+func toSpeedTestPayload(r probes.SpeedTestResult) apiclient.SpeedTestPayload {
+	return apiclient.SpeedTestPayload{
+		Mode:            r.Mode,
+		DownloadMbps:    r.DownloadMbps,
+		UploadMbps:      r.UploadMbps,
+		IdleLatencyMs:   r.IdleLatencyMs,
+		LoadedLatencyMs: r.LoadedLatencyMs,
+		BufferbloatMs:   r.BufferbloatMs,
+		JitterMs:        r.JitterMs,
+		ExecutedAt:      r.ExecutedAt.Format(time.RFC3339Nano),
+		IdempotencyKey:  fmt.Sprintf("speedtest|%s|%d", r.Mode, r.ExecutedAt.UnixNano()),
+	}
+}

@@ -17,17 +17,28 @@ type Target struct {
 }
 
 type Config struct {
-	BackendURL        string
-	EnrollmentToken   string // só usado se ainda não houver identidade salva
-	StateFilePath     string
-	QueueFilePath     string
-	Hostname          string
-	Platform          string
-	Version           string
-	HeartbeatInterval time.Duration
-	ProbeInterval     time.Duration
-	QueueMaxItems     int
-	Targets           []Target
+	BackendURL         string
+	EnrollmentToken    string // só usado se ainda não houver identidade salva
+	StateFilePath      string
+	QueueFilePath      string
+	SpeedQueueFilePath string
+	Hostname           string
+	Platform           string
+	Version            string
+	HeartbeatInterval  time.Duration
+	ProbeInterval      time.Duration
+	QueueMaxItems      int
+	Targets            []Target
+
+	// Speed test (Seção 5.3, modo HTTP) — desativado se DownloadURL e
+	// UploadURL estiverem ambos vazios (nunca escolhemos um servidor de
+	// terceiros por conta própria).
+	SpeedTestEnabled         bool
+	SpeedTestInterval        time.Duration
+	SpeedTestDownloadURL     string
+	SpeedTestUploadURL       string
+	SpeedTestUploadSizeBytes int
+	SpeedTestLatencyTarget   string
 }
 
 func Load() (Config, error) {
@@ -65,6 +76,24 @@ func Load() (Config, error) {
 	cfg.QueueMaxItems = queueMax
 
 	cfg.Targets = parseTargets(getEnv("TARGETS", "1.1.1.1:icmp,8.8.8.8:icmp,https://www.cloudflare.com:http,cloudflare.com:dns"))
+
+	cfg.SpeedQueueFilePath = getEnv("SPEED_QUEUE_FILE", "/var/lib/egger-agent/speed-queue.jsonl")
+	cfg.SpeedTestDownloadURL = os.Getenv("SPEEDTEST_DOWNLOAD_URL")
+	cfg.SpeedTestUploadURL = os.Getenv("SPEEDTEST_UPLOAD_URL")
+	cfg.SpeedTestLatencyTarget = getEnv("SPEEDTEST_LATENCY_TARGET", "1.1.1.1:443")
+	cfg.SpeedTestEnabled = cfg.SpeedTestDownloadURL != "" || cfg.SpeedTestUploadURL != ""
+
+	uploadSize, err := parseIntEnv("SPEEDTEST_UPLOAD_SIZE_BYTES", 4*1024*1024)
+	if err != nil {
+		return cfg, err
+	}
+	cfg.SpeedTestUploadSizeBytes = uploadSize
+
+	speedIntervalMinutes, err := parseIntEnv("SPEEDTEST_INTERVAL_MINUTES", 30)
+	if err != nil {
+		return cfg, err
+	}
+	cfg.SpeedTestInterval = time.Duration(speedIntervalMinutes) * time.Minute
 
 	return cfg, nil
 }

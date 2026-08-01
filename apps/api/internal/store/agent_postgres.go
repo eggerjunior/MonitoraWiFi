@@ -14,6 +14,7 @@ type PostgresAgents struct{ Pool *pgxpool.Pool }
 type PostgresAgentEnrollmentTokens struct{ Pool *pgxpool.Pool }
 type PostgresAgentHeartbeats struct{ Pool *pgxpool.Pool }
 type PostgresPingTests struct{ Pool *pgxpool.Pool }
+type PostgresSpeedTests struct{ Pool *pgxpool.Pool }
 
 func (s *PostgresAgents) Create(ctx context.Context, a Agent) error {
 	_, err := s.Pool.Exec(ctx,
@@ -125,4 +126,88 @@ func (s *PostgresPingTests) InsertBatch(ctx context.Context, tests []PingTest) e
 		}
 	}
 	return nil
+}
+
+func (s *PostgresPingTests) ListBySite(ctx context.Context, siteID uuid.UUID, page Page) ([]PingTest, int, error) {
+	offset := (page.Page - 1) * page.PageSize
+
+	var total int
+	if err := s.Pool.QueryRow(ctx,
+		`SELECT count(*) FROM ping_tests pt JOIN agents a ON a.id = pt.agent_id WHERE a.site_id = $1`,
+		siteID).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := s.Pool.Query(ctx,
+		`SELECT pt.id, pt.agent_id, pt.target, pt.protocol, pt.latency_ms_p50, pt.latency_ms_p95, pt.latency_ms_p99, pt.jitter_ms, pt.packet_loss_pct, pt.executed_at, pt.idempotency_key
+		 FROM ping_tests pt JOIN agents a ON a.id = pt.agent_id
+		 WHERE a.site_id = $1 ORDER BY pt.executed_at DESC LIMIT $2 OFFSET $3`,
+		siteID, page.PageSize, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var out []PingTest
+	for rows.Next() {
+		var t PingTest
+		if err := rows.Scan(&t.ID, &t.AgentID, &t.Target, &t.Protocol, &t.LatencyMsP50, &t.LatencyMsP95, &t.LatencyMsP99, &t.JitterMs, &t.PacketLossPct, &t.ExecutedAt, &t.IdempotencyKey); err != nil {
+			return nil, 0, err
+		}
+		out = append(out, t)
+	}
+	return out, total, rows.Err()
+}
+
+func (s *PostgresSpeedTests) InsertBatch(ctx context.Context, tests []SpeedTest) error {
+	if len(tests) == 0 {
+		return nil
+	}
+	batch := &pgx.Batch{}
+	for _, t := range tests {
+		batch.Queue(
+			`INSERT INTO speed_tests (id, agent_id, mode, download_mbps, upload_mbps, idle_latency_ms, loaded_latency_ms, bufferbloat_ms, jitter_ms, executed_at, idempotency_key)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			 ON CONFLICT (agent_id, idempotency_key) DO NOTHING`,
+			t.ID, t.AgentID, t.Mode, t.DownloadMbps, t.UploadMbps, t.IdleLatencyMs, t.LoadedLatencyMs, t.BufferbloatMs, t.JitterMs, t.ExecutedAt, t.IdempotencyKey)
+	}
+	br := s.Pool.SendBatch(ctx, batch)
+	defer br.Close()
+	for range tests {
+		if _, err := br.Exec(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *PostgresSpeedTests) ListBySite(ctx context.Context, siteID uuid.UUID, page Page) ([]SpeedTest, int, error) {
+	offset := (page.Page - 1) * page.PageSize
+
+	var total int
+	if err := s.Pool.QueryRow(ctx,
+		`SELECT count(*) FROM speed_tests st JOIN agents a ON a.id = st.agent_id WHERE a.site_id = $1`,
+		siteID).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := s.Pool.Query(ctx,
+		`SELECT st.id, st.agent_id, st.mode, st.download_mbps, st.upload_mbps, st.idle_latency_ms, st.loaded_latency_ms, st.bufferbloat_ms, st.jitter_ms, st.executed_at, st.idempotency_key
+		 FROM speed_tests st JOIN agents a ON a.id = st.agent_id
+		 WHERE a.site_id = $1 ORDER BY st.executed_at DESC LIMIT $2 OFFSET $3`,
+		siteID, page.PageSize, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var out []SpeedTest
+	for rows.Next() {
+		var t SpeedTest
+		if err := rows.Scan(&t.ID, &t.AgentID, &t.Mode, &t.DownloadMbps, &t.UploadMbps, &t.IdleLatencyMs, &t.LoadedLatencyMs, &t.BufferbloatMs, &t.JitterMs, &t.ExecutedAt, &t.IdempotencyKey); err != nil {
+			return nil, 0, err
+		}
+		out = append(out, t)
+	}
+	return out, total, rows.Err()
 }

@@ -21,15 +21,24 @@ Status: Fase 2 (parcial). Go, binário único + imagem Docker. Conexão
 - **Reenvio idempotente com backoff exponencial**: cada resultado carrega
   uma `idempotency_key` estável; o backend ignora duplicatas. Falha de envio
   dobra o intervalo de retry (5s → até 10min), resetado no primeiro sucesso.
+- **Speed test HTTP** (`internal/probes/speedtest.go`, Seção 5.3): download e
+  upload contra URLs configuráveis (nunca um servidor de terceiros escolhido
+  sozinho pelo agente), com bufferbloat medido pela diferença entre latência
+  ociosa e latência sob carga durante a transferência. Desativado por padrão
+  (`SPEEDTEST_ENABLED` implícito por `SPEEDTEST_DOWNLOAD_URL`/
+  `SPEEDTEST_UPLOAD_URL` não vazios) — fila e reenvio próprios, mesmo padrão
+  do buffer de ping.
 
 ## Testado nesta sessão
 
-24 testes automatizados, todos rodando operações reais (não mocks opacos):
+29 testes automatizados, todos rodando operações reais (não mocks opacos):
 sondas TCP contra um listener TCP real, HTTP contra um `httptest.Server`
 real, DNS resolvendo nomes de verdade (`localhost`, domínio inexistente),
-fila persistindo e sobrevivendo a "reinício" simulado, cliente HTTP validado
-contra um servidor de teste real. `go build`/`go vet`/`go test` verdes;
-Dockerfile de produção construído com sucesso.
+speed test de download/upload contra servidores de teste reais medindo
+throughput de verdade, fila persistindo e sobrevivendo a "reinício"
+simulado, cliente HTTP validado contra um servidor de teste real.
+`go build`/`go vet`/`go test` verdes; Dockerfile de produção construído com
+sucesso (2x, incluindo após adicionar o speed test).
 
 ## Não testado ainda / pendências reais
 
@@ -46,13 +55,28 @@ Dockerfile de produção construído com sucesso.
   `net.ipv4.ping_group_range`) — dentro de containers sem essa capability,
   cai para 100% de perda reportada (nunca finge sucesso). Documentado em
   `internal/probes/icmp.go`.
-- **Speed test (download/upload/bufferbloat) ainda não implementado** —
-  escopo da Seção 5 "Speed test", não coberto nesta rodada da Fase 2.
-- Migração `0002_agents` **ainda não aplicada no banco de produção**
-  (`monitorawifi-postgres`) — só testada localmente contra Postgres
-  descartável. Aplicar exige decisão explícita antes de subir a nova versão
-  do `apps/api` em produção (DEPLOYMENT_STANDARD.md: "migrações de estrutura
-  serão feitas uma aplicação por vez, com backup e autorização específica").
+- **Speed test modo LAN (iPerf3) e comparação entre resolvedores DNS** ainda
+  não implementados — só o modo HTTP (Seção 5.3) está pronto.
+- Migrações `0002_agents` e `0003_speed_tests` **ainda não aplicadas no banco
+  de produção** (`monitorawifi-postgres`) — só testadas localmente contra
+  Postgres descartável. Aplicar exige decisão explícita antes de subir a nova
+  versão do `apps/api` em produção (DEPLOYMENT_STANDARD.md: "migrações de
+  estrutura serão feitas uma aplicação por vez, com backup e autorização
+  específica").
+
+## Variáveis de ambiente do speed test
+
+```bash
+SPEEDTEST_DOWNLOAD_URL=https://sua-api/testfile-10mb   # arquivo controlado, não um CDN de terceiros arbitrário
+SPEEDTEST_UPLOAD_URL=https://sua-api/upload-sink
+SPEEDTEST_UPLOAD_SIZE_BYTES=4194304                     # 4 MiB, padrão
+SPEEDTEST_LATENCY_TARGET=1.1.1.1:443                    # host:porta para medir latência ociosa/sob carga
+SPEEDTEST_INTERVAL_MINUTES=30
+```
+
+Sem `SPEEDTEST_DOWNLOAD_URL`/`SPEEDTEST_UPLOAD_URL`, o speed test fica
+desativado — o agente nunca escolhe um servidor de terceiros por conta
+própria (Seção 5.3).
 
 ## Uso local (desenvolvimento)
 

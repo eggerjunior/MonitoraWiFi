@@ -225,8 +225,21 @@ type pingTestPayload struct {
 	IdempotencyKey string   `json:"idempotency_key"`
 }
 
+type speedTestPayload struct {
+	Mode            string   `json:"mode"`
+	DownloadMbps    *float64 `json:"download_mbps"`
+	UploadMbps      *float64 `json:"upload_mbps"`
+	IdleLatencyMs   *float64 `json:"idle_latency_ms"`
+	LoadedLatencyMs *float64 `json:"loaded_latency_ms"`
+	BufferbloatMs   *float64 `json:"bufferbloat_ms"`
+	JitterMs        *float64 `json:"jitter_ms"`
+	ExecutedAt      string   `json:"executed_at"`
+	IdempotencyKey  string   `json:"idempotency_key"`
+}
+
 type agentTelemetryRequest struct {
-	PingTests []pingTestPayload `json:"ping_tests"`
+	PingTests  []pingTestPayload  `json:"ping_tests"`
+	SpeedTests []speedTestPayload `json:"speed_tests"`
 }
 
 // handleAgentTelemetry recebe um lote de resultados de teste. Idempotente
@@ -268,10 +281,120 @@ func (s *Server) handleAgentTelemetry(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	speedTests := make([]store.SpeedTest, 0, len(req.SpeedTests))
+	for _, sp := range req.SpeedTests {
+		if sp.IdempotencyKey == "" {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "idempotency_key é obrigatório em cada speed_test")
+			return
+		}
+		executedAt, err := time.Parse(time.RFC3339, sp.ExecutedAt)
+		if err != nil {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "executed_at inválido (esperado RFC3339)")
+			return
+		}
+		speedTests = append(speedTests, store.SpeedTest{
+			ID:              newUUID(),
+			AgentID:         agent.ID,
+			Mode:            sp.Mode,
+			DownloadMbps:    sp.DownloadMbps,
+			UploadMbps:      sp.UploadMbps,
+			IdleLatencyMs:   sp.IdleLatencyMs,
+			LoadedLatencyMs: sp.LoadedLatencyMs,
+			BufferbloatMs:   sp.BufferbloatMs,
+			JitterMs:        sp.JitterMs,
+			ExecutedAt:      executedAt,
+			IdempotencyKey:  sp.IdempotencyKey,
+		})
+	}
+
 	if err := s.pingTests.InsertBatch(r.Context(), tests); err != nil {
-		writeError(w, correlationID, http.StatusInternalServerError, "internal_error", "erro ao persistir telemetria")
+		writeError(w, correlationID, http.StatusInternalServerError, "internal_error", "erro ao persistir telemetria de ping")
+		return
+	}
+	if err := s.speedTests.InsertBatch(r.Context(), speedTests); err != nil {
+		writeError(w, correlationID, http.StatusInternalServerError, "internal_error", "erro ao persistir telemetria de speed test")
 		return
 	}
 
-	writeJSON(w, http.StatusAccepted, map[string]any{"accepted": len(tests)})
+	writeJSON(w, http.StatusAccepted, map[string]any{"accepted": len(tests) + len(speedTests)})
+}
+
+func (s *Server) handleListPingTests(w http.ResponseWriter, r *http.Request) {
+	correlationID := correlationIDFromContext(r.Context())
+
+	siteID, err := uuid.Parse(r.PathValue("siteId"))
+	if err != nil {
+		writeError(w, correlationID, http.StatusBadRequest, "invalid_site_id", "siteId inválido")
+		return
+	}
+
+	page := parsePage(r)
+	tests, total, err := s.pingTests.ListBySite(r.Context(), siteID, page)
+	if err != nil {
+		writeError(w, correlationID, http.StatusInternalServerError, "internal_error", "erro ao listar ping tests")
+		return
+	}
+
+	items := make([]map[string]any, 0, len(tests))
+	for _, t := range tests {
+		items = append(items, map[string]any{
+			"id":              t.ID.String(),
+			"agent_id":        t.AgentID.String(),
+			"target":          t.Target,
+			"protocol":        t.Protocol,
+			"latency_ms_p50":  t.LatencyMsP50,
+			"latency_ms_p95":  t.LatencyMsP95,
+			"latency_ms_p99":  t.LatencyMsP99,
+			"jitter_ms":       t.JitterMs,
+			"packet_loss_pct": t.PacketLossPct,
+			"executed_at":     t.ExecutedAt.Format(time.RFC3339),
+		})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"items":     items,
+		"page":      page.Page,
+		"page_size": page.PageSize,
+		"total":     total,
+	})
+}
+
+func (s *Server) handleListSpeedTests(w http.ResponseWriter, r *http.Request) {
+	correlationID := correlationIDFromContext(r.Context())
+
+	siteID, err := uuid.Parse(r.PathValue("siteId"))
+	if err != nil {
+		writeError(w, correlationID, http.StatusBadRequest, "invalid_site_id", "siteId inválido")
+		return
+	}
+
+	page := parsePage(r)
+	tests, total, err := s.speedTests.ListBySite(r.Context(), siteID, page)
+	if err != nil {
+		writeError(w, correlationID, http.StatusInternalServerError, "internal_error", "erro ao listar speed tests")
+		return
+	}
+
+	items := make([]map[string]any, 0, len(tests))
+	for _, t := range tests {
+		items = append(items, map[string]any{
+			"id":                t.ID.String(),
+			"agent_id":          t.AgentID.String(),
+			"mode":              t.Mode,
+			"download_mbps":     t.DownloadMbps,
+			"upload_mbps":       t.UploadMbps,
+			"idle_latency_ms":   t.IdleLatencyMs,
+			"loaded_latency_ms": t.LoadedLatencyMs,
+			"bufferbloat_ms":    t.BufferbloatMs,
+			"jitter_ms":         t.JitterMs,
+			"executed_at":       t.ExecutedAt.Format(time.RFC3339),
+		})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"items":     items,
+		"page":      page.Page,
+		"page_size": page.PageSize,
+		"total":     total,
+	})
 }

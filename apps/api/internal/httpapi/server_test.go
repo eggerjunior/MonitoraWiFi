@@ -27,6 +27,7 @@ func newTestServer(pinger Pinger, users *fakeUsers, sessions *fakeSessions, orgs
 		AgentEnrollTokens: newFakeAgentEnrollmentTokens(),
 		AgentHeartbeats:   &fakeAgentHeartbeats{},
 		PingTests:         newFakePingTests(),
+		SpeedTests:        newFakeSpeedTests(),
 	})
 }
 
@@ -40,6 +41,7 @@ type agentTestDeps struct {
 	agentEnrollTokens *fakeAgentEnrollmentTokens
 	agentHeartbeats   *fakeAgentHeartbeats
 	pingTests         *fakePingTests
+	speedTests        *fakeSpeedTests
 }
 
 func newAgentTestServer(users ...store.User) agentTestDeps {
@@ -50,6 +52,7 @@ func newAgentTestServer(users ...store.User) agentTestDeps {
 	fet := newFakeAgentEnrollmentTokens()
 	fhb := &fakeAgentHeartbeats{}
 	fpt := newFakePingTests()
+	fst := newFakeSpeedTests()
 
 	server := NewServer(Deps{
 		Logger:            logger,
@@ -65,6 +68,7 @@ func newAgentTestServer(users ...store.User) agentTestDeps {
 		AgentEnrollTokens: fet,
 		AgentHeartbeats:   fhb,
 		PingTests:         fpt,
+		SpeedTests:        fst,
 	})
 
 	return agentTestDeps{
@@ -75,5 +79,6 @@ func newAgentTestServer(users ...store.User) agentTestDeps {
 		agentEnrollTokens: fet,
 		agentHeartbeats:   fhb,
 		pingTests:         fpt,
+		speedTests:        fst,
 	}
 }
