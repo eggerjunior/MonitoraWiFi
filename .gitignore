@@ -1,0 +1,28 @@
+# Segredos — nunca commitados (Seção 2.2, Seção 22)
+.env
+.env.*
+!.env.example
+**/asc.env
+*.p8
+*.pem
+*.key
+
+# Node / web
+node_modules/
+.next/
+out/
+npm-debug.log*
+
+# Go
+apps/api/tmp/
+
+# iOS (regras específicas também em apps/ios/.gitignore)
+DerivedData/
+*.xcarchive
+*.ipa
+*.xcdistributionlogs
+
+# SO / editor
+.DS_Store
+.vscode/
+.idea/

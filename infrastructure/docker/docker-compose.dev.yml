@@ -1,0 +1,75 @@
+# Docker Compose de desenvolvimento (Fase 1). Sobe Postgres, Redis e o backend.
+# Uso a partir da raiz do monorepo:
+#   docker compose -f infrastructure/docker/docker-compose.dev.yml up -d postgres redis
+#   docker compose -f infrastructure/docker/docker-compose.dev.yml --profile tools run --rm migrate
+#   docker compose -f infrastructure/docker/docker-compose.dev.yml up --build api
+#
+# O serviço "migrate" é um one-off (profile "tools"), não sobe com `up` comum —
+# aplicar migrações é uma ação explícita, nunca implícita ao subir o backend.
+#
+# Redis está presente porque faz parte da arquitetura (docs/architecture/02-arquitetura-proposta.md)
+# e será usado a partir da Fase 2/3 (filas, pub/sub em tempo real) — o backend
+# da Fase 1 ainda não depende dele.
+name: egger-network-intelligence-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: egger
+      POSTGRES_PASSWORD: devpass
+      POSTGRES_DB: egger
+    ports:
+      - "5432:5432"
+    volumes:
+      - egger_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U egger"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    entrypoint: ["/app/migrate"]
+    command:
+      - "-database"
+      - "postgres://egger:devpass@postgres:5432/egger?sslmode=disable"
+      - "-path"
+      - "/app/migrations"
+      - "up"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["tools"]
+
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: "postgres://egger:devpass@postgres:5432/egger?sslmode=disable"
+      HTTP_ADDR: ":8080"
+      APP_ENV: "development"
+      OTEL_SERVICE_NAME: "egger-api"
+      SESSION_TTL_HOURS: "168"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  egger_postgres_data:

@@ -1,0 +1,382 @@
+openapi: 3.1.0
+info:
+  title: Egger Network Intelligence API
+  version: 0.1.0
+  description: >
+    Contrato único de verdade da API do backend central (ADR-005). SDKs para Swift e
+    TypeScript devem ser gerados/derivados desta especificação — nunca escritos em
+    paralelo. Escopo desta versão: Fase 1 (Fundação) — autenticação, RBAC,
+    organizações, sites e health checks. Endpoints de telemetria, UniFi, testes
+    ativos, LiDAR, alertas etc. são adicionados nas fases seguintes sem quebrar esta
+    base.
+  contact:
+    name: Egger Network Intelligence
+servers:
+  - url: https://api.egger-network-intelligence.example/api/v1
+    description: Produção (placeholder — domínio real definido na Fase 8)
+  - url: http://localhost:8080/api/v1
+    description: Desenvolvimento local (Docker Compose)
+
+tags:
+  - name: system
+    description: Health checks e observabilidade do próprio backend
+  - name: auth
+    description: Autenticação e sessão
+  - name: organizations
+    description: Organizações (tenants)
+  - name: sites
+    description: Sites dentro de uma organização
+
+paths:
+  /healthz:
+    get:
+      tags: [system]
+      summary: Liveness probe
+      operationId: getHealthz
+      security: []
+      responses:
+        "200":
+          description: Processo está vivo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /readyz:
+    get:
+      tags: [system]
+      summary: Readiness probe (verifica dependências como banco e Redis)
+      operationId: getReadyz
+      security: []
+      responses:
+        "200":
+          description: Pronto para receber tráfego
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadyStatus"
+        "503":
+          description: Uma ou mais dependências indisponíveis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadyStatus"
+
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Autentica com e-mail e senha
+      operationId: postAuthLogin
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Autenticado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Encerra a sessão atual
+      operationId: postAuthLogout
+      responses:
+        "204":
+          description: Sessão encerrada
+
+  /auth/me:
+    get:
+      tags: [auth]
+      summary: Retorna o usuário autenticado e seu papel (RBAC)
+      operationId: getAuthMe
+      responses:
+        "200":
+          description: Usuário autenticado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /organizations:
+    get:
+      tags: [organizations]
+      summary: Lista organizações visíveis ao usuário autenticado
+      operationId: listOrganizations
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Lista paginada de organizações
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizationPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /sites:
+    get:
+      tags: [sites]
+      summary: Lista sites da organização atual
+      operationId: listSites
+      parameters:
+        - name: organization_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Lista paginada de sites
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SitePage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /sites/{siteId}:
+    get:
+      tags: [sites]
+      summary: Detalhe de um site
+      operationId: getSite
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Site encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Site"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSizeParam:
+      name: page_size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  responses:
+    Unauthorized:
+      description: Não autenticado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    Forbidden:
+      description: Autenticado, mas sem permissão (RBAC)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    RateLimited:
+      description: Limite de requisições excedido
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: egger_session
+
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+
+    ReadyStatus:
+      type: object
+      required: [status, dependencies]
+      properties:
+        status:
+          type: string
+          enum: [ready, not_ready]
+        dependencies:
+          type: object
+          additionalProperties:
+            type: string
+            enum: [ok, degraded, unavailable]
+
+    ApiError:
+      type: object
+      required: [error, message, correlation_id]
+      properties:
+        error:
+          type: string
+          description: Código de erro estável, legível por máquina
+        message:
+          type: string
+          description: Mensagem legível por humano, segura para exibir na UI
+        correlation_id:
+          type: string
+          format: uuid
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          format: password
+
+    Role:
+      type: string
+      enum: [owner, administrator, operator, viewer, auditor]
+      description: Papéis RBAC (Seção 18) — em ordem decrescente de privilégio
+
+    User:
+      type: object
+      required: [id, organization_id, email, role, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        organization_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          $ref: "#/components/schemas/Role"
+        mfa_enrolled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    AuthSession:
+      type: object
+      required: [user, expires_at]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        expires_at:
+          type: string
+          format: date-time
+
+    Organization:
+      type: object
+      required: [id, name, plan_tier, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        plan_tier:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    OrganizationPage:
+      type: object
+      required: [items, page, page_size, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Organization"
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+
+    Site:
+      type: object
+      required: [id, organization_id, name, timezone, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        organization_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        timezone:
+          type: string
+          description: Fuso IANA (ex. America/Sao_Paulo), usado para exibir horários localmente
+        created_at:
+          type: string
+          format: date-time
+
+    SitePage:
+      type: object
+      required: [items, page, page_size, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Site"
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+
+security:
+  - sessionCookie: []

@@ -1,0 +1,59 @@
+name: iOS CI (build validation)
+
+# Roda em todo push/PR que toque apps/ios/ — pega erro de compilação num
+# runner macOS real, sem depender de Mac local (ver skill
+# ildemar_ios-native-testflight). Não assina nem publica nada; não precisa de
+# secrets.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/ios/**"
+      - ".github/workflows/ios-ci.yml"
+  pull_request:
+    paths:
+      - "apps/ios/**"
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select latest available Xcode
+        run: |
+          set -euo pipefail
+          ls /Applications | grep -i '^Xcode'
+          LATEST="$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)"
+          if [[ -z "$LATEST" ]]; then
+            LATEST="/Applications/Xcode.app"
+          fi
+          echo "Selecting $LATEST"
+          sudo xcode-select -s "$LATEST"
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build for simulator
+        run: |
+          set -euo pipefail
+          xcodebuild -project EggerNetworkIntelligence.xcodeproj -scheme EggerNetworkIntelligence \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            GIT_COMMIT="$(git rev-parse --short=8 HEAD)" \
+            build
+
+      - name: Run unit tests
+        run: |
+          set -euo pipefail
+          xcodebuild -project EggerNetworkIntelligence.xcodeproj -scheme EggerNetworkIntelligence \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            test

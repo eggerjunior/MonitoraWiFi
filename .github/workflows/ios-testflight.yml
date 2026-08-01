@@ -1,0 +1,66 @@
+name: iOS TestFlight release
+
+# Disparo manual apenas (aba Actions -> este workflow -> Run workflow, ou
+# `gh workflow run "iOS TestFlight release" --repo eggerjunior/MonitoraWiFi`).
+# Propositalmente não roda em todo push: arquivar/assinar/enviar um build real
+# ao App Store Connect é uma decisão, não efeito colateral de um commit.
+#
+# Requer três secrets do repositório (Settings -> Secrets and variables ->
+# Actions), nenhum commitado:
+#   IOS_ASC_KEY_ID          - App Store Connect API key id
+#   IOS_ASC_ISSUER_ID       - App Store Connect API issuer id
+#   IOS_ASC_KEY_P8_BASE64   - `base64 < AuthKey_XXXX.p8`, colado como secret
+#
+# Bloqueado nesta entrega (Fase 1): este projeto ainda não é um repositório
+# git, não tem remote no GitHub, e as credenciais da App Store Connect não
+# estão disponíveis neste ambiente de desenvolvimento. Ver apps/ios/README.md
+# para os próximos passos exatos antes deste workflow poder ser executado.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  testflight:
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select latest available Xcode
+        run: |
+          set -euo pipefail
+          ls /Applications | grep -i '^Xcode'
+          LATEST="$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)"
+          if [[ -z "$LATEST" ]]; then
+            LATEST="/Applications/Xcode.app"
+          fi
+          echo "Selecting $LATEST"
+          sudo xcode-select -s "$LATEST"
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Reconstruct App Store Connect key (ephemeral, this job only)
+        run: |
+          set -euo pipefail
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${IOS_ASC_KEY_ID}.p8"
+          echo "$IOS_ASC_KEY_P8_BASE64" | base64 --decode > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          {
+            echo "ASC_KEY_ID=\"$IOS_ASC_KEY_ID\""
+            echo "ASC_ISSUER_ID=\"$IOS_ASC_ISSUER_ID\""
+            echo "ASC_KEY_PATH=\"$KEY_PATH\""
+          } > scripts/asc.env
+        env:
+          IOS_ASC_KEY_ID: ${{ secrets.IOS_ASC_KEY_ID }}
+          IOS_ASC_ISSUER_ID: ${{ secrets.IOS_ASC_ISSUER_ID }}
+          IOS_ASC_KEY_P8_BASE64: ${{ secrets.IOS_ASC_KEY_P8_BASE64 }}
+
+      - name: Release to TestFlight
+        run: ./scripts/testflight.sh
+
+      - name: Clean up key material
+        if: always()
+        run: rm -f "$RUNNER_TEMP"/AuthKey_*.p8 scripts/asc.env

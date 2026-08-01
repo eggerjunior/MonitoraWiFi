@@ -1,0 +1,55 @@
+name: Web CI (Next.js)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "packages/design-tokens/**"
+      - ".github/workflows/web-ci.yml"
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "packages/design-tokens/**"
+  workflow_dispatch: {}
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verificar que tokens.ts/.css/.swift estão sincronizados com tokens.json
+        working-directory: packages/design-tokens
+        run: |
+          set -euo pipefail
+          node scripts/generate.mjs
+          if [[ -n "$(git status --porcelain -- tokens.ts tokens.css DesignTokens.swift)" ]]; then
+            echo "::error::tokens.ts/tokens.css/DesignTokens.swift estão desatualizados em relação a tokens.json. Rode 'node scripts/generate.mjs' e commite o resultado."
+            git diff -- tokens.ts tokens.css DesignTokens.swift
+            exit 1
+          fi
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Dependency audit (informativo — não bloqueia o merge nesta fase)
+        run: npm audit --audit-level=critical || echo "::warning::npm audit encontrou avisos — revisar antes da Fase 8 (produção)"

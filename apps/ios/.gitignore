@@ -1,0 +1,17 @@
+# Gerado pelo XcodeGen a partir de project.yml — nunca commitado.
+*.xcodeproj/
+DerivedData/
+*.xcarchive
+*.ipa
+*.xcdistributionlogs
+
+# Segredos de release (skill ildemar_ios-native-testflight) — nunca commitados.
+*.p8
+**/asc.env
+.env*
+
+# Recursos gerados pelo XcodeGen a partir de project.yml.
+Sources/Resources/Info.plist
+Sources/Resources/EggerNetworkIntelligence.entitlements
+
+.DS_Store

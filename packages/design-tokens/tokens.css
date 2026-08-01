@@ -1,0 +1,71 @@
+/* GERADO AUTOMATICAMENTE por packages/design-tokens/scripts/generate.mjs — não editar à mão */
+
+:root {
+  --egger-color-background: #F5F6F8;
+  --egger-color-surface: #FFFFFF;
+  --egger-color-surface-raised: #FFFFFF;
+  --egger-color-border: #D8DBE0;
+  --egger-color-text-primary: #12151A;
+  --egger-color-text-secondary: #4B5563;
+  --egger-color-text-disabled: #9CA3AF;
+  --egger-color-accent: #0A6CFF;
+  --egger-color-accent-pressed: #0854CC;
+  --egger-color-success: #0F8A3F;
+  --egger-color-warning: #B5750B;
+  --egger-color-critical: #C22C2C;
+  --egger-color-info: #0A6CFF;
+  --egger-color-unavailable: #8A8F98;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+  --egger-color-background: #0E1116;
+  --egger-color-surface: #161B22;
+  --egger-color-surface-raised: #1E242D;
+  --egger-color-border: #2A313C;
+  --egger-color-text-primary: #F2F4F7;
+  --egger-color-text-secondary: #AEB4BF;
+  --egger-color-text-disabled: #5B6270;
+  --egger-color-accent: #4C9AFF;
+  --egger-color-accent-pressed: #7AB6FF;
+  --egger-color-success: #3FCB78;
+  --egger-color-warning: #E0A526;
+  --egger-color-critical: #F26D6D;
+  --egger-color-info: #4C9AFF;
+  --egger-color-unavailable: #6B7280;
+  }
+}
+
+:root[data-theme="dark"] {
+  --egger-color-background: #0E1116;
+  --egger-color-surface: #161B22;
+  --egger-color-surface-raised: #1E242D;
+  --egger-color-border: #2A313C;
+  --egger-color-text-primary: #F2F4F7;
+  --egger-color-text-secondary: #AEB4BF;
+  --egger-color-text-disabled: #5B6270;
+  --egger-color-accent: #4C9AFF;
+  --egger-color-accent-pressed: #7AB6FF;
+  --egger-color-success: #3FCB78;
+  --egger-color-warning: #E0A526;
+  --egger-color-critical: #F26D6D;
+  --egger-color-info: #4C9AFF;
+  --egger-color-unavailable: #6B7280;
+}
+
+:root[data-theme="light"] {
+  --egger-color-background: #F5F6F8;
+  --egger-color-surface: #FFFFFF;
+  --egger-color-surface-raised: #FFFFFF;
+  --egger-color-border: #D8DBE0;
+  --egger-color-text-primary: #12151A;
+  --egger-color-text-secondary: #4B5563;
+  --egger-color-text-disabled: #9CA3AF;
+  --egger-color-accent: #0A6CFF;
+  --egger-color-accent-pressed: #0854CC;
+  --egger-color-success: #0F8A3F;
+  --egger-color-warning: #B5750B;
+  --egger-color-critical: #C22C2C;
+  --egger-color-info: #0A6CFF;
+  --egger-color-unavailable: #8A8F98;
+}

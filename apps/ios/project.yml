@@ -1,0 +1,80 @@
+name: EggerNetworkIntelligence
+options:
+  bundleIdPrefix: br.app.egger
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+
+settings:
+  MARKETING_VERSION: "0.1.0"
+  CURRENT_PROJECT_VERSION: 1
+  GIT_COMMIT: dev # sobrescrito na linha de comando por scripts/testflight.sh
+
+targets:
+  EggerNetworkIntelligence:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Sources
+      - path: ../../packages/design-tokens/DesignTokens.swift
+        optional: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: br.app.egger.network-intelligence
+        PRODUCT_NAME: "Egger Network Intelligence"
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "1,2" # iPhone + iPad
+        SUPPORTS_MACCATALYST: false
+        ENABLE_PREVIEWS: true
+    info:
+      path: Sources/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: "Egger Network"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        GitCommit: "$(GIT_COMMIT)"
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSFaceIDUsageDescription: >-
+          Usado para proteger o acesso à sua sessão com Face ID, em vez de manter
+          a sessão sempre aberta.
+    entitlements:
+      path: Sources/Resources/EggerNetworkIntelligence.entitlements
+      properties:
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)br.app.egger.network-intelligence
+
+  EggerNetworkIntelligenceTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Tests
+    dependencies:
+      - target: EggerNetworkIntelligence
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+
+schemes:
+  EggerNetworkIntelligence:
+    build:
+      targets:
+        EggerNetworkIntelligence: all
+        EggerNetworkIntelligenceTests: [test]
+    test:
+      targets:
+        - EggerNetworkIntelligenceTests
+    run:
+      config: Debug
+    archive:
+      config: Release

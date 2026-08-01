@@ -1,0 +1,47 @@
+{
+  "schema": "ildemar_project-handoff-docs/v1",
+  "generated_at": "2026-07-31T22:37:06-03:00",
+  "project": {
+    "name": "MonitoraWiFi",
+    "root": "/host/opt/projetos/MonitoraWiFi",
+    "stack": []
+  },
+  "git": {
+    "branch": "main",
+    "commit": "",
+    "status": "?? .env.example\n?? .github/\n?? .gitignore\n?? README.md\n?? apps/\n?? docs/\n?? infrastructure/\n?? packages/",
+    "remote": "",
+    "latest_commits": [],
+    "latest_tags": []
+  },
+  "version": {},
+  "documentation": [
+    "docs/development-handoff/README.md",
+    "docs/development-handoff/PROJECT_CONTEXT.md",
+    "docs/development-handoff/RELEASE_LOG.md",
+    "docs/development-handoff/SCREENSHOTS.md",
+    "docs/development-handoff/IMPORT_MANIFEST.json"
+  ],
+  "key_files": [
+    "README.md"
+  ],
+  "screenshots": [],
+  "import_order": [
+    "docs/development-handoff/README.md",
+    "docs/development-handoff/PROJECT_CONTEXT.md",
+    "docs/development-handoff/RELEASE_LOG.md",
+    "docs/development-handoff/IMPORT_MANIFEST.json"
+  ],
+  "do_not_read_or_commit": [
+    ".env",
+    ".env.*",
+    "**/asc.env",
+    "*.p8",
+    "DerivedData/",
+    "*.xcarchive",
+    "*.ipa",
+    "node_modules/",
+    "build/",
+    "dist/"
+  ]
+}

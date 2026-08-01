@@ -1,0 +1,25 @@
+@import "tailwindcss";
+@import "../../../../packages/design-tokens/tokens.css";
+
+@theme inline {
+  --color-egg-background: var(--egger-color-background);
+  --color-egg-surface: var(--egger-color-surface);
+  --color-egg-surface-raised: var(--egger-color-surface-raised);
+  --color-egg-border: var(--egger-color-border);
+  --color-egg-text-primary: var(--egger-color-text-primary);
+  --color-egg-text-secondary: var(--egger-color-text-secondary);
+  --color-egg-text-disabled: var(--egger-color-text-disabled);
+  --color-egg-accent: var(--egger-color-accent);
+  --color-egg-accent-pressed: var(--egger-color-accent-pressed);
+  --color-egg-success: var(--egger-color-success);
+  --color-egg-warning: var(--egger-color-warning);
+  --color-egg-critical: var(--egger-color-critical);
+  --color-egg-info: var(--egger-color-info);
+  --color-egg-unavailable: var(--egger-color-unavailable);
+}
+
+body {
+  background: var(--egger-color-background);
+  color: var(--egger-color-text-primary);
+  font-family: system-ui, -apple-system, "SF Pro Text", "Segoe UI", sans-serif;
+}
