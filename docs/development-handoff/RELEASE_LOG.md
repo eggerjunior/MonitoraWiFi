@@ -4,6 +4,17 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-01 — Fase 7: agendamento do worker de anomalias em produção
+
+- Imagem `egger-worker:latest` buildada direto do checkout de produção
+  (`apps/worker/Dockerfile`).
+- Rodado manualmente uma vez contra o Postgres real antes de agendar —
+  reportou corretamente "sem histórico suficiente ainda" pro único site com
+  agente (esperado, agente rodando há minutos; 0 anomalias falsas).
+- Cron instalado (`0 */6 * * *`), reaproveitando `/opt/apps/monitorawifi/.env`
+  e a rede `monitorawifi_net`, log em `/var/log/egger-worker.log`. Fecha o
+  pendente de agendamento que estava adiado desde a introdução do worker.
+
 ## 2026-08-01 — Primeiro agente real enrolado em produção + UniFi validado contra o console real
 
 - Instalação real feita pelo usuário: container Docker (`apps/local-agent/Dockerfile`,

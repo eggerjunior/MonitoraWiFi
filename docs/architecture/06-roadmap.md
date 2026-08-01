@@ -134,12 +134,16 @@ LiDAR, comparação entre levantamentos).
 > testadas (`apps/worker/internal/baseline` — baseline por hora/dia da
 > semana, z-score, nunca reporta sem histórico suficiente) e integradas
 > (`cmd/worker` grava em `anomalies`, backend expõe `GET /sites/{id}/anomalies`).
-> Validado ponta a ponta com Postgres real. **Não rodado contra produção
-> ainda** — sem histórico real (nenhum agente enrolado no site do usuário) e
-> sem agendamento (cron/systemd timer, decisão adiada para Fase 8). **Faltam**:
-> cobrir métricas de speed test (só ping por enquanto — infraestrutura já
-> genérica o bastante), motor de correlação/diagnóstico, recomendações com
-> evidência/confiança/impacto/risco, relatórios completos — nenhum começado.
+> Validado ponta a ponta com Postgres real. **Atualização (2026-08-01)**:
+> agendamento configurado em produção (cron a cada 6h, `egger-worker:latest`
+> buildado direto do repo e rodado com `docker run --rm` na rede
+> `monitorawifi_net`) e primeira execução real confirmada contra o site com
+> agente de verdade — reportou corretamente "sem histórico suficiente ainda"
+> (nenhuma anomalia falsa). **Faltam**: acumular histórico real suficiente
+> pro baseline ter efeito prático, cobrir métricas de speed test (só ping
+> por enquanto — infraestrutura já genérica o bastante), motor de
+> correlação/diagnóstico, recomendações com evidência/confiança/impacto/risco,
+> relatórios completos — nenhum começado.
 
 Anomalias estatísticas explicáveis (baseline por hora/dia da semana), motor de
 correlação/diagnóstico (Internet lenta, Wi-Fi lento, cliente desconectando),
