@@ -20,15 +20,20 @@ de desenvolvimento. Critérios de aceite detalhados em `07-criterios-aceite-fase
 
 ## Fase 2 — Agente local
 
-> **Status parcial (2026-08-01)**: registro/enrolamento, heartbeat, ping
-> (ICMP/TCP/HTTP/DNS), buffer offline com backoff exponencial e streaming de
-> métricas para o backend estão implementados e testados (24 testes
-> automatizados, `apps/local-agent` + endpoints correspondentes em
-> `apps/api`). **Faltam**: speed test (download/upload/bufferbloat),
-> pipeline de release do binário (`scripts/install.sh` depende de um release
-> do GitHub que ainda não existe), aplicar a migração `0002_agents` em
-> produção, e os primeiros dashboards consumindo dados reais do agente. Ver
-> `apps/local-agent/README.md` para o detalhamento completo.
+> **Status (2026-08-01)**: registro/enrolamento, heartbeat, ping
+> (ICMP/TCP/HTTP/DNS), speed test HTTP (download/upload/bufferbloat), buffer
+> offline com backoff exponencial e streaming de métricas para o backend
+> estão implementados e testados (29 testes automatizados em
+> `apps/local-agent` + endpoints correspondentes em `apps/api`, incluindo
+> `GET /sites/{id}/ping-tests` e `GET /sites/{id}/speed-tests`). A página
+> **Internet** do web (`apps/web`) já consome esses dados reais — validado
+> ponta a ponta com um agente enrolado de verdade via containers efêmeros
+> (não simulado). **Faltam**: speed test modo LAN (iPerf3), pipeline de
+> release do binário (`scripts/install.sh` depende de um release do GitHub
+> que ainda não existe), e aplicar as migrações `0002_agents`/
+> `0003_speed_tests` no banco de produção (`monitorawifi-postgres`) — decisão
+> deliberadamente não tomada nesta sessão. Ver `apps/local-agent/README.md`
+> para o detalhamento completo.
 
 Registro/enrolamento do agente (ADR-006), heartbeat, ping (ICMP/TCP/HTTP/DNS),
 speed test (Internet e LAN), buffer offline com backoff exponencial, streaming de

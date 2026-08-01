@@ -4,6 +4,30 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-01 — Fase 2 concluída: speed test + página Internet com dados reais
+
+- App/plataforma: apps/local-agent, apps/api, apps/web
+- Status: speed test HTTP (download/upload/latência ociosa/sob carga/
+  bufferbloat/jitter) implementado no agente com fila e reenvio próprios;
+  migração `0003_speed_tests`; endpoint de telemetria estendido; novos
+  `GET /sites/{id}/ping-tests` e `GET /sites/{id}/speed-tests`; página
+  Internet do web consumindo esses dados com badge de proveniência.
+- **Validação ponta a ponta completa e real** (containers efêmeros, já
+  removidos): usuário logado via API real → token de enrolamento criado via
+  API real → agente enrolado via `POST /agents/enroll` real → telemetria
+  (ping + speed test) enviada via `POST /agents/{id}/telemetry` real e
+  aceita (202) → página `/internet` do web renderizando os valores exatos
+  enviados (312.7 Mbps download, 48.3 Mbps upload, 8.4ms latência p50 ICMP,
+  13.5ms bufferbloat) com as fontes corretas ("Agente — HTTP",
+  "Agente — ICMP"). Nenhum dado simulado nessa cadeia.
+- CI real (GitHub Actions) verde nos três: `api-ci.yml`,
+  `local-agent-ci.yml`, `web-ci.yml`.
+- Pendências reais: speed test modo LAN (iPerf3) não implementado; sem
+  pipeline de release do binário do agente; migrações `0002`/`0003` não
+  aplicadas no banco de produção (`monitorawifi-postgres`) — decisão
+  deliberadamente não tomada nesta sessão, exige autorização explícita
+  (DEPLOYMENT_STANDARD.md).
+
 ## 2026-08-01 — Fase 2 (Agente local, parcial): enrolamento, heartbeat, sondas, fila offline
 
 - App/plataforma: apps/local-agent (Go, novo) + apps/api (endpoints de agente)
