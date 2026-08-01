@@ -1,5 +1,11 @@
 # Verificações Pendentes na Instalação UniFi Real
 
+> **Escopo confirmado em 2026-08-01**: apenas o console **Cloud Gateway Max
+> (UCG Max)** da Egger está em escopo deste projeto. O usuário tem acesso a
+> um segundo console ("Dream Router 7") vinculado à mesma conta Ubiquiti,
+> mas esse pertence à casa do filho dele — **fora de escopo**, não deve ser
+> tratado/inventariado por este produto.
+
 Estes itens **não podem ser confirmados a partir de documentação pública** — exigem
 acesso direto ao console (Cloud Gateway Max) da instalação Egger. Nenhum deles deve
 ser assumido/simulado antes de resposta real; a Fase 3 (integração UniFi) trata cada
