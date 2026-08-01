@@ -45,3 +45,33 @@ export interface Page<T> {
   page_size: number;
   total: number;
 }
+
+export type PingProtocol = "icmp" | "tcp" | "http" | "dns";
+
+export interface PingTest {
+  id: string;
+  agent_id: string;
+  target: string;
+  protocol: PingProtocol;
+  latency_ms_p50: number | null;
+  latency_ms_p95: number | null;
+  latency_ms_p99: number | null;
+  jitter_ms: number | null;
+  packet_loss_pct: number | null;
+  executed_at: string;
+}
+
+export type SpeedTestMode = "internet" | "lan" | "http";
+
+export interface SpeedTest {
+  id: string;
+  agent_id: string;
+  mode: SpeedTestMode;
+  download_mbps: number | null;
+  upload_mbps: number | null;
+  idle_latency_ms: number | null;
+  loaded_latency_ms: number | null;
+  bufferbloat_ms: number | null;
+  jitter_ms: number | null;
+  executed_at: string;
+}
