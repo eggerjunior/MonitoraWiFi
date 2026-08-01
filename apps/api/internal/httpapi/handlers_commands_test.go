@@ -345,6 +345,62 @@ func TestCreateCommand_Traceroute_RequerTarget(t *testing.T) {
 	}
 }
 
+func TestCreateCommand_BatchPing_RequerTargets(t *testing.T) {
+	siteID := uuid.New()
+	admin := store.User{ID: uuid.New(), Email: "admin@example.com", PasswordHash: mustHash(t, "senha12345"), Role: store.RoleAdministrator}
+	deps := newAgentTestServer(admin)
+	cookie := loginAndGetCookie(t, deps.server, "admin@example.com", "senha12345")
+	enrollTestAgent(t, deps, siteID)
+
+	badBody, _ := json.Marshal(map[string]any{"type": "batch_ping"})
+	badReq := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(badBody))
+	badReq.AddCookie(cookie)
+	badRec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(badRec, badReq)
+	if badRec.Code != http.StatusBadRequest {
+		t.Fatalf("esperava 400 sem targets, recebeu %d: %s", badRec.Code, badRec.Body.String())
+	}
+
+	emptyBody, _ := json.Marshal(map[string]any{"type": "batch_ping", "params": map[string]any{"targets": []string{}}})
+	emptyReq := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(emptyBody))
+	emptyReq.AddCookie(cookie)
+	emptyRec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(emptyRec, emptyReq)
+	if emptyRec.Code != http.StatusBadRequest {
+		t.Fatalf("esperava 400 com lista vazia de targets, recebeu %d: %s", emptyRec.Code, emptyRec.Body.String())
+	}
+
+	okBody, _ := json.Marshal(map[string]any{"type": "batch_ping", "params": map[string]any{"targets": []string{"1.1.1.1", "8.8.8.8"}}})
+	okReq := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(okBody))
+	okReq.AddCookie(cookie)
+	okRec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(okRec, okReq)
+	if okRec.Code != http.StatusAccepted {
+		t.Fatalf("esperava 202 com targets, recebeu %d: %s", okRec.Code, okRec.Body.String())
+	}
+}
+
+func TestCreateCommand_BatchPing_LimiteDeAlvos(t *testing.T) {
+	siteID := uuid.New()
+	admin := store.User{ID: uuid.New(), Email: "admin@example.com", PasswordHash: mustHash(t, "senha12345"), Role: store.RoleAdministrator}
+	deps := newAgentTestServer(admin)
+	cookie := loginAndGetCookie(t, deps.server, "admin@example.com", "senha12345")
+	enrollTestAgent(t, deps, siteID)
+
+	targets := make([]string, maxBatchPingTargets+1)
+	for i := range targets {
+		targets[i] = "1.1.1.1"
+	}
+	body, _ := json.Marshal(map[string]any{"type": "batch_ping", "params": map[string]any{"targets": targets}})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(body))
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("esperava 400 acima do limite de alvos, recebeu %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
 // TestCreateCommand_RateLimit confirma o gap real de segurança encontrado
 // na revisão do threat model (§5, "rate limiting antes de abrir qualquer
 // endpoint de teste ativo"): sem limite, uma conta comprometida poderia

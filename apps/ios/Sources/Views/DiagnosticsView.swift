@@ -15,12 +15,24 @@ final class DiagnosticsViewModel {
 
     var target = "1.1.1.1"
     var protocolName = "icmp"
+    var batchTargetsRaw = "1.1.1.1\n8.8.8.8"
+    var batchProtocolName = "icmp"
     var hostname = "example.com"
     var tracerouteTarget = "1.1.1.1"
 
     private(set) var pingCommand: Command?
+    private(set) var batchPingCommand: Command?
     private(set) var dnsCommand: Command?
     private(set) var tracerouteCommand: Command?
+
+    static let maxBatchTargets = 20
+
+    var batchTargets: [String] {
+        batchTargetsRaw
+            .split(separator: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
     private(set) var isSubmitting = false
     private(set) var submitError: String?
 
@@ -62,6 +74,22 @@ final class DiagnosticsViewModel {
             let created = try await client.createPingCommand(siteId: siteId, target: target, protocolName: protocolName)
             pingCommand = created
             startPolling(commandId: created.id) { [weak self] updated in self?.pingCommand = updated }
+        } catch let error as APIClient.ClientError {
+            submitError = Self.message(for: error)
+        } catch {
+            submitError = "Erro de rede ao criar o comando."
+        }
+        isSubmitting = false
+    }
+
+    func runBatchPing() async {
+        guard let siteId else { return }
+        submitError = nil
+        isSubmitting = true
+        do {
+            let created = try await client.createBatchPingCommand(siteId: siteId, targets: batchTargets, protocolName: batchProtocolName)
+            batchPingCommand = created
+            startPolling(commandId: created.id) { [weak self] updated in self?.batchPingCommand = updated }
         } catch let error as APIClient.ClientError {
             submitError = Self.message(for: error)
         } catch {
@@ -146,6 +174,7 @@ struct DiagnosticsView: View {
                     .foregroundStyle(Color.egger(.critical, scheme: colorScheme))
             } else {
                 pingSection
+                batchPingSection
                 dnsLookupSection
                 tracerouteSection
             }
@@ -187,6 +216,50 @@ struct DiagnosticsView: View {
                     LabeledContent("p50", value: formatMs(result.latencyMsP50))
                     LabeledContent("Perda", value: formatPct(result.packetLossPct))
                     LabeledContent("Jitter", value: formatMs(result.jitterMs))
+                }
+                if command.status == "failed" {
+                    Text(command.error ?? "Falha não especificada.")
+                        .foregroundStyle(Color.egger(.critical, scheme: colorScheme))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var batchPingSection: some View {
+        Section("Ping em lote") {
+            TextField("Alvos, um por linha", text: $viewModel.batchTargetsRaw, axis: .vertical)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .lineLimit(3...6)
+            Picker("Protocolo", selection: $viewModel.batchProtocolName) {
+                ForEach(Self.protocols, id: \.self) { p in Text(p.uppercased()).tag(p) }
+            }
+            if viewModel.batchTargets.count > DiagnosticsViewModel.maxBatchTargets {
+                Text("Máximo de \(DiagnosticsViewModel.maxBatchTargets) alvos por execução.")
+                    .font(.caption)
+                    .foregroundStyle(Color.egger(.critical, scheme: colorScheme))
+            }
+            Button {
+                Task { await viewModel.runBatchPing() }
+            } label: {
+                Text("Executar")
+            }
+            .disabled(viewModel.isSubmitting || viewModel.batchTargets.isEmpty || viewModel.batchTargets.count > DiagnosticsViewModel.maxBatchTargets)
+
+            if let command = viewModel.batchPingCommand {
+                StatusRow(status: command.status, colorScheme: colorScheme)
+                if command.status == "completed", case .batchPing(let result) = command.result {
+                    ForEach(result.results, id: \.target) { r in
+                        HStack {
+                            Text(r.target)
+                            Spacer()
+                            Text(formatMs(r.latencyMsP50))
+                            Spacer()
+                            Text(formatPct(r.packetLossPct))
+                        }
+                        .font(.system(.caption, design: .monospaced))
+                    }
                 }
                 if command.status == "failed" {
                     Text(command.error ?? "Falha não especificada.")

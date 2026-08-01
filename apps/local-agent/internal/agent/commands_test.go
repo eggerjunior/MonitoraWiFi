@@ -240,3 +240,87 @@ func TestPollAndRunCommands_Traceroute(t *testing.T) {
 		t.Fatalf("esperava reached=true para traceroute até 127.0.0.1, obtive: %+v", result)
 	}
 }
+
+func TestPollAndRunCommands_BatchPing(t *testing.T) {
+	// Dois listeners TCP reais — o batch_ping precisa medir cada alvo de
+	// verdade, não inventar N resultados a partir de uma única sonda.
+	ln1, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("erro ao abrir listener 1: %v", err)
+	}
+	defer ln1.Close()
+	ln2, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("erro ao abrir listener 2: %v", err)
+	}
+	defer ln2.Close()
+	for _, ln := range []net.Listener{ln1, ln2} {
+		go func(l net.Listener) {
+			for {
+				conn, err := l.Accept()
+				if err != nil {
+					return
+				}
+				conn.Close()
+			}
+		}(ln)
+	}
+	targets := []string{ln1.Addr().String(), ln2.Addr().String()}
+
+	var reportedBody map[string]any
+	claimed := false
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/agents/agent-1/commands":
+			if claimed {
+				json.NewEncoder(w).Encode(map[string]any{"items": []map[string]any{}})
+				return
+			}
+			claimed = true
+			params, _ := json.Marshal(map[string]any{"targets": targets, "protocol": "tcp"})
+			json.NewEncoder(w).Encode(map[string]any{
+				"items": []map[string]any{
+					{"id": "cmd-5", "site_id": "site-1", "type": "batch_ping", "params": json.RawMessage(params), "status": "claimed"},
+				},
+			})
+		case r.Method == http.MethodPost && r.URL.Path == "/agents/agent-1/commands/cmd-5/result":
+			json.NewDecoder(r.Body).Decode(&reportedBody)
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Errorf("requisição inesperada: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	a := newTestAgentForCommands(t, server.URL)
+	a.pollAndRunCommands(t.Context())
+
+	if reportedBody == nil {
+		t.Fatal("esperava que o agente reportasse um resultado, nenhum recebido")
+	}
+	if reportedBody["status"] != "completed" {
+		t.Fatalf("status reportado = %v, esperado completed", reportedBody["status"])
+	}
+	result, ok := reportedBody["result"].(map[string]any)
+	if !ok {
+		t.Fatalf("esperava campo result no reporte, recebi: %+v", reportedBody)
+	}
+	results, ok := result["results"].([]any)
+	if !ok || len(results) != 2 {
+		t.Fatalf("esperava 2 resultados no batch, recebi: %+v", result)
+	}
+	seen := map[string]bool{}
+	for _, r := range results {
+		item := r.(map[string]any)
+		seen[item["target"].(string)] = true
+		if item["packet_loss_pct"] != 0.0 {
+			t.Fatalf("esperava 0%% de perda contra listener real, obtive %v", item["packet_loss_pct"])
+		}
+	}
+	for _, target := range targets {
+		if !seen[target] {
+			t.Fatalf("alvo %s não apareceu nos resultados: %+v", target, results)
+		}
+	}
+}

@@ -86,10 +86,13 @@ em cada card.
 > implementados de ponta a ponta (usuário→backend→agente→backend→usuário,
 > mesmo ciclo de comandos da Fase 5) e testados com sondas reais (traceroute
 > com socket ICMP real contra loopback, DNS lookup real). Calculadora de
-> sub-rede (cálculo puro, sem agente) também pronta em web e iOS. **Faltam**:
-> batch ping, port scanner (com allowlist e auditoria), SSL/TLS checker,
-> RDAP/WHOIS, HTTP client, LAN scanner, Wake-on-LAN (ADR-008) — nenhum
-> começado ainda.
+> sub-rede (cálculo puro, sem agente) também pronta em web e iOS.
+> **Atualização (2026-08-01)**: ping em lote (`batch_ping`, até 20 alvos por
+> execução) implementado ponta a ponta e testado com sondas reais (dois
+> listeners TCP reais no teste do agente) — reaproveita a mesma fila de
+> comando sob demanda. **Faltam**: port scanner (com allowlist e auditoria),
+> SSL/TLS checker, RDAP/WHOIS, HTTP client, LAN scanner, Wake-on-LAN
+> (ADR-008) — nenhum começado ainda.
 
 Ping, batch ping, DNS lookup, traceroute, port scanner (com allowlist e auditoria),
 SSL/TLS checker, RDAP/WHOIS, HTTP client, LAN scanner, subnet calculator,

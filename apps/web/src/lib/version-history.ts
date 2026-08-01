@@ -10,12 +10,20 @@ export type VersionEntry = {
 
 export const versionHistory: VersionEntry[] = [
   {
+    version: "0.5.0",
+    date: "2026-08-01",
+    changes: [
+      "Diagnósticos: ping em lote (vários alvos numa execução, real, executado pelo agente) — Fase 5",
+    ],
+    isCurrent: true,
+  },
+  {
     version: "0.4.0",
     date: "2026-08-01",
     changes: [
       "Diagnósticos: DNS lookup e traceroute sob demanda (reais, executados pelo agente) + calculadora de sub-rede (cálculo local, sem agente) — Fase 5",
     ],
-    isCurrent: true,
+    isCurrent: false,
   },
   {
     version: "0.3.0",

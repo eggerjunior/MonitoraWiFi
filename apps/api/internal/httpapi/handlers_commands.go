@@ -8,6 +8,7 @@ package httpapi
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -20,7 +21,14 @@ var supportedCommandTypes = map[string]bool{
 	store.AgentCommandTypePing:       true,
 	store.AgentCommandTypeDNSLookup:  true,
 	store.AgentCommandTypeTraceroute: true,
+	store.AgentCommandTypeBatchPing:  true,
 }
+
+// maxBatchPingTargets é um limite de sanidade, não uma primitiva de
+// varredura em massa (threat-model.md §5): o caso de uso é testar uma lista
+// pequena de alvos já conhecidos do usuário (ex.: alguns APs/servidores),
+// não enumerar uma faixa de rede.
+const maxBatchPingTargets = 20
 
 type createCommandRequest struct {
 	Type   string          `json:"type"`
@@ -42,6 +50,11 @@ type dnsLookupCommandParams struct {
 
 type tracerouteCommandParams struct {
 	Target string `json:"target"`
+}
+
+type batchPingCommandParams struct {
+	Targets  []string `json:"targets"`
+	Protocol string   `json:"protocol"`
 }
 
 // handleCreateCommand valida o tipo/params antes de persistir — nunca
@@ -124,6 +137,39 @@ func (s *Server) handleCreateCommand(w http.ResponseWriter, r *http.Request) {
 		}
 		if p.Target == "" {
 			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.target é obrigatório")
+			return
+		}
+		req.Params, _ = json.Marshal(p)
+
+	case store.AgentCommandTypeBatchPing:
+		var p batchPingCommandParams
+		if len(req.Params) == 0 {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.targets é obrigatório para type=batch_ping")
+			return
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params inválido")
+			return
+		}
+		if len(p.Targets) == 0 {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.targets precisa ter ao menos 1 alvo")
+			return
+		}
+		if len(p.Targets) > maxBatchPingTargets {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", fmt.Sprintf("params.targets aceita no máximo %d alvos", maxBatchPingTargets))
+			return
+		}
+		for _, t := range p.Targets {
+			if t == "" {
+				writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.targets não pode conter alvo vazio")
+				return
+			}
+		}
+		if p.Protocol == "" {
+			p.Protocol = "icmp"
+		}
+		if !supportedPingProtocols[p.Protocol] {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.protocol inválido (icmp, tcp, http ou dns)")
 			return
 		}
 		req.Params, _ = json.Marshal(p)

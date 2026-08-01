@@ -43,6 +43,7 @@ const (
 	AgentCommandTypePing       = "ping"
 	AgentCommandTypeDNSLookup  = "dns_lookup"
 	AgentCommandTypeTraceroute = "traceroute"
+	AgentCommandTypeBatchPing  = "batch_ping"
 )
 
 type AgentCommandStore interface {

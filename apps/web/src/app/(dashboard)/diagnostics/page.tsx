@@ -1,5 +1,6 @@
 import { getCurrentSite } from "@/lib/current-site";
 import { PingTool } from "@/components/PingTool";
+import { BatchPingTool } from "@/components/BatchPingTool";
 import { DnsLookupTool } from "@/components/DnsLookupTool";
 import { TracerouteTool } from "@/components/TracerouteTool";
 import { SubnetCalculator } from "@/components/SubnetCalculator";
@@ -28,6 +29,7 @@ export default async function DiagnosticsPage() {
       {"site" in current && (
         <>
           <PingTool siteId={current.site.id} />
+          <BatchPingTool siteId={current.site.id} />
           <DnsLookupTool siteId={current.site.id} />
           <TracerouteTool siteId={current.site.id} />
         </>

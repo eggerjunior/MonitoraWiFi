@@ -103,6 +103,16 @@ public struct PingCommandResult: Codable, Sendable {
     }
 }
 
+public struct BatchPingCommandResult: Codable, Sendable {
+    public let protocolName: String
+    public let results: [PingCommandResult]
+
+    enum CodingKeys: String, CodingKey {
+        case protocolName = "protocol"
+        case results
+    }
+}
+
 public struct DnsLookupCommandResult: Codable, Sendable {
     public let hostname: String
     public let addresses: [String]
@@ -139,6 +149,7 @@ public struct TracerouteCommandResult: Codable, Sendable {
 /// campos obrigatórios mutuamente exclusivos), nunca inventamos qual é.
 public enum CommandResult: Sendable {
     case ping(PingCommandResult)
+    case batchPing(BatchPingCommandResult)
     case dnsLookup(DnsLookupCommandResult)
     case traceroute(TracerouteCommandResult)
 }
@@ -147,6 +158,8 @@ extension CommandResult: Decodable {
     public init(from decoder: Decoder) throws {
         if let v = try? PingCommandResult(from: decoder) {
             self = .ping(v)
+        } else if let v = try? BatchPingCommandResult(from: decoder) {
+            self = .batchPing(v)
         } else if let v = try? DnsLookupCommandResult(from: decoder) {
             self = .dnsLookup(v)
         } else if let v = try? TracerouteCommandResult(from: decoder) {

@@ -116,8 +116,14 @@ UniFi, dados de localização física via LiDAR).
   todas.
 - ✅ SAST e dependency scanning já rodam no CI desde a Fase 1
   (`security-scan.yml`, `govulncheck` em cada módulo Go).
+- ✅ **Resolvido em 2026-08-01 (Fase 5)**: `batch_ping` (novo tipo de comando)
+  limita a no máximo 20 alvos por execução (`maxBatchPingTargets` em
+  `handlers_commands.go`) — não é uma primitiva de varredura em massa, é uma
+  lista pequena e explícita de alvos que o usuário já conhece (ex.: alguns
+  APs/servidores), cada um testado individualmente. O rate limiting por
+  usuário (acima) se aplica igual a qualquer outro tipo de comando.
 - ⏳ **Gap real identificado, ainda não corrigido**: os comandos sob demanda
-  (ping/dns_lookup/traceroute) aceitam qualquer `target`/`hostname` informado
+  (ping/dns_lookup/traceroute/batch_ping) aceitam qualquer `target`/`hostname` informado
   pelo usuário, sem allowlist de RFC 1918 nem confirmação extra para alvos
   externos — a mitigação descrita na Seção 3.1 ("todo alvo precisa estar
   cadastrado... alvo externo exige confirmação explícita") ainda não está

@@ -1053,13 +1053,15 @@ components:
       properties:
         type:
           type: string
-          enum: [ping, dns_lookup, traceroute]
+          enum: [ping, dns_lookup, traceroute, batch_ping]
         params:
           type: object
           description: >
             Formato depende de `type`. "ping": { target: string, protocol?:
             icmp|tcp|http|dns (padrão icmp) }. "dns_lookup": { hostname:
-            string }. "traceroute": { target: string }.
+            string }. "traceroute": { target: string }. "batch_ping": {
+            targets: string[] (1 a 20 itens), protocol?: icmp|tcp|http|dns
+            (padrão icmp) }.
 
     Command:
       type: object

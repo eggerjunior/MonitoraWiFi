@@ -74,6 +74,12 @@ export interface PingCommandResult {
   executed_at: string;
 }
 
+export interface BatchPingCommandResult {
+  protocol: PingProtocol;
+  results: PingCommandResult[];
+  executed_at: string;
+}
+
 export interface DnsLookupCommandResult {
   hostname: string;
   addresses: string[];

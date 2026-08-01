@@ -50,6 +50,8 @@ func (a *Agent) runCommand(ctx context.Context, cmd apiclient.Command) {
 		a.runDNSLookupCommand(ctx, cmd)
 	case "traceroute":
 		a.runTracerouteCommand(ctx, cmd)
+	case "batch_ping":
+		a.runBatchPingCommand(ctx, cmd)
 	default:
 		// O backend já valida o tipo na criação (CHECK constraint +
 		// validação no handler) — chegar aqui com um tipo desconhecido só
@@ -64,6 +66,25 @@ type pingCommandParams struct {
 	Protocol string `json:"protocol"`
 }
 
+// probeByProtocol despacha pro probe certo — reaproveitado pelo ping único
+// e pelo ping em lote (batch_ping), que só dispara o mesmo probe várias
+// vezes em sequência (nunca em paralelo, pra não virar uma ferramenta de
+// flood contra a LAN — Seção 2.1 do threat model).
+func probeByProtocol(ctx context.Context, target, protocol string, opts probes.Options) (probes.Result, bool) {
+	switch protocol {
+	case "icmp":
+		return probes.ProbeICMP(ctx, target, opts), true
+	case "tcp":
+		return probes.ProbeTCP(ctx, target, opts), true
+	case "http":
+		return probes.ProbeHTTP(ctx, target, opts), true
+	case "dns":
+		return probes.ProbeDNS(ctx, target, "", opts), true
+	default:
+		return probes.Result{}, false
+	}
+}
+
 func (a *Agent) runPingCommand(ctx context.Context, cmd apiclient.Command) {
 	var params pingCommandParams
 	if err := json.Unmarshal(cmd.Params, &params); err != nil {
@@ -72,17 +93,8 @@ func (a *Agent) runPingCommand(ctx context.Context, cmd apiclient.Command) {
 	}
 
 	opts := probes.DefaultOptions()
-	var result probes.Result
-	switch params.Protocol {
-	case "icmp":
-		result = probes.ProbeICMP(ctx, params.Target, opts)
-	case "tcp":
-		result = probes.ProbeTCP(ctx, params.Target, opts)
-	case "http":
-		result = probes.ProbeHTTP(ctx, params.Target, opts)
-	case "dns":
-		result = probes.ProbeDNS(ctx, params.Target, "", opts)
-	default:
+	result, ok := probeByProtocol(ctx, params.Target, params.Protocol, opts)
+	if !ok {
 		a.reportCommandFailure(ctx, cmd.ID, "protocolo não suportado: "+params.Protocol)
 		return
 	}
@@ -166,6 +178,57 @@ func (a *Agent) runTracerouteCommand(ctx context.Context, cmd apiclient.Command)
 		"reached":     result.Reached,
 		"hops":        hops,
 		"executed_at": result.ExecutedAt.Format(time.RFC3339Nano),
+	}
+	if err := a.client.ReportCommandResult(ctx, a.identity.AgentID, a.identity.AgentSecret, cmd.ID, "completed", payload, ""); err != nil {
+		a.logger.Error("erro ao reportar resultado do comando", slog.String("command_id", cmd.ID), slog.Any("error", err))
+	}
+}
+
+type batchPingCommandParams struct {
+	Targets  []string `json:"targets"`
+	Protocol string   `json:"protocol"`
+}
+
+func (a *Agent) runBatchPingCommand(ctx context.Context, cmd apiclient.Command) {
+	var params batchPingCommandParams
+	if err := json.Unmarshal(cmd.Params, &params); err != nil {
+		a.reportCommandFailure(ctx, cmd.ID, "params inválido: "+err.Error())
+		return
+	}
+	if len(params.Targets) == 0 {
+		a.reportCommandFailure(ctx, cmd.ID, "params.targets vazio")
+		return
+	}
+
+	protocol := params.Protocol
+	if protocol == "" {
+		protocol = "icmp"
+	}
+
+	opts := probes.DefaultOptions()
+	results := make([]map[string]any, 0, len(params.Targets))
+	for _, target := range params.Targets {
+		result, ok := probeByProtocol(ctx, target, protocol, opts)
+		if !ok {
+			a.reportCommandFailure(ctx, cmd.ID, "protocolo não suportado: "+protocol)
+			return
+		}
+		results = append(results, map[string]any{
+			"target":          result.Target,
+			"protocol":        result.Protocol,
+			"latency_ms_p50":  result.LatencyMsP50,
+			"latency_ms_p95":  result.LatencyMsP95,
+			"latency_ms_p99":  result.LatencyMsP99,
+			"jitter_ms":       result.JitterMs,
+			"packet_loss_pct": result.PacketLossPct,
+			"executed_at":     result.ExecutedAt.Format(time.RFC3339Nano),
+		})
+	}
+
+	payload := map[string]any{
+		"protocol":    protocol,
+		"results":     results,
+		"executed_at": time.Now().UTC().Format(time.RFC3339Nano),
 	}
 	if err := a.client.ReportCommandResult(ctx, a.identity.AgentID, a.identity.AgentSecret, cmd.ID, "completed", payload, ""); err != nil {
 		a.logger.Error("erro ao reportar resultado do comando", slog.String("command_id", cmd.ID), slog.Any("error", err))

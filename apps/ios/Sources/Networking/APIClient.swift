@@ -154,6 +154,21 @@ public actor APIClient {
         return try await postJSON("/sites/\(siteId)/commands", body: Body(type: "traceroute", params: Params(target: target)))
     }
 
+    /// Ping em lote (Fase 5) — mesma fila de comando sob demanda, testando
+    /// vários alvos numa única execução real do agente.
+    public func createBatchPingCommand(siteId: String, targets: [String], protocolName: String) async throws -> Command {
+        struct Params: Encodable {
+            let targets: [String]
+            let protocolName: String
+            enum CodingKeys: String, CodingKey {
+                case targets
+                case protocolName = "protocol"
+            }
+        }
+        struct Body: Encodable { let type: String; let params: Params }
+        return try await postJSON("/sites/\(siteId)/commands", body: Body(type: "batch_ping", params: Params(targets: targets, protocolName: protocolName)))
+    }
+
     /// Inventário UniFi (Fase 3/4, início) — sincronizado pelo agente local,
     /// nunca chamado diretamente pelo app (ADR-001).
     public func uniFiDevices(siteId: String) async throws -> UniFiDeviceList {
