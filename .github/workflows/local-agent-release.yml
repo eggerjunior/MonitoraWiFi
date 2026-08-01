@@ -66,8 +66,8 @@ jobs:
         run: |
           set -euo pipefail
           gh release create "${{ steps.version.outputs.tag }}" \
-            apps/local-agent/dist/egger-agent-* \
-            apps/local-agent/dist/SHA256SUMS.txt \
+            dist/egger-agent-* \
+            dist/SHA256SUMS.txt \
             --repo "${{ github.repository }}" \
             --title "Local agent v${{ steps.version.outputs.version }}" \
             --notes "Build automático a partir do commit ${{ steps.version.outputs.commit }}. Binários: linux/amd64, linux/arm64, darwin/amd64, darwin/arm64 (CGO desativado, estático). Ver apps/local-agent/README.md para instalação (scripts/install.sh)." \
