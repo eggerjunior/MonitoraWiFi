@@ -4,6 +4,22 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-01 — Fase 5: ping em lote (batch_ping), deploy completo
+
+- Commit `63d1dc92`. Novo tipo de comando sob demanda reaproveitando a fila
+  já existente (ping/dns_lookup/traceroute) — até 20 alvos por execução,
+  testado com sondas reais (dois listeners TCP reais no teste do agente).
+- Migração `0008_command_type_batch_ping` aplicada em produção (backup
+  prévio via `backup-postgres.sh`).
+- API redeployada (`monitorawifi-api:63d1dc92`) e Web redeployada
+  (`monitorawifi-web:63d1dc92`) — ambas confirmadas saudáveis
+  (`/healthz`, `/readyz`, `/login` 200) logo após o deploy.
+- Agente `agent-v0.4.0` publicado (release do binário, linux/darwin,
+  amd64/arm64).
+- iOS 0.2.0 (Build 9) publicado no TestFlight.
+- Threat model atualizado: limite de 20 alvos documentado como mitigação
+  (não é primitiva de varredura em massa).
+
 ## 2026-08-01 — Fase 7: agendamento do worker de anomalias em produção
 
 - Imagem `egger-worker:latest` buildada direto do checkout de produção
