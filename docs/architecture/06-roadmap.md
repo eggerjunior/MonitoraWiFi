@@ -45,6 +45,21 @@ métricas para o backend, primeiros dashboards mínimos consumindo dados reais d
 agente (não mock).
 
 ## Fase 3 — UniFi
+
+> **Status (2026-08-01)**: primeira fatia real implementada —
+> `NetworkAPIAdapter` (`apps/local-agent/internal/unifi`) sincroniza
+> inventário de dispositivos e clientes contra a Network API local,
+> autenticado por API key gerada pela instalação real do usuário (validado
+> com um console fake em containers efêmeros — ainda não testado contra o
+> console real de verdade, `192.168.110.1`, porque nenhum agente foi
+> instalado na rede real ainda). 13 dos 18 itens de
+> `verificacoes-pendentes-instalacao.md` já confirmados com dados reais
+> (versões, autenticação, VLANs ativas, firmwares, topologia
+> cliente→dispositivo básica). **Faltam**: detecção automática de
+> capability matrix por versão, detalhe de rádio/porta (campos ainda "a
+> validar"), eventos/alarmes, topologia dispositivo→dispositivo, adaptadores
+> SNMP/Syslog/Site Manager/legado (nenhum começado).
+
 `UniFiIntegrationProvider` com adaptador Network API local funcional contra a
 instalação real, detecção de versão + capability matrix populada automaticamente,
 inventário de sites/gateway/APs/switches/clientes, topologia básica, eventos.
@@ -52,6 +67,12 @@ Bloqueado parcialmente até as verificações de `verificacoes-pendentes-instala
 serem respondidas.
 
 ## Fase 4 — Dashboards
+
+> **Status (2026-08-01)**: Internet (Fase 2), Dispositivos, Wi-Fi e Clientes
+> (Fase 3) implementados em web e iOS, consumindo dado real com proveniência
+> declarada. **Faltam**: Switches (sem tela dedicada — hoje aparece junto de
+> Dispositivos), Alertas, Histórico — nenhum começado.
+
 Internet, Wi-Fi, Clientes, APs, Switches, Alertas, Histórico — todos consumindo dado
 real (agente + UniFi), com badge de proveniência (`02-arquitetura-proposta.md` §2.6)
 em cada card.
@@ -105,11 +126,36 @@ amostras, sincronização com métricas de rede, heatmap 2D/3D, modo AR, fallbac
 LiDAR, comparação entre levantamentos).
 
 ## Fase 7 — Inteligência
+
+> **Status (2026-08-01)**: anomalias estatísticas explicáveis implementadas e
+> testadas (`apps/worker/internal/baseline` — baseline por hora/dia da
+> semana, z-score, nunca reporta sem histórico suficiente) e integradas
+> (`cmd/worker` grava em `anomalies`, backend expõe `GET /sites/{id}/anomalies`).
+> Validado ponta a ponta com Postgres real. **Não rodado contra produção
+> ainda** — sem histórico real (nenhum agente enrolado no site do usuário) e
+> sem agendamento (cron/systemd timer, decisão adiada para Fase 8). **Faltam**:
+> cobrir métricas de speed test (só ping por enquanto — infraestrutura já
+> genérica o bastante), motor de correlação/diagnóstico, recomendações com
+> evidência/confiança/impacto/risco, relatórios completos — nenhum começado.
+
 Anomalias estatísticas explicáveis (baseline por hora/dia da semana), motor de
 correlação/diagnóstico (Internet lenta, Wi-Fi lento, cliente desconectando),
 recomendações com evidência/confiança/impacto/risco, relatórios completos.
 
 ## Fase 8 — Produção
+
+> **Status (2026-08-01)**: dois itens reais resolvidos nesta sessão —
+> **backup automatizado** (`infrastructure/scripts/backup-postgres.sh`,
+> testado ponta a ponta incluindo restore, cron diário instalado em
+> produção) e **rate limiting nos endpoints de comando sob demanda**
+> (gap real encontrado revisando `docs/security/threat-model.md`, corrigido
+> e testado). **Faltam** (nenhum começado): acessibilidade formal
+> (WCAG/VoiceOver/Dynamic Type — só revisão de código pontual feita ao
+> longo das fases, não uma auditoria dedicada), suíte de testes completa
+> (cobertura por módulo nunca medida formalmente), agendamento do worker
+> (Fase 7), allowlist de alvo para ferramentas de rede (ver threat-model.md
+> §5), manual do usuário e runbooks formais.
+
 Hardening de segurança, performance, acessibilidade (WCAG, VoiceOver, Dynamic Type),
 suíte de testes completa, preparação App Store/TestFlight
 (`ildemar_ios-native-testflight`, `ildemar_app-versioning`), observabilidade completa
