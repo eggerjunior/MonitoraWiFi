@@ -54,6 +54,17 @@ jobs:
       - name: Run unit tests
         run: |
           set -euo pipefail
+          # Nome de simulador não é fixado: a lista de modelos disponíveis no
+          # runner muda todo ano (ex.: "iPhone 16" parou de existir quando o
+          # runner passou a ter só iPhone 16e/17/17 Pro) — escolhemos em
+          # runtime o primeiro simulador de iPhone disponível.
+          DEVICE_NAME="$(xcrun simctl list devices available iPhone | grep -m1 -oE '^\s*iPhone [^(]+' | sed -E 's/^\s+|\s+$//g')"
+          if [[ -z "$DEVICE_NAME" ]]; then
+            echo "::error::Nenhum simulador de iPhone disponível neste runner."
+            xcrun simctl list devices available
+            exit 1
+          fi
+          echo "Usando simulador: $DEVICE_NAME"
           xcodebuild -project EggerNetworkIntelligence.xcodeproj -scheme EggerNetworkIntelligence \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination "platform=iOS Simulator,name=${DEVICE_NAME}" \
             test
