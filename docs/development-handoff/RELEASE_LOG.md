@@ -4,6 +4,49 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-01 — iOS enviado ao TestFlight; web publicado em wifi.egger.app.br
+
+### iOS TestFlight
+
+- App: Egger Network Intelligence, bundle id `br.app.egger.network-intelligence`
+- Versão/build: 0.1.0 (1), commit `7e22acd5`
+- Status: **enviado com sucesso** — `ARCHIVE SUCCEEDED`, `EXPORT SUCCEEDED`,
+  "Uploaded package is processing", run
+  https://github.com/eggerjunior/MonitoraWiFi/actions/runs/30679778025
+- Pendências: build ainda em processamento no App Store Connect no momento
+  deste registro (checar TestFlight); DEVELOPMENT_TEAM=E743636TCJ e
+  AppIcon (1024x1024, placeholder gerado localmente) adicionados nesta
+  sessão para viabilizar o archive — trocar o ícone placeholder por um
+  definitivo antes de convidar testadores externos.
+
+### Web — wifi.egger.app.br
+
+- Repositório/commit: `eggerjunior/MonitoraWiFi` @ `7e22acd5` (imagens
+  `monitorawifi-api:7e22acd5`, `monitorawifi-web:7e22acd5`)
+- Topologia: 3 containers Docker na rede `monitorawifi_net` —
+  `monitorawifi-postgres` (volume `/opt/data/monitorawifi/postgres`),
+  `monitorawifi-api` (sem porta publicada, só acessível via rede interna),
+  `monitorawifi-web` (publicado em `127.0.0.1:8421`)
+- Configuração: `/opt/apps/monitorawifi/.env` (não commitado; senha de banco
+  gerada aleatoriamente nesta sessão)
+- Migração `0001_init` aplicada com sucesso no banco de produção
+- Health check interno (via container na mesma rede): `GET /login` (web) →
+  200; `GET /readyz` (api) → 200
+- nginx do Hestia para `wifi.egger.app.br` **reescrito** em
+  `/home/eggerjunior/conf/web/wifi.egger.app.br/nginx.conf` e `nginx.ssl.conf`
+  (mesmo padrão já usado em `ged.egger.app.br`/`monitor.egger.app.br`):
+  `proxy_pass http://127.0.0.1:8421`
+- **Pendência real**: o ambiente de execução (container `egger-code-server`)
+  não tem `nginx`/`systemctl` — só o mount de arquivo. A mudança de config
+  está no disco mas **precisa de um reload do nginx no host** para entrar em
+  vigor (`nginx -t && systemctl reload nginx`, ou equivalente). Até isso
+  acontecer, `https://wifi.egger.app.br` continua respondendo 421 (backend
+  Apache padrão do Hestia, sem app associado).
+- Rollback: parar/remover os 3 containers `monitorawifi-*` e reverter os dois
+  arquivos de nginx para a versão anterior (backup não foi feito
+  explicitamente — o conteúdo original é o template padrão do Hestia,
+  regenerável via "Rebuild Web Domain" no painel).
+
 ## 2026-07-31 — Fase 0 (Descoberta) concluída
 
 - App/plataforma: N/A (nenhum código de produto ainda; entrega documental)
