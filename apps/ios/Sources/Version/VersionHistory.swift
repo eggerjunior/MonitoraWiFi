@@ -16,10 +16,19 @@ public struct VersionEntry: Identifiable, Sendable {
 public enum VersionHistory {
     /// Fallbacks defensivos — usados apenas se o Info.plist não tiver os
     /// valores (não deveria acontecer em um build gerado pelo XcodeGen).
-    public static let fallbackVersionString = "0.1.0 (Build 1)"
+    public static let fallbackVersionString = "0.1.1 (Build 2)"
     public static let fallbackCommit = "dev"
 
     public static let entries: [VersionEntry] = [
+        VersionEntry(
+            version: "0.1.1",
+            build: "2",
+            date: "2026-08-01",
+            changes: [
+                "Corrige o app apontando para localhost — agora usa a URL de produção (https://wifi.egger.app.br/api/v1) por padrão, configurável via Info.plist sem alterar código",
+            ],
+            isCurrent: true
+        ),
         VersionEntry(
             version: "0.1.0",
             build: "1",
@@ -29,7 +38,7 @@ public enum VersionHistory {
                 "Detecção de suporte a LiDAR (sem sessão AR ainda — chega na Fase 6)",
                 "Sessão persistida com segurança no Keychain",
             ],
-            isCurrent: true
+            isCurrent: false
         ),
     ]
 

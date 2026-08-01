@@ -13,9 +13,24 @@ public actor APIClient {
         /// Docker Compose de desenvolvimento (infrastructure/docker). Em um
         /// dispositivo físico na mesma LAN, isso precisa ser trocado pelo IP
         /// do backend — não há um valor único que sirva para os dois casos.
+        /// Usado apenas como fallback se `APIBaseURL` não estiver no
+        /// Info.plist (não deveria acontecer num build gerado por
+        /// `project.yml`).
         public static let developmentDefault = Configuration(
             baseURL: URL(string: "http://localhost:8080/api/v1")!
         )
+
+        /// Lê `API_BASE_URL` (injetado no Info.plist via `project.yml`,
+        /// mesmo padrão do `GIT_COMMIT`) — permite trocar o backend de
+        /// destino num build sem alterar código, e evita o erro de deixar
+        /// `localhost` hardcoded num build de produção/TestFlight.
+        public static var fromInfoPlist: Configuration {
+            if let urlString = Bundle.main.object(forInfoDictionaryKey: "APIBaseURL") as? String,
+               let url = URL(string: urlString) {
+                return Configuration(baseURL: url)
+            }
+            return developmentDefault
+        }
     }
 
     private static let sessionCookieName = "egger_session"
@@ -26,7 +41,7 @@ public actor APIClient {
     private let encoder: JSONEncoder
     private var sessionToken: String?
 
-    public init(configuration: Configuration = .developmentDefault) {
+    public init(configuration: Configuration = .fromInfoPlist) {
         self.configuration = configuration
         self.session = URLSession(configuration: .ephemeral)
 

@@ -6,9 +6,10 @@ options:
   createIntermediateGroups: true
 
 settings:
-  MARKETING_VERSION: "0.1.0"
-  CURRENT_PROJECT_VERSION: 1
+  MARKETING_VERSION: "0.1.1"
+  CURRENT_PROJECT_VERSION: 2
   GIT_COMMIT: dev # sobrescrito na linha de comando por scripts/testflight.sh
+  API_BASE_URL: "https://wifi.egger.app.br/api/v1"
 
 targets:
   EggerNetworkIntelligence:
@@ -37,6 +38,7 @@ targets:
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         GitCommit: "$(GIT_COMMIT)"
+        APIBaseURL: "$(API_BASE_URL)"
         ITSAppUsesNonExemptEncryption: false
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
