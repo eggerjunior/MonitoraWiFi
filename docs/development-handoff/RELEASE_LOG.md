@@ -4,6 +4,30 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-01 — Deploy em produção: commit b004a4a (Fase 2 completa)
+
+- App/plataforma: apps/api + apps/web, produção (`wifi.egger.app.br`, host `2.25.189.37`)
+- Repositório/commit: `eggerjunior/MonitoraWiFi` @ `b004a4a`
+- Comandos executados:
+  1. Backup do banco: `pg_dump` → `/opt/backups/monitorawifi/pre-migration-20260801T032807Z.sql`
+  2. Migrações `0002_agents.up.sql` e `0003_speed_tests.up.sql` aplicadas
+     via `psql` dentro do container `monitorawifi-postgres`
+  3. `docker build` de `monitorawifi-api:b004a4a` e `monitorawifi-web:b004a4a`
+  4. Substituição dos containers `monitorawifi-api` e `monitorawifi-web`
+     (imagens anteriores `:7e22acd5` preservadas para rollback)
+- Health check: `/healthz` e `/readyz` da API → 200; `/login` do web → 200
+  (interno, via rede Docker, e externo via `https://wifi.egger.app.br`)
+- Dados seed criados em produção (não existiam antes): organização "Egger",
+  site "Residência Egger", usuário owner `ildemar.junior@egger.com.br` —
+  login real confirmado (200) contra produção.
+- Rollback: `docker run` das imagens `monitorawifi-api:7e22acd5` /
+  `monitorawifi-web:7e22acd5` (mesmos parâmetros); schema novo
+  (`agents`, `speed_tests` etc.) é aditivo — não quebra o código anterior,
+  não precisa de rollback de schema junto.
+- Pendência conhecida: sem tela de troca/recuperação de senha (Fase 1 não
+  implementou isso) — senha do usuário seed só pode ser alterada
+  diretamente no banco por enquanto.
+
 ## 2026-08-01 — Fase 2 concluída: speed test + página Internet com dados reais
 
 - App/plataforma: apps/local-agent, apps/api, apps/web
