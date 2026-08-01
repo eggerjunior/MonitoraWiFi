@@ -7,15 +7,24 @@ ser assumido/simulado antes de resposta real; a Fase 3 (integração UniFi) trat
 
 ## Versões e disponibilidade de API
 
-1. Qual a versão exata do **UniFi OS** rodando no Cloud Gateway Max?
-2. Qual a versão exata do **UniFi Network** (aplicação, não o SO)?
-3. A **Network API local** já vem habilitada por padrão nessa versão, ou exige
-   ativação manual/gerar API key pelo console?
-4. Qual o método de autenticação disponível para a Network API local nessa versão
-   específica: usuário/senha local, API key de "local application", ou ambos?
-5. Existe uma conta Ubiquiti (`unifi.ui.com`) vinculada a este console? Se sim, a
-   **Site Manager API** está acessível e é desejável habilitá-la (opcional, cloud) ou
-   o requisito é operar 100% self-hosted sem depender da nuvem Ubiquiti?
+1. ✅ **Confirmado em 2026-08-01** (print de `Settings → UCG Max → Updates`):
+   **UniFi OS 5.1.19** (UCG Max, "Up to Date", canal Official).
+2. ✅ **Confirmado em 2026-08-01**: **UniFi Network 10.5.67** ("Up to Date",
+   canal Official). Outras aplicações no mesmo console: Protect 7.1.87,
+   InnerSpace 1.3.21 (Access/Talk/Connect não instaladas).
+3. ⏳ **Pendente** — usuário não sabe de cabeça. Próximo passo: buscar "API"
+   na caixa "Pesquisar Configurações" do console (visível no print) ou
+   checar `Settings → Control Plane → Integrations` / ícone do usuário no
+   canto superior direito — versões recentes do UniFi Network (10.x)
+   geralmente expõem geração de API key de "local application" numa dessas
+   duas telas.
+4. ⏳ **Pendente** — depende da resposta ao item 3 (a tela de API/Integrations
+   normalmente já diz se o método é API key, usuário/senha, ou os dois).
+5. **Parcialmente confirmado em 2026-08-01**: existe conta Ubiquiti vinculada
+   (login ativo em `unifi.ui.com`, visível no print). Usuário ainda não
+   decidiu se quer habilitar a Site Manager API (cloud, opcional) ou operar
+   100% self-hosted — decisão adiada, não bloqueia o restante do
+   levantamento.
 
 ## Campos realmente expostos pela Network API local nesta versão
 
