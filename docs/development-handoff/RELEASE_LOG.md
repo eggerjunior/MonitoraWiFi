@@ -4,6 +4,25 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-01 — Fase 7 (início): worker de anomalias + Fase 6 documentada como não iniciada
+
+- Commit `90f1e2b`. `apps/worker` ganha código real pela primeira vez
+  (era só docs desde a Fase 0): `internal/baseline` (algoritmo de
+  detecção por z-score, testado com estatística conhecida) +
+  `cmd/worker` (execução única, testado ponta a ponta com Postgres real).
+- Migração `0007_anomalies` aplicada em produção (backup prévio). API
+  reimplantada com o endpoint `GET /sites/{id}/anomalies`.
+- **Worker não foi rodado contra produção** — não há histórico real
+  ainda (nenhum agente enrolado no site real), rodar agora só reportaria
+  "sem site com agente" honestamente. Também não há agendamento
+  (cron/systemd timer) configurado — decisão de infraestrutura adiada
+  para a Fase 8.
+- **Fase 6 (LiDAR) deliberadamente não iniciada** — decisão e
+  justificativa registradas em `docs/architecture/06-roadmap.md`: exige
+  hardware real (LiDAR) que este ambiente não tem; escrever código de
+  captura AR sem validar contra câmera real seria pior que não escrever.
+
+## 2026-08-01 — Fase 5: DNS lookup + traceroute + calculadora de sub-rede (deploy completo)
 ## 2026-08-01 — Fase 5: DNS lookup + traceroute + calculadora de sub-rede (deploy completo)
 
 - Commit `351afa8` (fix real de compilação encontrado pela CI real do iOS —
