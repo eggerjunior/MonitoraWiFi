@@ -4,6 +4,29 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-01 — Deploy em produção: comandos sob demanda (API + web), commit 5ad38eb
+
+- Web v0.2.0: página **Diagnósticos** deixou de ser placeholder — ferramenta
+  de ping sob demanda real (dispara comando, faz polling, mostra
+  latência/perda/jitter reais quando o agente responde).
+- **Achado real durante o deploy**: o banco de produção nunca teve a tabela
+  de controle do `golang-migrate` (`schema_migrations`) — migrações
+  0001-0003 foram aplicadas em algum momento anterior por outro processo,
+  sem essa tabela existir corretamente (encontrada com `version=1,
+  dirty=true`, resquício de uma tentativa de `migrate up` que falhou nesta
+  sessão ao tentar recriar tabelas já existentes). Corrigido com backup
+  prévio (`pg_dump` em `/opt/data/monitorawifi/backups/`) +
+  `UPDATE schema_migrations SET version = 3, dirty = false` (autorizado
+  explicitamente pelo usuário) — depois disso `migrate up` aplicou a
+  0004 (`agent_commands`) normalmente. Registrar isso como pendência para
+  as próximas migrações: confirmar `schema_migrations` antes de assumir
+  que `migrate up` vai funcionar sem intervenção.
+- API e web reconstruídos e reimplantados com o commit `5ad38eb`
+  (`docker build`/`docker run` manuais via SSH, mesmo padrão anterior).
+- Confirmado em produção: login via `https://wifi.egger.app.br/api/v1/auth/login`
+  respondendo corretamente (401 com credenciais erradas, formato esperado).
+
+## 2026-08-01 — Backend/agente: comandos sob demanda (Fase 5, início)
 ## 2026-08-01 — Backend/agente: comandos sob demanda (Fase 5, início)
 
 - Commit `dd63c34`. Primeiro recurso de "teste sob demanda" (ping agora):
@@ -23,9 +46,8 @@ Record every deploy, TestFlight/App Store upload, web publish and external proce
   comando de ping real executado por um agente real contra outro
   container, resultado real (latência/jitter/perda) confirmado via API.
 - CI (`API CI (Go)`, `Local Agent CI (Go)`) verde. OpenAPI atualizado.
-- Não implantado em produção ainda (é infraestrutura de backend/agente,
-  sem UI própria no web/iOS nesta fase — próximo passo natural é expor um
-  botão "ping agora" no dashboard).
+- Implantado em produção no mesmo ciclo — ver entrada de deploy acima
+  (commit `5ad38eb`) — junto com o botão "ping agora" exposto no web.
 
 ## 2026-08-01 — Web: versionamento (paridade com iOS) + redeploy em produção
 ## 2026-08-01 — Web: versionamento (paridade com iOS) + redeploy em produção
