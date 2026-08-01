@@ -4,6 +4,19 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-01 — iOS 0.1.5 (6): "ping sob demanda" em Ferramentas (paridade com web)
+
+- Commit `6e17f15`. `DiagnosticsView` substitui o placeholder de
+  "Ferramentas" — mesma funcionalidade do web (`PingTool.tsx`): dispara
+  `POST /sites/{id}/commands`, faz polling de `GET /commands/{id}` até
+  completed/failed, mostra latência p50/perda/jitter reais.
+- CI de build verde
+  (https://github.com/eggerjunior/MonitoraWiFi/actions/runs/30710781241) e
+  release ao TestFlight verde (`ARCHIVE SUCCEEDED`, `EXPORT SUCCEEDED`,
+  https://github.com/eggerjunior/MonitoraWiFi/actions/runs/30710832688).
+- Paridade iOS+Web mantida no mesmo ciclo de trabalho, conforme a skill
+  `ildemar_app-versioning`.
+
 ## 2026-08-01 — Deploy em produção: comandos sob demanda (API + web), commit 5ad38eb
 
 - Web v0.2.0: página **Diagnósticos** deixou de ser placeholder — ferramenta
