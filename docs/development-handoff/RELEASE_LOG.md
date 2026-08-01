@@ -4,6 +4,31 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-01 — Fase 2 (Agente local, parcial): enrolamento, heartbeat, sondas, fila offline
+
+- App/plataforma: apps/local-agent (Go, novo) + apps/api (endpoints de agente)
+- Status: 24 testes automatizados verdes (probes TCP/HTTP/DNS contra
+  servidores reais de teste, fila persistente com "reinício" simulado,
+  enrolamento com fake injetável, backoff exponencial, conversão de payload
+  com chave de idempotência estável); `go build`/`go vet` limpos;
+  `apps/local-agent/Dockerfile` construído com sucesso; migração
+  `0002_agents` validada up/down contra PostgreSQL 16 real (mesma técnica de
+  `docker exec`+`psql` das fases anteriores).
+- Endpoints novos em apps/api: `POST /sites/{id}/agent-enrollment-tokens`,
+  `POST /agents/enroll`, `POST /agents/{id}/heartbeat`,
+  `POST /agents/{id}/telemetry`, `GET /sites/{id}/agents` — autenticação de
+  agente via `Authorization: Bearer <secret>` (hash SHA-256, comparação em
+  tempo constante), distinta da sessão de usuário.
+- Pendências reais (não escondidas, ver `apps/local-agent/README.md`):
+  speed test ainda não implementado; sem pipeline de release do binário do
+  agente (`scripts/install.sh` depende de um GitHub Release inexistente);
+  fluxo completo enrolamento→heartbeat→telemetria não validado contra
+  `monitorawifi-api` em produção (só contra fakes/servidores de teste —
+  decisão deliberada de não criar dados de teste no banco de produção);
+  migração `0002_agents` **não aplicada em produção ainda**.
+- CI: `.github/workflows/local-agent-ci.yml` criado (mesmo padrão de
+  `api-ci.yml`).
+
 ## 2026-08-01 — iOS enviado ao TestFlight; web publicado em wifi.egger.app.br
 
 ### iOS TestFlight

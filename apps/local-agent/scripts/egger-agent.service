@@ -1,0 +1,22 @@
+[Unit]
+Description=Egger Network Intelligence — Agente Local
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/egger-agent/env
+ExecStart=/usr/local/bin/egger-agent
+Restart=always
+RestartSec=5
+User=egger-agent
+Group=egger-agent
+StateDirectory=egger-agent
+StateDirectoryMode=0700
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -19,6 +19,17 @@ OpenAPI 3.1 publicada, CI rodando lint+build+test para todos os apps, Docker Com
 de desenvolvimento. Critérios de aceite detalhados em `07-criterios-aceite-fase1.md`.
 
 ## Fase 2 — Agente local
+
+> **Status parcial (2026-08-01)**: registro/enrolamento, heartbeat, ping
+> (ICMP/TCP/HTTP/DNS), buffer offline com backoff exponencial e streaming de
+> métricas para o backend estão implementados e testados (24 testes
+> automatizados, `apps/local-agent` + endpoints correspondentes em
+> `apps/api`). **Faltam**: speed test (download/upload/bufferbloat),
+> pipeline de release do binário (`scripts/install.sh` depende de um release
+> do GitHub que ainda não existe), aplicar a migração `0002_agents` em
+> produção, e os primeiros dashboards consumindo dados reais do agente. Ver
+> `apps/local-agent/README.md` para o detalhamento completo.
+
 Registro/enrolamento do agente (ADR-006), heartbeat, ping (ICMP/TCP/HTTP/DNS),
 speed test (Internet e LAN), buffer offline com backoff exponencial, streaming de
 métricas para o backend, primeiros dashboards mínimos consumindo dados reais do
