@@ -133,7 +133,20 @@ public actor APIClient {
     }
 
     private func makeRequest(path: String, method: String) throws -> URLRequest {
-        let url = URL(string: path, relativeTo: configuration.baseURL)!
+        // `URL(string:relativeTo:)` trata uma string começando com "/" como
+        // caminho absoluto (RFC 3986) — isso DESCARTA qualquer componente de
+        // path do baseURL (ex.: "/api/v1"), em vez de ser relativo a ele.
+        // Como `baseURL` sempre inclui "/api/v1", montamos a URL final por
+        // concatenação de string (preservando querystring), não por
+        // resolução de URL relativa.
+        var base = configuration.baseURL.absoluteString
+        if !base.hasSuffix("/") {
+            base += "/"
+        }
+        let trimmedPath = path.hasPrefix("/") ? String(path.dropFirst()) : path
+        guard let url = URL(string: base + trimmedPath) else {
+            throw ClientError.invalidResponse
+        }
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

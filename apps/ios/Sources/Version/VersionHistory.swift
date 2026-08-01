@@ -16,18 +16,27 @@ public struct VersionEntry: Identifiable, Sendable {
 public enum VersionHistory {
     /// Fallbacks defensivos — usados apenas se o Info.plist não tiver os
     /// valores (não deveria acontecer em um build gerado pelo XcodeGen).
-    public static let fallbackVersionString = "0.1.2 (Build 3)"
+    public static let fallbackVersionString = "0.1.3 (Build 4)"
     public static let fallbackCommit = "dev"
 
     public static let entries: [VersionEntry] = [
+        VersionEntry(
+            version: "0.1.3",
+            build: "4",
+            date: "2026-08-01",
+            changes: [
+                "Corrige a causa real de 'Não foi possível falar com o servidor': caminhos com \"/\" inicial (ex.: \"/auth/login\") eram resolvidos como absolutos, descartando \"/api/v1\" do endereço do servidor e batendo na URL errada (o site, não a API)",
+            ],
+            isCurrent: true
+        ),
         VersionEntry(
             version: "0.1.2",
             build: "3",
             date: "2026-08-01",
             changes: [
-                "Corrige login que falhava com 'Não foi possível falar com o servidor': a URLSession interceptava o cabeçalho Set-Cookie antes do app conseguir lê-lo manualmente (httpShouldSetCookies agora desativado no cliente)",
+                "Corrige interceptação do cabeçalho Set-Cookie pela URLSession (httpShouldSetCookies desativado) — necessário mas não suficiente; a causa raiz era outra (ver 0.1.3)",
             ],
-            isCurrent: true
+            isCurrent: false
         ),
         VersionEntry(
             version: "0.1.1",
