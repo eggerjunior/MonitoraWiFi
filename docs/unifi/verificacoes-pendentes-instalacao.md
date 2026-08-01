@@ -48,19 +48,33 @@ ser assumido/simulado antes de resposta real; a Fase 3 (integração UniFi) trat
    flaps, consumo PoE em watts, orçamento PoE total) nesta versão?
 8. Eventos/alarmes (Seção 4.1 "Eventos e alarmes"): são entregues via polling da API,
    via webhook nativo do UniFi, ou só observáveis via syslog do console?
-9. Topologia via LLDP entre dispositivos UniFi: disponível via API nesta versão, ou
-   precisa ser inferida (porta do switch reportada pelo AP + inventário)?
+9. ✅ **Parcialmente confirmado em 2026-08-01**: `GET .../sites/{id}/clients`
+   já retorna `uplinkDeviceId` por cliente — topologia **cliente → dispositivo**
+   vem pronta da API, sem precisar inferir por LLDP. Ainda não confirmado:
+   topologia **dispositivo → dispositivo** (ex.: qual porta do switch um AP
+   está conectado) — precisa checar o endpoint de detalhe de dispositivo
+   (`/devices/{id}`), ainda não testado.
 10. DPI (Deep Packet Inspection / categorização de aplicação por cliente) está
     habilitado neste console? Se sim, quais campos de categoria/aplicação a API
     expõe por cliente?
 
 ## Configuração de rede da instalação (para validar contra o modelo de dados)
 
-11. Confirmar que as sub-redes declaradas no documento-fonte
-    (`Egger_Principal 192.168.110.0/24`, `Egger_IoT VLAN 120 192.168.120.0/24`,
-    `Egger_Convidados VLAN 130 192.168.130.0/24`) correspondem exatamente à
-    configuração atual no console (nomes, IDs de VLAN e CIDRs podem ter sido
-    ajustados desde a redação do documento-fonte).
+11. ✅ **Parcialmente confirmado em 2026-08-01** (via `GET .../sites/{id}/clients`,
+    primeira página de 80 clientes): `192.168.110.0/24` (Principal) e
+    `192.168.120.0/24` (IoT) confirmadas com clientes reais conectados
+    agora. `192.168.130.0/24` (Convidados) ainda não observada nessa
+    amostra — não significa que não exista, só que não apareceu na
+    primeira página/nenhum cliente conectado nela no momento da consulta.
+    **Achado relevante**: o inventário real de dispositivos (14 ao todo) é
+    **maior que o documento-fonte original presumia** ("4 APs U7 Pro + 1
+    switch") — há também múltiplos switches adicionais e outros
+    APs/repetidores de um modelo não mencionado no documento-fonte. Contagem
+    exata e modelos registrados em `docs/architecture/05-modelo-dados.md`
+    quando o levantamento for consolidado; nomes/MACs/localização exatos de
+    dispositivos e clientes **não são registrados em nenhum documento deste
+    repositório público** (o inventário revela o layout físico da
+    residência — câmeras, cômodos — que não deve ficar em um repo público).
 12. IPv6 está habilitado em alguma dessas redes? Em qual modo (prefixo delegado,
     NAT66, desabilitado)?
 13. Existe VPN configurada no gateway (Seção 4.1 "Estado de VPNs")? Qual tipo
@@ -74,9 +88,12 @@ ser assumido/simulado antes de resposta real; a Fase 3 (integração UniFi) trat
 15. As duas WANs (primária e secundária) estão ambas fisicamente conectadas e
     configuradas para failover/balanceamento no Cloud Gateway Max, ou a secundária
     é um cenário planejado a confirmar?
-16. Confirmar o firmware atual de cada um dos 4 APs U7 Pro e do Switch Lite 16 PoE
-    (relevante para saber se recursos Wi-Fi 7 relevantes, como MLO, já estão
-    disponíveis na versão de firmware instalada).
+16. ✅ **Confirmado em 2026-08-01** (via `GET .../sites/{id}/devices`):
+    U7 Pro (4 unidades) firmware **8.7.11**; USW Lite 16 PoE firmware
+    **7.4.1**; Cloud Gateway Max firmware **5.1.19** (mesma versão do
+    UniFi OS, esperado). Se MLO/Wi-Fi 7 já está habilitado na prática
+    ainda não foi checado — depende de configuração de rádio, não só de
+    firmware (ver item 6).
 17. SNMP está habilitado no console? Em qual versão (v2c/v3) e com quais
     credenciais/community string (não registrar o valor aqui — apenas confirmar que
     existe e onde a credencial será armazenada).
