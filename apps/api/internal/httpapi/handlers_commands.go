@@ -28,6 +28,7 @@ var supportedCommandTypes = map[string]bool{
 	store.AgentCommandTypeSSLCheck:    true,
 	store.AgentCommandTypeHTTPRequest: true,
 	store.AgentCommandTypeLANScan:     true,
+	store.AgentCommandTypeWakeOnLAN:   true,
 }
 
 // minLANScanPrefixLen limita o tamanho do bloco CIDR aceito pro LAN
@@ -87,6 +88,32 @@ type httpRequestCommandParams struct {
 
 type lanScanCommandParams struct {
 	CIDR string `json:"cidr"`
+}
+
+type wakeOnLANCommandParams struct {
+	MACAddress  string `json:"mac_address"`
+	BroadcastIP string `json:"broadcast_ip"`
+	Port        int    `json:"port"`
+}
+
+// isBroadcastOrPrivateIPv4 restringe o destino do magic packet ao mesmo
+// espaço RFC 1918 (ou ao broadcast limitado 255.255.255.255) — Wake-on-LAN
+// não tem retorno/resposta que possa vazar dado de terceiros, mas ainda
+// assim não há motivo legítimo pra apontar o agente a enviar UDP pra um IP
+// público arbitrário (mesma cautela do LAN scanner).
+func isBroadcastOrPrivateIPv4(ipStr string) bool {
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return false
+	}
+	ip4 := ip.To4()
+	if ip4 == nil {
+		return false
+	}
+	if ip4.Equal(net.IPv4(255, 255, 255, 255)) {
+		return true
+	}
+	return ip4.IsPrivate()
 }
 
 // validatePrivateIPv4CIDR implementa a mitigação exigida pelo threat model
@@ -304,6 +331,37 @@ func (s *Server) handleCreateCommand(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := validatePrivateIPv4CIDR(p.CIDR); err != nil {
 			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", err.Error())
+			return
+		}
+		req.Params, _ = json.Marshal(p)
+
+	case store.AgentCommandTypeWakeOnLAN:
+		var p wakeOnLANCommandParams
+		if len(req.Params) == 0 {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.mac_address é obrigatório para type=wake_on_lan")
+			return
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params inválido")
+			return
+		}
+		mac, err := net.ParseMAC(p.MACAddress)
+		if err != nil || len(mac) != 6 {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.mac_address precisa ser um endereço MAC válido (formato aa:bb:cc:dd:ee:ff)")
+			return
+		}
+		if p.BroadcastIP == "" {
+			p.BroadcastIP = "255.255.255.255"
+		}
+		if !isBroadcastOrPrivateIPv4(p.BroadcastIP) {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.broadcast_ip precisa ser 255.255.255.255 ou um IPv4 privado (RFC 1918)")
+			return
+		}
+		if p.Port == 0 {
+			p.Port = 9
+		}
+		if p.Port < 1 || p.Port > 65535 {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.port precisa estar entre 1 e 65535")
 			return
 		}
 		req.Params, _ = json.Marshal(p)

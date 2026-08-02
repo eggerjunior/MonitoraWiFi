@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
+	"time"
 
 	"egger/local-agent/internal/config"
 	"egger/local-agent/internal/state"
@@ -306,6 +307,76 @@ func TestPollAndRunCommands_LANScan(t *testing.T) {
 	// verdade nas que não têm o listener real).
 	if !ok || len(hosts) != 4 {
 		t.Fatalf("esperava 4 hosts no resultado (127.0.0.0/8 é loopback), recebi: %+v", result["hosts"])
+	}
+}
+
+func TestPollAndRunCommands_WakeOnLAN(t *testing.T) {
+	// Listener UDP real na loopback — o comando wake_on_lan precisa enviar
+	// o magic packet de verdade, não simular.
+	udpConn, err := net.ListenPacket("udp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("erro ao abrir listener UDP: %v", err)
+	}
+	defer udpConn.Close()
+	_, udpPortStr, _ := net.SplitHostPort(udpConn.LocalAddr().String())
+	udpPort, _ := strconv.Atoi(udpPortStr)
+
+	received := make(chan []byte, 1)
+	go func() {
+		buf := make([]byte, 256)
+		n, _, err := udpConn.ReadFrom(buf)
+		if err == nil {
+			received <- buf[:n]
+		}
+	}()
+
+	var reportedBody map[string]any
+	claimed := false
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/agents/agent-1/commands":
+			if claimed {
+				json.NewEncoder(w).Encode(map[string]any{"items": []map[string]any{}})
+				return
+			}
+			claimed = true
+			params, _ := json.Marshal(map[string]any{
+				"mac_address":  "AA:BB:CC:DD:EE:FF",
+				"broadcast_ip": "127.0.0.1",
+				"port":         udpPort,
+			})
+			json.NewEncoder(w).Encode(map[string]any{
+				"items": []map[string]any{
+					{"id": "cmd-9", "site_id": "site-1", "type": "wake_on_lan", "params": json.RawMessage(params), "status": "claimed"},
+				},
+			})
+		case r.Method == http.MethodPost && r.URL.Path == "/agents/agent-1/commands/cmd-9/result":
+			json.NewDecoder(r.Body).Decode(&reportedBody)
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Errorf("requisição inesperada: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	a := newTestAgentForCommands(t, server.URL)
+	a.pollAndRunCommands(t.Context())
+
+	if reportedBody == nil {
+		t.Fatal("esperava que o agente reportasse um resultado, nenhum recebido")
+	}
+	if reportedBody["status"] != "completed" {
+		t.Fatalf("status reportado = %v, esperado completed: %+v", reportedBody["status"], reportedBody)
+	}
+
+	select {
+	case packet := <-received:
+		if len(packet) != 102 {
+			t.Fatalf("pacote real recebido tem %d bytes, esperado 102", len(packet))
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("nenhum magic packet real recebido no listener UDP")
 	}
 }
 

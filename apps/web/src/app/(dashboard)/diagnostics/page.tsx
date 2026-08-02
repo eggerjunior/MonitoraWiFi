@@ -6,6 +6,7 @@ import { TracerouteTool } from "@/components/TracerouteTool";
 import { SslCheckTool } from "@/components/SslCheckTool";
 import { HttpRequestTool } from "@/components/HttpRequestTool";
 import { LanScanTool } from "@/components/LanScanTool";
+import { WakeOnLanTool } from "@/components/WakeOnLanTool";
 import { RdapTool } from "@/components/RdapTool";
 import { SubnetCalculator } from "@/components/SubnetCalculator";
 
@@ -40,6 +41,7 @@ export default async function DiagnosticsPage() {
           <SslCheckTool siteId={current.site.id} />
           <HttpRequestTool siteId={current.site.id} />
           <LanScanTool siteId={current.site.id} />
+          <WakeOnLanTool siteId={current.site.id} />
         </>
       )}
 

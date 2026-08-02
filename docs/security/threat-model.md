@@ -137,7 +137,15 @@ UniFi, dados de localização física via LiDAR).
   funcionalidade central. `http_request` adicionalmente restringe o
   esquema da URL a http(s) e o método a um allowlist fixo (GET, POST, PUT,
   PATCH, DELETE, HEAD, OPTIONS) — não executa nada além de uma requisição
-  HTTP padrão. **Vira bloqueante quando um port scanner ou LAN scanner de
-  verdade for implementado** (Fase 5, ainda não começado) — aí sim a
-  mitigação completa (allowlist + confirmação + auditoria) é obrigatória
-  antes de expor a funcionalidade.
+  HTTP padrão. **Vira bloqueante quando um port scanner de verdade for
+  implementado** (Fase 5, ainda não começado) — aí sim a mitigação completa
+  (allowlist + confirmação + auditoria) é obrigatória antes de expor a
+  funcionalidade.
+- ✅ **Resolvido em 2026-08-01 (Fase 5)**: `lan_scan` (novo tipo de comando,
+  varre múltiplos hosts) e `wake_on_lan` (envia UDP a um IP escolhido pelo
+  usuário) só aceitam alvo dentro de um intervalo IPv4 privado (RFC 1918) —
+  `lan_scan` também limita o bloco a no máximo /22 (1024 endereços). Isso
+  implementa a mitigação da Seção 3.1 pra essas duas ferramentas
+  especificamente (nunca podem mirar um host de terceiros, então o vetor
+  "usar o backend como ferramenta de ataque a terceiros" não se aplica a
+  elas), sem precisar de um sistema de cadastro/confirmação de alvos.

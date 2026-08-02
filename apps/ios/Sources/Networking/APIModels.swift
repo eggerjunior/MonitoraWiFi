@@ -181,6 +181,7 @@ public enum CommandResult: Sendable {
     case sslCheck(SslCheckCommandResult)
     case httpRequest(HttpRequestCommandResult)
     case lanScan(LanScanCommandResult)
+    case wakeOnLan(WakeOnLanCommandResult)
 }
 
 extension CommandResult: Decodable {
@@ -199,6 +200,8 @@ extension CommandResult: Decodable {
             self = .httpRequest(v)
         } else if let v = try? LanScanCommandResult(from: decoder) {
             self = .lanScan(v)
+        } else if let v = try? WakeOnLanCommandResult(from: decoder) {
+            self = .wakeOnLan(v)
         } else {
             throw DecodingError.dataCorruptedError(in: try decoder.singleValueContainer(), debugDescription: "Formato de resultado de comando não reconhecido")
         }
@@ -252,6 +255,18 @@ public struct HttpRequestCommandResult: Codable, Sendable {
 public struct LanScanCommandResult: Codable, Sendable {
     public let cidr: String
     public let hosts: [String]
+}
+
+public struct WakeOnLanCommandResult: Codable, Sendable {
+    public let macAddress: String
+    public let broadcastIp: String
+    public let port: Int
+
+    enum CodingKeys: String, CodingKey {
+        case macAddress = "mac_address"
+        case broadcastIp = "broadcast_ip"
+        case port
+    }
 }
 
 public struct RdapEvent: Codable, Sendable {

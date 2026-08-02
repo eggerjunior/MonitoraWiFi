@@ -529,6 +529,33 @@ func TestCreateCommand_LANScan_RequerCIDRPrivadoELimitado(t *testing.T) {
 	}
 }
 
+func TestCreateCommand_WakeOnLAN_ValidaMACEBroadcast(t *testing.T) {
+	siteID := uuid.New()
+	admin := store.User{ID: uuid.New(), Email: "admin@example.com", PasswordHash: mustHash(t, "senha12345"), Role: store.RoleAdministrator}
+	deps := newAgentTestServer(admin)
+	cookie := loginAndGetCookie(t, deps.server, "admin@example.com", "senha12345")
+	enrollTestAgent(t, deps, siteID)
+
+	post := func(params map[string]any) int {
+		body, _ := json.Marshal(map[string]any{"type": "wake_on_lan", "params": params})
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(body))
+		req.AddCookie(cookie)
+		rec := httptest.NewRecorder()
+		deps.server.Routes().ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	if code := post(map[string]any{"mac_address": "não-é-mac"}); code != http.StatusBadRequest {
+		t.Fatalf("esperava 400 pra MAC inválido, recebeu %d", code)
+	}
+	if code := post(map[string]any{"mac_address": "AA:BB:CC:DD:EE:FF", "broadcast_ip": "8.8.8.8"}); code != http.StatusBadRequest {
+		t.Fatalf("esperava 400 pra broadcast_ip público, recebeu %d", code)
+	}
+	if code := post(map[string]any{"mac_address": "AA:BB:CC:DD:EE:FF"}); code != http.StatusAccepted {
+		t.Fatalf("esperava 202 com MAC válido e broadcast_ip padrão, recebeu %d", code)
+	}
+}
+
 // TestCreateCommand_RateLimit confirma o gap real de segurança encontrado
 // na revisão do threat model (§5, "rate limiting antes de abrir qualquer
 // endpoint de teste ativo"): sem limite, uma conta comprometida poderia

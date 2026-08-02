@@ -62,6 +62,8 @@ func (a *Agent) runCommand(ctx context.Context, cmd apiclient.Command) {
 		a.runHTTPRequestCommand(ctx, cmd)
 	case "lan_scan":
 		a.runLANScanCommand(ctx, cmd)
+	case "wake_on_lan":
+		a.runWakeOnLANCommand(ctx, cmd)
 	default:
 		// O backend já valida o tipo na criação (CHECK constraint +
 		// validação no handler) — chegar aqui com um tipo desconhecido só
@@ -390,6 +392,44 @@ func (a *Agent) runLANScanCommand(ctx context.Context, cmd apiclient.Command) {
 		"cidr":        result.CIDR,
 		"hosts":       result.Hosts,
 		"executed_at": result.ExecutedAt.Format(time.RFC3339Nano),
+	}
+	if err := a.client.ReportCommandResult(ctx, a.identity.AgentID, a.identity.AgentSecret, cmd.ID, "completed", payload, ""); err != nil {
+		a.logger.Error("erro ao reportar resultado do comando", slog.String("command_id", cmd.ID), slog.Any("error", err))
+	}
+}
+
+type wakeOnLANCommandParams struct {
+	MACAddress  string `json:"mac_address"`
+	BroadcastIP string `json:"broadcast_ip"`
+	Port        int    `json:"port"`
+}
+
+func (a *Agent) runWakeOnLANCommand(ctx context.Context, cmd apiclient.Command) {
+	var params wakeOnLANCommandParams
+	if err := json.Unmarshal(cmd.Params, &params); err != nil {
+		a.reportCommandFailure(ctx, cmd.ID, "params inválido: "+err.Error())
+		return
+	}
+	if params.BroadcastIP == "" {
+		params.BroadcastIP = "255.255.255.255"
+	}
+	if params.Port == 0 {
+		params.Port = 9
+	}
+
+	sendCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if err := probes.SendWakeOnLAN(sendCtx, params.MACAddress, params.BroadcastIP, params.Port); err != nil {
+		a.reportCommandFailure(ctx, cmd.ID, err.Error())
+		return
+	}
+
+	payload := map[string]any{
+		"mac_address":  params.MACAddress,
+		"broadcast_ip": params.BroadcastIP,
+		"port":         params.Port,
+		"executed_at":  time.Now().UTC().Format(time.RFC3339Nano),
 	}
 	if err := a.client.ReportCommandResult(ctx, a.identity.AgentID, a.identity.AgentSecret, cmd.ID, "completed", payload, ""); err != nil {
 		a.logger.Error("erro ao reportar resultado do comando", slog.String("command_id", cmd.ID), slog.Any("error", err))

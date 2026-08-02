@@ -150,6 +150,13 @@ export interface LanScanCommandResult {
   executed_at: string;
 }
 
+export interface WakeOnLanCommandResult {
+  mac_address: string;
+  broadcast_ip: string;
+  port: number;
+  executed_at: string;
+}
+
 export interface Command {
   id: string;
   site_id: string;

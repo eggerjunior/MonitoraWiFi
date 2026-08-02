@@ -47,6 +47,7 @@ const (
 	AgentCommandTypeSSLCheck    = "ssl_check"
 	AgentCommandTypeHTTPRequest = "http_request"
 	AgentCommandTypeLANScan     = "lan_scan"
+	AgentCommandTypeWakeOnLAN   = "wake_on_lan"
 )
 
 type AgentCommandStore interface {

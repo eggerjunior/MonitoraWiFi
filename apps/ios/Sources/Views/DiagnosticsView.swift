@@ -26,6 +26,8 @@ final class DiagnosticsViewModel {
     var httpRequestMethod = "GET"
     var httpRequestBody = ""
     var lanScanCIDR = "192.168.1.0/24"
+    var wolMACAddress = ""
+    var wolBroadcastIP = "255.255.255.255"
 
     private(set) var pingCommand: Command?
     private(set) var batchPingCommand: Command?
@@ -34,6 +36,7 @@ final class DiagnosticsViewModel {
     private(set) var sslCheckCommand: Command?
     private(set) var httpRequestCommand: Command?
     private(set) var lanScanCommand: Command?
+    private(set) var wolCommand: Command?
     private(set) var rdapResult: RdapResult?
     private(set) var rdapError: String?
     private(set) var isRdapLoading = false
@@ -192,6 +195,22 @@ final class DiagnosticsViewModel {
         isSubmitting = false
     }
 
+    func runWakeOnLAN() async {
+        guard let siteId else { return }
+        submitError = nil
+        isSubmitting = true
+        do {
+            let created = try await client.createWakeOnLANCommand(siteId: siteId, macAddress: wolMACAddress, broadcastIP: wolBroadcastIP)
+            wolCommand = created
+            startPolling(commandId: created.id) { [weak self] updated in self?.wolCommand = updated }
+        } catch let error as APIClient.ClientError {
+            submitError = Self.message(for: error)
+        } catch {
+            submitError = "Erro de rede ao criar o comando."
+        }
+        isSubmitting = false
+    }
+
     func runRdapLookup() async {
         rdapError = nil
         rdapResult = nil
@@ -256,6 +275,7 @@ struct DiagnosticsView: View {
                 sslCheckSection
                 httpRequestSection
                 lanScanSection
+                wakeOnLanSection
             }
 
             if let submitError = viewModel.submitError {
@@ -510,6 +530,36 @@ struct DiagnosticsView: View {
                             Text(host).font(.system(.caption, design: .monospaced))
                         }
                     }
+                }
+                if command.status == "failed" {
+                    Text(command.error ?? "Falha não especificada.")
+                        .foregroundStyle(Color.egger(.critical, scheme: colorScheme))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var wakeOnLanSection: some View {
+        Section("Wake-on-LAN") {
+            TextField("Endereço MAC (ex.: aa:bb:cc:dd:ee:ff)", text: $viewModel.wolMACAddress)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            TextField("Broadcast IP", text: $viewModel.wolBroadcastIP)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button {
+                Task { await viewModel.runWakeOnLAN() }
+            } label: {
+                Text("Ligar")
+            }
+            .disabled(viewModel.isSubmitting || viewModel.wolMACAddress.isEmpty)
+
+            if let command = viewModel.wolCommand {
+                StatusRow(status: command.status, colorScheme: colorScheme)
+                if command.status == "completed" {
+                    Text("Magic packet enviado.")
+                        .foregroundStyle(Color.egger(.success, scheme: colorScheme))
                 }
                 if command.status == "failed" {
                     Text(command.error ?? "Falha não especificada.")
