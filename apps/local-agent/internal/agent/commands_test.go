@@ -380,6 +380,71 @@ func TestPollAndRunCommands_WakeOnLAN(t *testing.T) {
 	}
 }
 
+func TestPollAndRunCommands_PortScan(t *testing.T) {
+	// Listener TCP real — o comando port_scan precisa achar essa porta de
+	// verdade dentro do intervalo pedido, e nenhuma outra.
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("erro ao abrir listener: %v", err)
+	}
+	defer ln.Close()
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			conn.Close()
+		}
+	}()
+	_, portStr, _ := net.SplitHostPort(ln.Addr().String())
+	port, _ := strconv.Atoi(portStr)
+
+	var reportedBody map[string]any
+	claimed := false
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/agents/agent-1/commands":
+			if claimed {
+				json.NewEncoder(w).Encode(map[string]any{"items": []map[string]any{}})
+				return
+			}
+			claimed = true
+			params, _ := json.Marshal(map[string]any{"target": "127.0.0.1", "start_port": port - 2, "end_port": port + 2})
+			json.NewEncoder(w).Encode(map[string]any{
+				"items": []map[string]any{
+					{"id": "cmd-10", "site_id": "site-1", "type": "port_scan", "params": json.RawMessage(params), "status": "claimed"},
+				},
+			})
+		case r.Method == http.MethodPost && r.URL.Path == "/agents/agent-1/commands/cmd-10/result":
+			json.NewDecoder(r.Body).Decode(&reportedBody)
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Errorf("requisição inesperada: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	a := newTestAgentForCommands(t, server.URL)
+	a.pollAndRunCommands(t.Context())
+
+	if reportedBody == nil {
+		t.Fatal("esperava que o agente reportasse um resultado, nenhum recebido")
+	}
+	if reportedBody["status"] != "completed" {
+		t.Fatalf("status reportado = %v, esperado completed: %+v", reportedBody["status"], reportedBody)
+	}
+	result, ok := reportedBody["result"].(map[string]any)
+	if !ok {
+		t.Fatalf("esperava campo result no reporte, recebi: %+v", reportedBody)
+	}
+	openPorts, ok := result["open_ports"].([]any)
+	if !ok || len(openPorts) != 1 || int(openPorts[0].(float64)) != port {
+		t.Fatalf("open_ports = %v, esperado apenas [%d]", result["open_ports"], port)
+	}
+}
+
 func TestPollAndRunCommands_TipoNaoSuportado(t *testing.T) {
 	var reportedBody map[string]any
 	claimed := false
@@ -394,7 +459,7 @@ func TestPollAndRunCommands_TipoNaoSuportado(t *testing.T) {
 			claimed = true
 			json.NewEncoder(w).Encode(map[string]any{
 				"items": []map[string]any{
-					{"id": "cmd-2", "site_id": "site-1", "type": "port_scan", "params": json.RawMessage(`{}`), "status": "claimed"},
+					{"id": "cmd-2", "site_id": "site-1", "type": "carrier_pigeon", "params": json.RawMessage(`{}`), "status": "claimed"},
 				},
 			})
 		case r.Method == http.MethodPost && r.URL.Path == "/agents/agent-1/commands/cmd-2/result":

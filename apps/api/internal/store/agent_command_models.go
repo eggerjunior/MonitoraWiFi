@@ -48,6 +48,7 @@ const (
 	AgentCommandTypeHTTPRequest = "http_request"
 	AgentCommandTypeLANScan     = "lan_scan"
 	AgentCommandTypeWakeOnLAN   = "wake_on_lan"
+	AgentCommandTypePortScan    = "port_scan"
 )
 
 type AgentCommandStore interface {

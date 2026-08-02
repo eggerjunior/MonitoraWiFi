@@ -64,6 +64,8 @@ func (a *Agent) runCommand(ctx context.Context, cmd apiclient.Command) {
 		a.runLANScanCommand(ctx, cmd)
 	case "wake_on_lan":
 		a.runWakeOnLANCommand(ctx, cmd)
+	case "port_scan":
+		a.runPortScanCommand(ctx, cmd)
 	default:
 		// O backend já valida o tipo na criação (CHECK constraint +
 		// validação no handler) — chegar aqui com um tipo desconhecido só
@@ -430,6 +432,38 @@ func (a *Agent) runWakeOnLANCommand(ctx context.Context, cmd apiclient.Command) 
 		"broadcast_ip": params.BroadcastIP,
 		"port":         params.Port,
 		"executed_at":  time.Now().UTC().Format(time.RFC3339Nano),
+	}
+	if err := a.client.ReportCommandResult(ctx, a.identity.AgentID, a.identity.AgentSecret, cmd.ID, "completed", payload, ""); err != nil {
+		a.logger.Error("erro ao reportar resultado do comando", slog.String("command_id", cmd.ID), slog.Any("error", err))
+	}
+}
+
+type portScanCommandParams struct {
+	Target    string `json:"target"`
+	StartPort int    `json:"start_port"`
+	EndPort   int    `json:"end_port"`
+}
+
+func (a *Agent) runPortScanCommand(ctx context.Context, cmd apiclient.Command) {
+	var params portScanCommandParams
+	if err := json.Unmarshal(cmd.Params, &params); err != nil {
+		a.reportCommandFailure(ctx, cmd.ID, "params inválido: "+err.Error())
+		return
+	}
+
+	scanCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+
+	result, err := probes.ScanPorts(scanCtx, params.Target, params.StartPort, params.EndPort, probes.DefaultPortScanOptions())
+	if err != nil {
+		a.reportCommandFailure(ctx, cmd.ID, err.Error())
+		return
+	}
+
+	payload := map[string]any{
+		"target":      result.Target,
+		"open_ports":  result.OpenPorts,
+		"executed_at": result.ExecutedAt.Format(time.RFC3339Nano),
 	}
 	if err := a.client.ReportCommandResult(ctx, a.identity.AgentID, a.identity.AgentSecret, cmd.ID, "completed", payload, ""); err != nil {
 		a.logger.Error("erro ao reportar resultado do comando", slog.String("command_id", cmd.ID), slog.Any("error", err))

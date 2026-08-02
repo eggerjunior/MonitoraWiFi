@@ -182,6 +182,7 @@ public enum CommandResult: Sendable {
     case httpRequest(HttpRequestCommandResult)
     case lanScan(LanScanCommandResult)
     case wakeOnLan(WakeOnLanCommandResult)
+    case portScan(PortScanCommandResult)
 }
 
 extension CommandResult: Decodable {
@@ -202,6 +203,8 @@ extension CommandResult: Decodable {
             self = .lanScan(v)
         } else if let v = try? WakeOnLanCommandResult(from: decoder) {
             self = .wakeOnLan(v)
+        } else if let v = try? PortScanCommandResult(from: decoder) {
+            self = .portScan(v)
         } else {
             throw DecodingError.dataCorruptedError(in: try decoder.singleValueContainer(), debugDescription: "Formato de resultado de comando não reconhecido")
         }
@@ -266,6 +269,16 @@ public struct WakeOnLanCommandResult: Codable, Sendable {
         case macAddress = "mac_address"
         case broadcastIp = "broadcast_ip"
         case port
+    }
+}
+
+public struct PortScanCommandResult: Codable, Sendable {
+    public let target: String
+    public let openPorts: [Int]
+
+    enum CodingKeys: String, CodingKey {
+        case target
+        case openPorts = "open_ports"
     }
 }
 

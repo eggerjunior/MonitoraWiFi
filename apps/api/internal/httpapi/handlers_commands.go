@@ -29,7 +29,13 @@ var supportedCommandTypes = map[string]bool{
 	store.AgentCommandTypeHTTPRequest: true,
 	store.AgentCommandTypeLANScan:     true,
 	store.AgentCommandTypeWakeOnLAN:   true,
+	store.AgentCommandTypePortScan:    true,
 }
+
+// maxPortScanRange espelha o limite de sanidade do agente
+// (apps/local-agent/internal/probes/portscan.go) — validado nos dois
+// lados, defesa em profundidade.
+const maxPortScanRange = 1024
 
 // minLANScanPrefixLen limita o tamanho do bloco CIDR aceito pro LAN
 // scanner a no máximo 1024 endereços (/22) — bastante pra descobrir
@@ -94,6 +100,28 @@ type wakeOnLANCommandParams struct {
 	MACAddress  string `json:"mac_address"`
 	BroadcastIP string `json:"broadcast_ip"`
 	Port        int    `json:"port"`
+}
+
+type portScanCommandParams struct {
+	Target    string `json:"target"`
+	StartPort int    `json:"start_port"`
+	EndPort   int    `json:"end_port"`
+}
+
+// isPrivateIPv4 exige um IPv4 literal (nunca hostname — evita DNS
+// rebinding entre a validação e a execução pelo agente) dentro de um
+// intervalo privado (RFC 1918). Mitigação completa do threat model (§5)
+// pro port scanner: alvo nunca pode ser de terceiros.
+func isPrivateIPv4(ipStr string) bool {
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return false
+	}
+	ip4 := ip.To4()
+	if ip4 == nil {
+		return false
+	}
+	return ip4.IsPrivate()
 }
 
 // isBroadcastOrPrivateIPv4 restringe o destino do magic packet ao mesmo
@@ -362,6 +390,30 @@ func (s *Server) handleCreateCommand(w http.ResponseWriter, r *http.Request) {
 		}
 		if p.Port < 1 || p.Port > 65535 {
 			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.port precisa estar entre 1 e 65535")
+			return
+		}
+		req.Params, _ = json.Marshal(p)
+
+	case store.AgentCommandTypePortScan:
+		var p portScanCommandParams
+		if len(req.Params) == 0 {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.target, params.start_port e params.end_port são obrigatórios para type=port_scan")
+			return
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params inválido")
+			return
+		}
+		if !isPrivateIPv4(p.Target) {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.target precisa ser um endereço IPv4 privado (RFC 1918) — hostnames não são aceitos")
+			return
+		}
+		if p.StartPort < 1 || p.EndPort > 65535 || p.StartPort > p.EndPort {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.start_port/params.end_port formam um intervalo inválido")
+			return
+		}
+		if p.EndPort-p.StartPort+1 > maxPortScanRange {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", fmt.Sprintf("o intervalo de portas aceita no máximo %d portas", maxPortScanRange))
 			return
 		}
 		req.Params, _ = json.Marshal(p)

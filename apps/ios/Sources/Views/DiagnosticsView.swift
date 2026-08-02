@@ -28,6 +28,9 @@ final class DiagnosticsViewModel {
     var lanScanCIDR = "192.168.1.0/24"
     var wolMACAddress = ""
     var wolBroadcastIP = "255.255.255.255"
+    var portScanTarget = "192.168.1.1"
+    var portScanStart = "1"
+    var portScanEnd = "1024"
 
     private(set) var pingCommand: Command?
     private(set) var batchPingCommand: Command?
@@ -37,6 +40,7 @@ final class DiagnosticsViewModel {
     private(set) var httpRequestCommand: Command?
     private(set) var lanScanCommand: Command?
     private(set) var wolCommand: Command?
+    private(set) var portScanCommand: Command?
     private(set) var rdapResult: RdapResult?
     private(set) var rdapError: String?
     private(set) var isRdapLoading = false
@@ -211,6 +215,24 @@ final class DiagnosticsViewModel {
         isSubmitting = false
     }
 
+    func runPortScan() async {
+        guard let siteId else { return }
+        let start = Int(portScanStart) ?? 1
+        let end = Int(portScanEnd) ?? 1024
+        submitError = nil
+        isSubmitting = true
+        do {
+            let created = try await client.createPortScanCommand(siteId: siteId, target: portScanTarget, startPort: start, endPort: end)
+            portScanCommand = created
+            startPolling(commandId: created.id) { [weak self] updated in self?.portScanCommand = updated }
+        } catch let error as APIClient.ClientError {
+            submitError = Self.message(for: error)
+        } catch {
+            submitError = "Erro de rede ao criar o comando."
+        }
+        isSubmitting = false
+    }
+
     func runRdapLookup() async {
         rdapError = nil
         rdapResult = nil
@@ -276,6 +298,7 @@ struct DiagnosticsView: View {
                 httpRequestSection
                 lanScanSection
                 wakeOnLanSection
+                portScanSection
             }
 
             if let submitError = viewModel.submitError {
@@ -560,6 +583,45 @@ struct DiagnosticsView: View {
                 if command.status == "completed" {
                     Text("Magic packet enviado.")
                         .foregroundStyle(Color.egger(.success, scheme: colorScheme))
+                }
+                if command.status == "failed" {
+                    Text(command.error ?? "Falha não especificada.")
+                        .foregroundStyle(Color.egger(.critical, scheme: colorScheme))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var portScanSection: some View {
+        Section("Port scanner") {
+            Text("Alvo precisa ser um IP privado (RFC 1918), no máximo 1024 portas.")
+                .font(.caption)
+                .foregroundStyle(Color.egger(.textSecondary, scheme: colorScheme))
+            TextField("Alvo (IP)", text: $viewModel.portScanTarget)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            TextField("Porta inicial", text: $viewModel.portScanStart)
+                .keyboardType(.numberPad)
+            TextField("Porta final", text: $viewModel.portScanEnd)
+                .keyboardType(.numberPad)
+            Button {
+                Task { await viewModel.runPortScan() }
+            } label: {
+                Text("Executar")
+            }
+            .disabled(viewModel.isSubmitting || viewModel.portScanTarget.isEmpty)
+
+            if let command = viewModel.portScanCommand {
+                StatusRow(status: command.status, colorScheme: colorScheme)
+                if command.status == "completed", case .portScan(let result) = command.result {
+                    if result.openPorts.isEmpty {
+                        Text("Nenhuma porta aberta encontrada.")
+                            .foregroundStyle(Color.egger(.textSecondary, scheme: colorScheme))
+                    } else {
+                        Text(result.openPorts.map(String.init).joined(separator: ", "))
+                            .font(.system(.caption, design: .monospaced))
+                    }
                 }
                 if command.status == "failed" {
                     Text(command.error ?? "Falha não especificada.")

@@ -157,6 +157,12 @@ export interface WakeOnLanCommandResult {
   executed_at: string;
 }
 
+export interface PortScanCommandResult {
+  target: string;
+  open_ports: number[];
+  executed_at: string;
+}
+
 export interface Command {
   id: string;
   site_id: string;

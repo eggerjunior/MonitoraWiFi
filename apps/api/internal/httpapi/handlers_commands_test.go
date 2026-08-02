@@ -191,7 +191,7 @@ func TestCreateCommand_UnsupportedType(t *testing.T) {
 	deps := newAgentTestServer(admin)
 	cookie := loginAndGetCookie(t, deps.server, "admin@example.com", "senha12345")
 
-	body, _ := json.Marshal(map[string]any{"type": "port_scan"})
+	body, _ := json.Marshal(map[string]any{"type": "carrier_pigeon"})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(body))
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
@@ -553,6 +553,39 @@ func TestCreateCommand_WakeOnLAN_ValidaMACEBroadcast(t *testing.T) {
 	}
 	if code := post(map[string]any{"mac_address": "AA:BB:CC:DD:EE:FF"}); code != http.StatusAccepted {
 		t.Fatalf("esperava 202 com MAC válido e broadcast_ip padrão, recebeu %d", code)
+	}
+}
+
+func TestCreateCommand_PortScan_RequerAlvoPrivadoEIntervaloLimitado(t *testing.T) {
+	siteID := uuid.New()
+	admin := store.User{ID: uuid.New(), Email: "admin@example.com", PasswordHash: mustHash(t, "senha12345"), Role: store.RoleAdministrator}
+	deps := newAgentTestServer(admin)
+	cookie := loginAndGetCookie(t, deps.server, "admin@example.com", "senha12345")
+	enrollTestAgent(t, deps, siteID)
+
+	post := func(params map[string]any) int {
+		body, _ := json.Marshal(map[string]any{"type": "port_scan", "params": params})
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(body))
+		req.AddCookie(cookie)
+		rec := httptest.NewRecorder()
+		deps.server.Routes().ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	if code := post(map[string]any{"target": "8.8.8.8", "start_port": 1, "end_port": 100}); code != http.StatusBadRequest {
+		t.Fatalf("esperava 400 pra alvo público, recebeu %d", code)
+	}
+	if code := post(map[string]any{"target": "example.com", "start_port": 1, "end_port": 100}); code != http.StatusBadRequest {
+		t.Fatalf("esperava 400 pra hostname (só IP literal é aceito), recebeu %d", code)
+	}
+	if code := post(map[string]any{"target": "192.168.1.10", "start_port": 100, "end_port": 1}); code != http.StatusBadRequest {
+		t.Fatalf("esperava 400 pra intervalo invertido, recebeu %d", code)
+	}
+	if code := post(map[string]any{"target": "192.168.1.10", "start_port": 1, "end_port": 2000}); code != http.StatusBadRequest {
+		t.Fatalf("esperava 400 pra intervalo maior que o limite, recebeu %d", code)
+	}
+	if code := post(map[string]any{"target": "192.168.1.10", "start_port": 1, "end_port": 1024}); code != http.StatusAccepted {
+		t.Fatalf("esperava 202 pra alvo privado e intervalo dentro do limite, recebeu %d", code)
 	}
 }
 

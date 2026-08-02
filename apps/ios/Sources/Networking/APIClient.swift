@@ -205,6 +205,16 @@ public actor APIClient {
         return try await postJSON("/sites/\(siteId)/commands", body: Body(type: "wake_on_lan", params: Params(macAddress: macAddress, broadcastIp: broadcastIP)))
     }
 
+    /// Port scanner (Fase 5) — só aceita IPv4 privado literal (RFC 1918)
+    /// como alvo (mitigação do threat-model.md §5), executado pelo agente.
+    public func createPortScanCommand(siteId: String, target: String, startPort: Int, endPort: Int) async throws -> Command {
+        struct Params: Encodable { let target: String; let startPort: Int; let endPort: Int
+            enum CodingKeys: String, CodingKey { case target; case startPort = "start_port"; case endPort = "end_port" }
+        }
+        struct Body: Encodable { let type: String; let params: Params }
+        return try await postJSON("/sites/\(siteId)/commands", body: Body(type: "port_scan", params: Params(target: target, startPort: startPort, endPort: endPort)))
+    }
+
     /// RDAP/WHOIS (Fase 5) — consulta pública sobre domínio/IP, resolvida
     /// pelo backend via bootstrap real da IANA. Não passa pelo agente do
     /// site (a informação é da internet, não da LAN).

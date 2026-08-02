@@ -137,10 +137,7 @@ UniFi, dados de localização física via LiDAR).
   funcionalidade central. `http_request` adicionalmente restringe o
   esquema da URL a http(s) e o método a um allowlist fixo (GET, POST, PUT,
   PATCH, DELETE, HEAD, OPTIONS) — não executa nada além de uma requisição
-  HTTP padrão. **Vira bloqueante quando um port scanner de verdade for
-  implementado** (Fase 5, ainda não começado) — aí sim a mitigação completa
-  (allowlist + confirmação + auditoria) é obrigatória antes de expor a
-  funcionalidade.
+  HTTP padrão.
 - ✅ **Resolvido em 2026-08-01 (Fase 5)**: `lan_scan` (novo tipo de comando,
   varre múltiplos hosts) e `wake_on_lan` (envia UDP a um IP escolhido pelo
   usuário) só aceitam alvo dentro de um intervalo IPv4 privado (RFC 1918) —
@@ -149,3 +146,12 @@ UniFi, dados de localização física via LiDAR).
   especificamente (nunca podem mirar um host de terceiros, então o vetor
   "usar o backend como ferramenta de ataque a terceiros" não se aplica a
   elas), sem precisar de um sistema de cadastro/confirmação de alvos.
+- ✅ **Resolvido em 2026-08-01 (Fase 5)**: `port_scan` (o item explicitamente
+  citado nesta seção como "vira bloqueante quando implementado") ganhou a
+  mitigação completa antes de ser exposto — o backend só aceita um IPv4
+  privado **literal** (RFC 1918, `net.ParseIP`, nunca hostname — elimina o
+  risco de DNS rebinding entre a validação e a execução pelo agente) e no
+  máximo 1024 portas por execução (`maxPortScanRange`, espelhado no agente
+  como defesa em profundidade). Combinado com o rate limiting e a auditoria
+  já existentes (acima), fecha o único item desta seção que ainda faltava
+  pras ferramentas de teste ativo da Fase 5.

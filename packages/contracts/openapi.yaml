@@ -1093,7 +1093,7 @@ components:
       properties:
         type:
           type: string
-          enum: [ping, dns_lookup, traceroute, batch_ping, ssl_check, http_request, lan_scan, wake_on_lan]
+          enum: [ping, dns_lookup, traceroute, batch_ping, ssl_check, http_request, lan_scan, wake_on_lan, port_scan]
         params:
           type: object
           description: >
@@ -1109,7 +1109,10 @@ components:
             (RFC 1918) de no máximo /22 (1024 endereços) }. "wake_on_lan": {
             mac_address: string, broadcast_ip?: string (padrão
             255.255.255.255, precisa ser esse valor ou um IPv4 privado),
-            port?: integer (padrão 9, 1-65535) }.
+            port?: integer (padrão 9, 1-65535) }. "port_scan": { target:
+            string — precisa ser um IPv4 privado literal (RFC 1918, não
+            aceita hostname), start_port: integer, end_port: integer
+            (intervalo de no máximo 1024 portas) }.
 
     Command:
       type: object
