@@ -78,8 +78,16 @@ func TestCreateSpatialSurvey_FluxoCompleto(t *testing.T) {
 	if len(items) != 1 {
 		t.Fatalf("esperava 1 levantamento na listagem, recebeu %d", len(items))
 	}
-	if _, hasSamples := items[0].(map[string]any)["samples"]; hasSamples {
+	listedSurvey := items[0].(map[string]any)
+	if _, hasSamples := listedSurvey["samples"]; hasSamples {
 		t.Fatal("listagem não deveria incluir amostras (só metadados)")
+	}
+	// sample_count precisa vir preenchido mesmo sem carregar as amostras
+	// inteiras — bug real já visto: ListBySite não populava Samples, e o
+	// serializador calculava sample_count a partir de len(Samples),
+	// resultando em sample_count=0 pra todo levantamento na listagem.
+	if listedSurvey["sample_count"].(float64) != 1 {
+		t.Fatalf("esperava sample_count=1 na listagem, recebeu %v", listedSurvey["sample_count"])
 	}
 
 	// Detalhe deve incluir amostras.

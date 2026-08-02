@@ -41,6 +41,10 @@ type SpatialSurvey struct {
 	StartedAt   time.Time
 	FinishedAt  time.Time
 	CreatedAt   time.Time
+	// SampleCount é sempre populado (list e detail), independente de Samples
+	// estar carregado — ListBySite nunca carrega Samples (custaria caro pra
+	// uma tela de lista), então nunca derivar a contagem de len(Samples).
+	SampleCount int
 	Samples     []SpatialSurveySample
 }
 

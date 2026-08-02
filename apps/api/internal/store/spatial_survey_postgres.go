@@ -83,6 +83,7 @@ func (s *PostgresSpatialSurveys) Get(ctx context.Context, id uuid.UUID) (Spatial
 	if err := rows.Err(); err != nil {
 		return SpatialSurvey{}, err
 	}
+	survey.SampleCount = len(survey.Samples)
 
 	return survey, nil
 }
@@ -95,9 +96,12 @@ func (s *PostgresSpatialSurveys) ListBySite(ctx context.Context, siteID uuid.UUI
 		return nil, 0, err
 	}
 
+	// sample_count vem de uma subquery, não de carregar as amostras inteiras
+	// (custaria caro numa tela de lista com muitos levantamentos).
 	rows, err := s.Pool.Query(ctx,
-		`SELECT id, site_id, created_by, name, device_model, lidar_used, started_at, finished_at, created_at
-		 FROM spatial_surveys WHERE site_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+		`SELECT ss.id, ss.site_id, ss.created_by, ss.name, ss.device_model, ss.lidar_used, ss.started_at, ss.finished_at, ss.created_at,
+		        (SELECT count(*) FROM spatial_survey_samples WHERE survey_id = ss.id) AS sample_count
+		 FROM spatial_surveys ss WHERE ss.site_id = $1 ORDER BY ss.created_at DESC LIMIT $2 OFFSET $3`,
 		siteID, page.PageSize, offset)
 	if err != nil {
 		return nil, 0, err
@@ -107,7 +111,7 @@ func (s *PostgresSpatialSurveys) ListBySite(ctx context.Context, siteID uuid.UUI
 	var out []SpatialSurvey
 	for rows.Next() {
 		var s SpatialSurvey
-		if err := rows.Scan(&s.ID, &s.SiteID, &s.CreatedBy, &s.Name, &s.DeviceModel, &s.LiDARUsed, &s.StartedAt, &s.FinishedAt, &s.CreatedAt); err != nil {
+		if err := rows.Scan(&s.ID, &s.SiteID, &s.CreatedBy, &s.Name, &s.DeviceModel, &s.LiDARUsed, &s.StartedAt, &s.FinishedAt, &s.CreatedAt, &s.SampleCount); err != nil {
 			return nil, 0, err
 		}
 		out = append(out, s)

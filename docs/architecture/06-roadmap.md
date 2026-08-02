@@ -221,10 +221,8 @@ Wake-on-LAN (via agente, ADR-008).
 > - **Também fora desta fatia** (adiado, não esquecido): correlação por
 >   timestamp com a telemetria contínua do agente/UniFi (arquitetura
 >   completa em `04-estrategia-lidar.md`), `floor_id`/múltiplos andares,
->   malha 3D persistida (`MESH_ASSET`), heatmap interpolado pelo worker
->   (`HEATMAP`), modo sem LiDAR com planta manual. A visualização web
->   (`/map`) hoje é um scatter 2D top-down simples (SVG puro, sem
->   biblioteca de gráfico), não um heatmap 3D.
+>   malha 3D persistida (`MESH_ASSET`), modo sem LiDAR com planta manual.
+>   A visualização web (`/map`) não é uma malha 3D.
 > - Validado: backend testado contra Postgres real efêmero (transação +
 >   batch insert + leitura, `docs/development-handoff/RELEASE_LOG.md`);
 >   testes automatizados dos handlers HTTP; funções puras de posição/RTT
@@ -233,6 +231,26 @@ Wake-on-LAN (via agente, ADR-008).
 >   A sessão AR/LiDAR em si (mesh reconstruction, captura real de
 >   posição/SSID/RTT em campo) depende do teste do usuário no aparelho
 >   físico — pendência real de validação de campo, não de implementação.
+> - **Atualização (2026-08-02, mesmo dia)**: heatmap contínuo interpolado
+>   (IDW — inverse distance weighting, `apps/web/src/lib/spatial-heatmap.ts`)
+>   substituiu o scatter simples — cada célula da grade mostra sua
+>   distância até a amostra real mais próxima (via `<title>`, opacidade
+>   proporcional à confiança, nunca 100% opaca fora de medição real).
+>   Matemática validada por script isolado (4 casos: ponto médio entre
+>   duas amostras, célula colada numa amostra real, amostra com falha
+>   sem quebrar a interpolação, amostra única). **Bug real encontrado e
+>   corrigido nesta mesma verificação**: `sample_count` na listagem
+>   sempre voltava `0` — `ListBySite` nunca carrega `Samples` (por
+>   design, seria caro numa tela de lista), mas o serializador calculava
+>   a contagem a partir de `len(Samples)`; corrigido com um campo
+>   `SampleCount` próprio, populado por subquery `COUNT(*)` no
+>   `ListBySite` e por `len(Samples)` no `Get`. O teste automatizado
+>   original não pegou isso porque o fake de teste carregava `Samples`
+>   inteiro na listagem (diferente do Postgres real) — corrigido também,
+>   e um novo assert de `sample_count` foi adicionado para não repetir.
+>   Só foi descoberto porque a verificação rodou contra uma stack real
+>   containerizada (Postgres + api + web, login de verdade via
+>   Playwright), não só testes unitários com fakes.
 
 Fluxo completo de `Spatial WiFi Survey` (detecção de LiDAR, captura guiada, malha,
 amostras, sincronização com métricas de rede, heatmap 2D/3D, modo AR, fallback sem

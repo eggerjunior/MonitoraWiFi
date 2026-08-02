@@ -119,6 +119,7 @@ func (s *Server) handleCreateSpatialSurvey(w http.ResponseWriter, r *http.Reques
 		StartedAt:   startedAt,
 		FinishedAt:  finishedAt,
 		Samples:     samples,
+		SampleCount: len(samples),
 	}
 
 	if err := s.spatialSurveys.Create(r.Context(), survey); err != nil {
@@ -190,7 +191,7 @@ func spatialSurveyToJSON(sv store.SpatialSurvey, includeSamples bool) map[string
 		"lidar_used":   sv.LiDARUsed,
 		"started_at":   sv.StartedAt.Format(time.RFC3339),
 		"finished_at":  sv.FinishedAt.Format(time.RFC3339),
-		"sample_count": len(sv.Samples),
+		"sample_count": sv.SampleCount,
 	}
 	if !sv.CreatedAt.IsZero() {
 		out["created_at"] = sv.CreatedAt.Format(time.RFC3339)

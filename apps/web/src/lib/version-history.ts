@@ -10,12 +10,20 @@ export type VersionEntry = {
 
 export const versionHistory: VersionEntry[] = [
   {
+    version: "0.11.0",
+    date: "2026-08-02",
+    changes: [
+      "Mapa: heatmap contínuo interpolado (IDW) entre as amostras reais do levantamento espacial — antes era só um scatter de pontos discretos; corrige também sample_count sempre aparecendo como 0 na listagem",
+    ],
+    isCurrent: true,
+  },
+  {
     version: "0.10.0",
     date: "2026-08-02",
     changes: [
       "Mapa: primeira fatia do levantamento espacial (Fase 6) — lista de levantamentos capturados pelo app iOS e scatter 2D top-down por qualidade de RTT",
     ],
-    isCurrent: true,
+    isCurrent: false,
   },
   {
     version: "0.9.0",

@@ -444,11 +444,28 @@ func (f *fakeSpatialSurveys) Get(ctx context.Context, id uuid.UUID) (store.Spati
 	return s, nil
 }
 
+// ListBySite espelha o comportamento real do Postgres (spatial_survey_postgres.go):
+// nunca carrega Samples (só uma tela de lista), só o SampleCount já
+// calculado — um fake que devolvesse Samples aqui esconderia bugs reais de
+// "sample_count sempre 0 na listagem" que só apareceriam contra Postgres de
+// verdade (como de fato aconteceu antes desta função existir).
 func (f *fakeSpatialSurveys) ListBySite(ctx context.Context, siteID uuid.UUID, page store.Page) ([]store.SpatialSurvey, int, error) {
 	ids := f.bySite[siteID]
 	items := make([]store.SpatialSurvey, 0, len(ids))
 	for _, id := range ids {
-		items = append(items, f.byID[id])
+		full := f.byID[id]
+		items = append(items, store.SpatialSurvey{
+			ID:          full.ID,
+			SiteID:      full.SiteID,
+			CreatedBy:   full.CreatedBy,
+			Name:        full.Name,
+			DeviceModel: full.DeviceModel,
+			LiDARUsed:   full.LiDARUsed,
+			StartedAt:   full.StartedAt,
+			FinishedAt:  full.FinishedAt,
+			CreatedAt:   full.CreatedAt,
+			SampleCount: len(full.Samples),
+		})
 	}
 	return items, len(items), nil
 }
