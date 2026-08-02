@@ -122,9 +122,9 @@ ser assumido/simulado antes de resposta real; a Fase 3 (integração UniFi) trat
     UniFi OS, esperado). Se MLO/Wi-Fi 7 já está habilitado na prática
     ainda não foi checado — depende de configuração de rádio, não só de
     firmware (ver item 6).
-17. ⏳ **Resposta parcial em 2026-08-02**: usuário não sabe se SNMP está
-    habilitado — precisa checar em `Settings → System → Advanced` (ou
-    equivalente) no console. Ainda em aberto.
+17. ✅ **Confirmado em 2026-08-02** (print real de `Settings → [seção de
+    Registro de Tráfego] → Monitoramento SNMP`): **SNMP não está
+    habilitado** — nem "Versão 1/2C" nem "Versão 3" marcados.
 18. ✅ **Confirmado em 2026-08-02**: **syslog não está configurado** para
     nenhum coletor hoje.
 

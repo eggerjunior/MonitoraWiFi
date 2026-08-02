@@ -58,19 +58,23 @@ agente (não mock).
 > `unifi_clients` e confirmados via query direta no banco de produção. 13 dos
 > 18 itens de `verificacoes-pendentes-instalacao.md` já confirmados com dados
 > reais (versões, autenticação, VLANs ativas, firmwares, topologia
-> cliente→dispositivo básica). **Atualização (2026-08-02)**: 17 dos 18
-> itens confirmados (só SNMP em aberto). Detalhe de rádio/porta e
-> eventos/alarmes **confirmados indisponíveis** nesta versão da Network
-> API local (não "a validar" — testado e não vem: só
+> cliente→dispositivo básica). **Atualização (2026-08-02)**: **18 de 18
+> itens de `verificacoes-pendentes-instalacao.md` confirmados** — SNMP
+> confirmado desabilitado (print real de `Settings → Monitoramento
+> SNMP`, nem v1/2C nem v3 marcados), fechando a lista. Detalhe de
+> rádio/porta e eventos/alarmes **confirmados indisponíveis** nesta
+> versão da Network API local (não "a validar" — testado e não vem: só
 > canal/largura/PoE-básico por rádio/porta, sem potência/utilização/
 > contadores/PoE-watts; `/alarms` e `/events` retornam 404 explícito).
 > **Topologia dispositivo→dispositivo implementada e em produção**
 > (`uplink.deviceId`, confirmado via `GET .../devices/{id}` real) — web
 > mostra árvore gateway→switch→AP, iOS mostra "Conectado a". **Faltam**:
 > detecção automática de capability matrix por versão, adaptadores
-> SNMP/Syslog/Site Manager/legado (nenhum começado — eventos/alarmes só
-> viáveis via syslog, não configurado nesta instalação, ou Site Manager
-> API, ainda não decidida).
+> SNMP/Syslog/Site Manager/legado (nenhum começado — SNMP e syslog
+> confirmados desabilitados nesta instalação, então esses adaptadores
+> não têm dado real pra consumir ainda mesmo se implementados; eventos/
+> alarmes ficam dependentes da Site Manager API — cloud, item 5, ainda
+> não decidida — já que a API local não os expõe).
 
 `UniFiIntegrationProvider` com adaptador Network API local funcional contra a
 instalação real, detecção de versão + capability matrix populada automaticamente,
