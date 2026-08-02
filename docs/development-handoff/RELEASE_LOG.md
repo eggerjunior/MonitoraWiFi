@@ -4,6 +4,36 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-02 — Heatmap interpolado (IDW) no /map + correção de sample_count
+
+- Commit `2716d10d`. Usuário perguntou diretamente "tem mapa de calor pra
+  mostrar sinal do wifi?" — resposta honesta: não tinha (só scatter de
+  pontos, e nunca RSSI, sempre RTT). Implementada interpolação IDW real
+  entre as amostras (`apps/web/src/lib/spatial-heatmap.ts`), com opacidade
+  por confiança (distância até a amostra real mais próxima) e tooltip
+  `<title>` por célula.
+- **Validação end-to-end real** (Postgres efêmero + api + web
+  containerizados, login de verdade via Playwright com injeção de cookie
+  — `Secure` do cookie de sessão é travado em produção pelo Next.js em
+  tempo de build, então o override `NODE_ENV=development` em runtime não
+  tem efeito nenhum; contornado extraindo o token real da resposta de
+  login e injetando via `context.addCookies` com `secure: false`,
+  restrito a este teste) encontrou um **bug real**: `sample_count` na
+  listagem de levantamentos sempre voltava `0`. Causa: `ListBySite` nunca
+  carrega `Samples` (decisão de design — custaria caro numa lista), mas o
+  serializador calculava a contagem a partir de `len(Samples)`. Corrigido
+  com um campo `SampleCount` próprio, alimentado por subquery `COUNT(*)`
+  no `ListBySite` e por `len(Samples)` no `Get`. O teste automatizado
+  original não pegou isso porque o fake usado nos testes carregava
+  `Samples` inteiro na listagem — diferente do Postgres real —, corrigido
+  também, com um novo assert de `sample_count` adicionado.
+- Sem migração nova (schema inalterado). API/web reimplantados
+  (`monitorawifi-api:2716d10d` / `monitorawifi-web:2716d10d`) com
+  `-p 127.0.0.1:8422:8080` confirmado. Saudáveis pela rede interna
+  (`/healthz` → 200) e pela rota pública real (`/api/v1/auth/me` → 401,
+  `/login` → 200, `/map` → 307 redirect pra login, esperado).
+- Web 0.11.0, API 0.5.0.
+
 ## 2026-08-02 — Fase 6 (LiDAR): primeira fatia real do levantamento espacial em produção
 
 - Commit `807a88a7` (corrigido de `1a72173`, ver abaixo). Usuário confirmou
