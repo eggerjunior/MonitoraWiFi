@@ -75,30 +75,29 @@ ser assumido/simulado antes de resposta real; a Fase 3 (integração UniFi) trat
     dispositivos e clientes **não são registrados em nenhum documento deste
     repositório público** (o inventário revela o layout físico da
     residência — câmeras, cômodos — que não deve ficar em um repo público).
-12. IPv6 está habilitado em alguma dessas redes? Em qual modo (prefixo delegado,
-    NAT66, desabilitado)?
-13. Existe VPN configurada no gateway (Seção 4.1 "Estado de VPNs")? Qual tipo
-    (WireGuard/OpenVPN/IPsec nativo do UniFi) e é usada para acesso remoto de
-    administração?
-14. Existem regras de firewall/IDS-IPS já habilitadas que precisam ser
-    consideradas como eventos de segurança a ingerir desde o início (Seção 4.1)?
+12. ✅ **Confirmado em 2026-08-02**: IPv6 **não está habilitado** em
+    nenhuma das redes desta instalação.
+13. ✅ **Confirmado em 2026-08-02**: **não há VPN configurada** no
+    gateway.
+14. ✅ **Confirmado em 2026-08-02**: **não há regras de firewall/IDS-IPS**
+    habilitadas além do padrão do UniFi.
 
 ## Hardware e licenciamento
 
-15. As duas WANs (primária e secundária) estão ambas fisicamente conectadas e
-    configuradas para failover/balanceamento no Cloud Gateway Max, ou a secundária
-    é um cenário planejado a confirmar?
+15. ✅ **Confirmado em 2026-08-02**: as duas WANs estão fisicamente
+    conectadas e configuradas (failover/balanceamento) no Cloud Gateway
+    Max — não é um cenário só planejado.
 16. ✅ **Confirmado em 2026-08-01** (via `GET .../sites/{id}/devices`):
     U7 Pro (4 unidades) firmware **8.7.11**; USW Lite 16 PoE firmware
     **7.4.1**; Cloud Gateway Max firmware **5.1.19** (mesma versão do
     UniFi OS, esperado). Se MLO/Wi-Fi 7 já está habilitado na prática
     ainda não foi checado — depende de configuração de rádio, não só de
     firmware (ver item 6).
-17. SNMP está habilitado no console? Em qual versão (v2c/v3) e com quais
-    credenciais/community string (não registrar o valor aqui — apenas confirmar que
-    existe e onde a credencial será armazenada).
-18. Syslog está configurado para ser enviado a algum coletor hoje? Se sim, qual
-    formato/porta, para o agente poder atuar como receiver compatível.
+17. ⏳ **Resposta parcial em 2026-08-02**: usuário não sabe se SNMP está
+    habilitado — precisa checar em `Settings → System → Advanced` (ou
+    equivalente) no console. Ainda em aberto.
+18. ✅ **Confirmado em 2026-08-02**: **syslog não está configurado** para
+    nenhum coletor hoje.
 
 ## Processo de validação recomendado
 
