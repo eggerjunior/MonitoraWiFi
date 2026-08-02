@@ -4,6 +4,36 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-02 — Comparação entre resolvedores DNS (Fase 2, item pendente fechado) em produção
+
+- Commit `f2650978`. Fecha o único item que restava na Fase 2: novo tipo
+  de comando sob demanda `dns_resolver_compare` — resolve o mesmo
+  hostname contra o resolvedor padrão da rede e três resolvedores
+  públicos fixos (Cloudflare `1.1.1.1`, Google `8.8.8.8`, Quad9
+  `9.9.9.9`), lista fixa no agente (`probes.KnownResolvers`),
+  deliberadamente não configurável pelo usuário (ver
+  `docs/security/threat-model.md`, entrada 2026-08-02, sobre o risco de
+  virar um relay DNS arbitrário).
+- Backup prévio de rotina. Migração `0015_command_type_dns_resolver_compare`
+  aplicada (versão 14→15, confirmada `dirty=false`).
+- API (`monitorawifi-api:f2650978`) e web (`monitorawifi-web:f2650978`)
+  reconstruídos e reimplantados **com `-p 127.0.0.1:8422:8080`**
+  (confirmado via `docker port` antes de seguir). Saudáveis pela rede
+  interna (`/healthz` → 200) e pela rota pública real
+  (`https://wifi.egger.app.br/api/v1/auth/me` → 401 correto, `/login` →
+  200).
+- Agente: `agent-v0.7.0` publicado
+  (https://github.com/eggerjunior/MonitoraWiFi/releases/tag/agent-v0.7.0).
+  **Pendente do lado do usuário**: o agente real já enrolado (mini PC do
+  usuário) continua rodando a imagem anterior até ele mesmo atualizar —
+  fora do meu acesso, é hardware dele.
+- Web 0.9.0, iOS 0.6.0 (Build 13): `iOS TestFlight release` concluído com
+  sucesso (https://github.com/eggerjunior/MonitoraWiFi/actions/runs/30733199511).
+- **Fase 2 concluída** — nenhum item pendente restante em nenhuma fase já
+  iniciada (Fase 6 LiDAR e Fase 7 correlação seguem deliberadamente
+  bloqueadas por dependência de hardware/dado histórico real, não por
+  trabalho faltando).
+
 ## 2026-08-02 — Topologia dispositivo→dispositivo (Fase 3) em produção
 
 - Commit `44d973e`. Confirmado contra a instalação real do usuário (14
