@@ -6,8 +6,8 @@ options:
   createIntermediateGroups: true
 
 settings:
-  MARKETING_VERSION: "0.6.0"
-  CURRENT_PROJECT_VERSION: 13
+  MARKETING_VERSION: "0.7.0"
+  CURRENT_PROJECT_VERSION: 14
   GIT_COMMIT: dev # sobrescrito na linha de comando por scripts/testflight.sh
   API_BASE_URL: "https://wifi.egger.app.br/api/v1"
 
@@ -65,6 +65,14 @@ targets:
         NSFaceIDUsageDescription: >-
           Usado para proteger o acesso à sua sessão com Face ID, em vez de manter
           a sessão sempre aberta.
+        NSCameraUsageDescription: >-
+          Usado durante o levantamento espacial (Fase 6) para rastrear sua posição
+          e, em aparelhos com LiDAR, reconstruir a malha do ambiente. Nenhuma
+          imagem é enviada ao backend — só posição e amostras de rede.
+        NSLocationWhenInUseUsageDescription: >-
+          Usado durante o levantamento espacial para identificar a rede Wi-Fi
+          (SSID/BSSID) à qual seu iPhone está conectado em cada ponto — exigido
+          pela Apple para esta informação.
     entitlements:
       path: Sources/Resources/EggerNetworkIntelligence.entitlements
       properties:

@@ -255,3 +255,34 @@ export interface SpeedTest {
   jitter_ms: number | null;
   executed_at: string;
 }
+
+// Levantamento espacial (Fase 6, "Spatial WiFi Survey") — posição real do
+// ARKit (world tracking) + qualidade de rede medida no próprio ponto,
+// enviado completo pelo app iOS ao final da caminhada guiada.
+export interface SpatialSurveySample {
+  id: string;
+  position_x: number;
+  position_y: number;
+  position_z: number;
+  ssid: string | null;
+  bssid: string | null;
+  rtt_ms: number | null;
+  is_expensive: boolean;
+  is_constrained: boolean;
+  interface_type: "wifi" | "cellular" | "wired" | "other";
+  captured_at: string;
+}
+
+export interface SpatialSurvey {
+  id: string;
+  site_id: string;
+  created_by: string;
+  name: string;
+  device_model: string;
+  lidar_used: boolean;
+  started_at: string;
+  finished_at: string;
+  created_at: string;
+  sample_count: number;
+  samples?: SpatialSurveySample[];
+}

@@ -155,6 +155,19 @@ UniFi, dados de localização física via LiDAR).
   como defesa em profundidade). Combinado com o rate limiting e a auditoria
   já existentes (acima), fecha o único item desta seção que ainda faltava
   pras ferramentas de teste ativo da Fase 5.
+- ✅ **Resolvido em 2026-08-02 (Fase 6, primeira fatia)**: levantamento
+  espacial (`POST /sites/{siteId}/spatial-surveys`) grava posição relativa
+  à sessão ARKit do usuário (nunca georreferenciada — sem GPS envolvido) +
+  SSID/BSSID da rede associada no momento + RTT medido — nenhuma malha 3D,
+  imagem de câmera ou plano físico da residência é enviado ao backend
+  nesta fatia (a linha "Malha 3D/planta... exposta" da tabela §2.4 segue
+  como risco futuro rastreado, não presente ainda, já que a malha nem é
+  persistida). Mesma allowlist de permissão do resto do produto
+  (`PermRunTests` pra criar, `PermView` pra listar/ler); rate limiting
+  geral da API já se aplica. Único dado potencialmente sensível é
+  SSID/BSSID por ponto do site do próprio usuário — mesmo nível de
+  exposição que o inventário UniFi já sincronizado (Fase 3), não um dado
+  novo de terceiros.
 - ✅ **Resolvido em 2026-08-02 (Fase 2)**: `dns_resolver_compare` (novo tipo
   de comando, "comparação entre resolvedores DNS" — item pendente desde a
   Fase 2) aceita `hostname` livre (mesmo perfil de risco aceito do

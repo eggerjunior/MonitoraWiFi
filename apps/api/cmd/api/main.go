@@ -77,6 +77,7 @@ func run() error {
 		UniFiDevices:      &store.PostgresUniFiDevices{Pool: pool},
 		UniFiClients:      &store.PostgresUniFiClients{Pool: pool},
 		Anomalies:         &store.PostgresAnomalies{Pool: pool},
+		SpatialSurveys:    &store.PostgresSpatialSurveys{Pool: pool},
 		RDAPClient:        rdap.NewClient(),
 	})
 

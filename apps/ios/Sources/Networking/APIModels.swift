@@ -472,3 +472,103 @@ public struct Page<Item: Codable & Sendable>: Codable, Sendable {
         case total
     }
 }
+
+// MARK: - Levantamento espacial (Fase 6, "Spatial WiFi Survey")
+
+/// Amostra capturada durante a caminhada guiada — posição real do ARKit
+/// (world tracking, relativa à origem da sessão, não georreferenciada) +
+/// qualidade de rede medida no próprio ponto. Deliberadamente sem RSSI/canal/
+/// PHY rate: nenhum desses campos é obtido pelo iPhone (ver capability
+/// matrix) nem por esta versão da Network API do UniFi (confirmado ausente
+/// em `/clients`) — nunca inventar dado que a plataforma não expõe.
+public struct SpatialSurveySample: Codable, Sendable {
+    public let positionX: Double
+    public let positionY: Double
+    public let positionZ: Double
+    public let ssid: String?
+    public let bssid: String?
+    public let rttMs: Double?
+    public let isExpensive: Bool
+    public let isConstrained: Bool
+    public let interfaceType: String
+    public let capturedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case positionX = "position_x"
+        case positionY = "position_y"
+        case positionZ = "position_z"
+        case ssid
+        case bssid
+        case rttMs = "rtt_ms"
+        case isExpensive = "is_expensive"
+        case isConstrained = "is_constrained"
+        case interfaceType = "interface_type"
+        case capturedAt = "captured_at"
+    }
+
+    public init(positionX: Double, positionY: Double, positionZ: Double, ssid: String?, bssid: String?, rttMs: Double?, isExpensive: Bool, isConstrained: Bool, interfaceType: String, capturedAt: String) {
+        self.positionX = positionX
+        self.positionY = positionY
+        self.positionZ = positionZ
+        self.ssid = ssid
+        self.bssid = bssid
+        self.rttMs = rttMs
+        self.isExpensive = isExpensive
+        self.isConstrained = isConstrained
+        self.interfaceType = interfaceType
+        self.capturedAt = capturedAt
+    }
+}
+
+public struct CreateSpatialSurveyRequest: Encodable, Sendable {
+    public let name: String
+    public let deviceModel: String
+    public let lidarUsed: Bool
+    public let startedAt: String
+    public let finishedAt: String
+    public let samples: [SpatialSurveySample]
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case deviceModel = "device_model"
+        case lidarUsed = "lidar_used"
+        case startedAt = "started_at"
+        case finishedAt = "finished_at"
+        case samples
+    }
+
+    public init(name: String, deviceModel: String, lidarUsed: Bool, startedAt: String, finishedAt: String, samples: [SpatialSurveySample]) {
+        self.name = name
+        self.deviceModel = deviceModel
+        self.lidarUsed = lidarUsed
+        self.startedAt = startedAt
+        self.finishedAt = finishedAt
+        self.samples = samples
+    }
+}
+
+public struct SpatialSurvey: Codable, Sendable, Identifiable {
+    public let id: String
+    public let siteId: String
+    public let createdBy: String
+    public let name: String
+    public let deviceModel: String
+    public let lidarUsed: Bool
+    public let startedAt: String
+    public let finishedAt: String
+    public let sampleCount: Int
+    public let samples: [SpatialSurveySample]?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case siteId = "site_id"
+        case createdBy = "created_by"
+        case name
+        case deviceModel = "device_model"
+        case lidarUsed = "lidar_used"
+        case startedAt = "started_at"
+        case finishedAt = "finished_at"
+        case sampleCount = "sample_count"
+        case samples
+    }
+}

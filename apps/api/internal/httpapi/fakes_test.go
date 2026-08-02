@@ -421,6 +421,38 @@ func (f *fakeAnomalies) ListBySite(ctx context.Context, siteID uuid.UUID, page s
 	return items, len(items), nil
 }
 
+type fakeSpatialSurveys struct {
+	byID   map[uuid.UUID]store.SpatialSurvey
+	bySite map[uuid.UUID][]uuid.UUID
+}
+
+func newFakeSpatialSurveys() *fakeSpatialSurveys {
+	return &fakeSpatialSurveys{byID: map[uuid.UUID]store.SpatialSurvey{}, bySite: map[uuid.UUID][]uuid.UUID{}}
+}
+
+func (f *fakeSpatialSurveys) Create(ctx context.Context, s store.SpatialSurvey) error {
+	f.byID[s.ID] = s
+	f.bySite[s.SiteID] = append(f.bySite[s.SiteID], s.ID)
+	return nil
+}
+
+func (f *fakeSpatialSurveys) Get(ctx context.Context, id uuid.UUID) (store.SpatialSurvey, error) {
+	s, ok := f.byID[id]
+	if !ok {
+		return store.SpatialSurvey{}, store.ErrNotFound
+	}
+	return s, nil
+}
+
+func (f *fakeSpatialSurveys) ListBySite(ctx context.Context, siteID uuid.UUID, page store.Page) ([]store.SpatialSurvey, int, error) {
+	ids := f.bySite[siteID]
+	items := make([]store.SpatialSurvey, 0, len(ids))
+	for _, id := range ids {
+		items = append(items, f.byID[id])
+	}
+	return items, len(items), nil
+}
+
 // fakeRDAPClient evita depender de bootstrap/servidores RDAP reais na
 // internet nos testes de handler — o cliente real (egger/api/internal/rdap)
 // já tem seus próprios testes com servidores HTTP locais reais.

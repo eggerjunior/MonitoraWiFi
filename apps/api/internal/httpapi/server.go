@@ -49,6 +49,7 @@ type Server struct {
 	unifiDevices      store.UniFiDeviceStore
 	unifiClients      store.UniFiClientStore
 	anomalies         store.AnomalyStore
+	spatialSurveys    store.SpatialSurveyStore
 
 	rdapClient RDAPLookuper
 
@@ -78,6 +79,7 @@ type Deps struct {
 	UniFiDevices      store.UniFiDeviceStore
 	UniFiClients      store.UniFiClientStore
 	Anomalies         store.AnomalyStore
+	SpatialSurveys    store.SpatialSurveyStore
 
 	RDAPClient RDAPLookuper
 }
@@ -101,6 +103,7 @@ func NewServer(d Deps) *Server {
 		unifiDevices:      d.UniFiDevices,
 		unifiClients:      d.UniFiClients,
 		anomalies:         d.Anomalies,
+		spatialSurveys:    d.SpatialSurveys,
 		rdapClient:        d.RDAPClient,
 		sessionTTL:        d.SessionTTL,
 		loginLimiter:      ratelimit.New(30, 10), // 30/min por IP, burst 10 — ajustável em produção
@@ -164,6 +167,13 @@ func (s *Server) Routes() http.Handler {
 
 	mux.HandleFunc("GET /api/v1/rdap/lookup", s.withObservability("rdap.lookup",
 		s.requirePermission(auth.PermRunTests, s.handleRDAPLookup)))
+
+	mux.HandleFunc("POST /api/v1/sites/{siteId}/spatial-surveys", s.withObservability("spatial-surveys.create",
+		s.requirePermission(auth.PermRunTests, s.handleCreateSpatialSurvey)))
+	mux.HandleFunc("GET /api/v1/sites/{siteId}/spatial-surveys", s.withObservability("spatial-surveys.list",
+		s.requirePermission(auth.PermView, s.handleListSpatialSurveys)))
+	mux.HandleFunc("GET /api/v1/spatial-surveys/{surveyId}", s.withObservability("spatial-surveys.get",
+		s.requirePermission(auth.PermView, s.handleGetSpatialSurvey)))
 
 	mux.HandleFunc("POST /api/v1/agents/enroll", s.withObservability("agents.enroll", s.handleEnrollAgent))
 	mux.HandleFunc("POST /api/v1/agents/{agentId}/heartbeat", s.withObservability("agents.heartbeat",

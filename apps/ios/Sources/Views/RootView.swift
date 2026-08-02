@@ -76,7 +76,7 @@ struct RootView: View {
         case .network:
             NetworkView(client: session.client)
         case .map:
-            PlaceholderView(section: section)
+            SpatialSurveyView(client: session.client)
         case .alerts:
             AlertsView(client: session.client)
         case .history:

@@ -34,6 +34,12 @@ tags:
     description: Inventário UniFi sincronizado pelo agente (Fase 3, início — ADR-007)
   - name: anomalies
     description: Anomalias estatísticas detectadas pelo worker (Fase 7, início)
+  - name: spatial-surveys
+    description: >
+      Levantamento espacial (Fase 6, "Spatial WiFi Survey") — posição real
+      (ARKit world tracking, hardware com LiDAR) + qualidade de rede medida
+      no próprio ponto, capturado pelo app iOS e enviado completo ao final
+      da caminhada guiada.
 
 paths:
   /healthz:
@@ -631,6 +637,95 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+
+  /sites/{siteId}/spatial-surveys:
+    post:
+      tags: [spatial-surveys]
+      summary: >
+        Cria um levantamento espacial completo (metadados + todas as
+        amostras) — enviado de uma vez pelo app iOS ao final da captura
+        guiada, não incrementalmente.
+      operationId: createSpatialSurvey
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSpatialSurveyRequest"
+      responses:
+        "201":
+          description: Levantamento criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpatialSurvey"
+        "400":
+          description: Corpo inválido (nome/device_model ausente, sem amostras, interface_type inválido, datas fora de RFC3339)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    get:
+      tags: [spatial-surveys]
+      summary: Lista levantamentos do site (sem amostras — só metadados).
+      operationId: listSpatialSurveys
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Lista paginada de levantamentos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpatialSurveyPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /spatial-surveys/{surveyId}:
+    get:
+      tags: [spatial-surveys]
+      summary: Detalhe de um levantamento, incluindo todas as amostras.
+      operationId: getSpatialSurvey
+      parameters:
+        - name: surveyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Levantamento com amostras
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpatialSurveyDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Levantamento não encontrado
 
   /rdap/lookup:
     get:
@@ -1374,6 +1469,120 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Anomaly"
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+
+    SpatialSurveySample:
+      type: object
+      required: [position_x, position_y, position_z, is_expensive, is_constrained, interface_type, captured_at]
+      properties:
+        position_x:
+          type: number
+          description: Posição no espaço da sessão ARKit (metros, eixo X), relativa à origem da sessão — não georreferenciada.
+        position_y:
+          type: number
+        position_z:
+          type: number
+        ssid:
+          type: string
+          nullable: true
+          description: SSID associado no momento da captura (requer permissão de localização no iOS).
+        bssid:
+          type: string
+          nullable: true
+        rtt_ms:
+          type: number
+          nullable: true
+          description: Latência round-trip ao backend medida a partir do próprio ponto — nunca um valor de RSSI (indisponível via API pública do iOS).
+        is_expensive:
+          type: boolean
+          description: "NWPathMonitor — caminho de rede \"expensive\" (ex.: hotspot pessoal)."
+        is_constrained:
+          type: boolean
+          description: NWPathMonitor — caminho de rede "constrained" (modo de dados baixo)
+        interface_type:
+          type: string
+          enum: [wifi, cellular, wired, other]
+        captured_at:
+          type: string
+          format: date-time
+
+    CreateSpatialSurveyRequest:
+      type: object
+      required: [name, device_model, lidar_used, started_at, finished_at, samples]
+      properties:
+        name:
+          type: string
+        device_model:
+          type: string
+          description: "ex.: iPhone15,2 (identificador de modelo, não o marketing name)"
+        lidar_used:
+          type: boolean
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+        samples:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/SpatialSurveySample"
+
+    SpatialSurvey:
+      type: object
+      required: [id, site_id, created_by, name, device_model, lidar_used, started_at, finished_at, sample_count]
+      properties:
+        id:
+          type: string
+          format: uuid
+        site_id:
+          type: string
+          format: uuid
+        created_by:
+          type: string
+          format: uuid
+        name:
+          type: string
+        device_model:
+          type: string
+        lidar_used:
+          type: boolean
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        sample_count:
+          type: integer
+
+    SpatialSurveyDetail:
+      allOf:
+        - $ref: "#/components/schemas/SpatialSurvey"
+        - type: object
+          properties:
+            samples:
+              type: array
+              items:
+                $ref: "#/components/schemas/SpatialSurveySample"
+
+    SpatialSurveyPage:
+      type: object
+      required: [items, page, page_size, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpatialSurvey"
         page:
           type: integer
         page_size:

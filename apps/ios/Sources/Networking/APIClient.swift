@@ -106,6 +106,21 @@ public actor APIClient {
         sessionToken = nil
     }
 
+    /// Mede o RTT real até o backend a partir de onde o dispositivo está
+    /// agora — usado pelo levantamento espacial (Fase 6) pra atribuir uma
+    /// qualidade de rede a cada ponto capturado. Reaproveita `/auth/me`
+    /// (sessão já autenticada) em vez de criar um endpoint só pra isso;
+    /// nunca inventa um valor quando a chamada falha (retorna nil).
+    public func measureRTTToBackend() async -> Double? {
+        let start = Date()
+        do {
+            _ = try await get("/auth/me") as User
+        } catch {
+            return nil
+        }
+        return Date().timeIntervalSince(start) * 1000
+    }
+
     public func me() async throws -> User {
         try await get("/auth/me")
     }
@@ -252,6 +267,20 @@ public actor APIClient {
 
     public func uniFiClients(siteId: String) async throws -> UniFiClientList {
         try await get("/sites/\(siteId)/unifi/clients")
+    }
+
+    /// Envia um levantamento espacial completo (Fase 6) — metadados + todas
+    /// as amostras de uma vez, ao final da caminhada guiada.
+    public func createSpatialSurvey(siteId: String, request: CreateSpatialSurveyRequest) async throws -> SpatialSurvey {
+        try await postJSON("/sites/\(siteId)/spatial-surveys", body: request)
+    }
+
+    public func spatialSurveys(siteId: String, page: Int = 1, pageSize: Int = 20) async throws -> Page<SpatialSurvey> {
+        try await get("/sites/\(siteId)/spatial-surveys?page=\(page)&page_size=\(pageSize)")
+    }
+
+    public func spatialSurvey(id: String) async throws -> SpatialSurvey {
+        try await get("/spatial-surveys/\(id)")
     }
 
     // MARK: - Núcleo HTTP

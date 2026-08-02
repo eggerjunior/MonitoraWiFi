@@ -400,6 +400,22 @@ erDiagram
 
 ## 6. Spatial WiFi Survey (LiDAR)
 
+> **Nota (2026-08-02)**: o ER abaixo é o desenho especulativo original
+> (Fase 0), tratado desde então como hipótese de partida, não contrato —
+> ver `06-roadmap.md` Fase 6. O esquema **realmente implementado**
+> (migração `0016_spatial_surveys`) é deliberadamente mais simples:
+> `spatial_surveys` (id, site_id, created_by, name, device_model,
+> lidar_used, started_at, finished_at) e `spatial_survey_samples` (id,
+> survey_id, position_x/y/z, ssid, bssid, rtt_ms, is_expensive,
+> is_constrained, interface_type, captured_at) — sem `bssid`/`radio_band`/
+> `channel`/`rssi_dbm`/`snr_db`/`phy_rate_mbps`/`confidence` por amostra,
+> sem `FLOOR`/`MESH_ASSET`/`HEATMAP`. Motivo: nenhuma fonte real disponível
+> hoje expõe RSSI/canal/PHY rate por cliente (nem a Network API local do
+> UniFi, nem o iOS) — persistir esses campos seria coluna sem dado real
+> pra popular. Revisitar este ER se uma dessas fontes passar a expor esses
+> campos (nova versão da Network API do UniFi, ou adaptador SNMP/legado
+> habilitado).
+
 ```mermaid
 erDiagram
     FLOOR ||--o{ SPATIAL_SURVEY : recebe

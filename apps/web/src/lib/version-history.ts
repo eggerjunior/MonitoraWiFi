@@ -10,12 +10,20 @@ export type VersionEntry = {
 
 export const versionHistory: VersionEntry[] = [
   {
+    version: "0.10.0",
+    date: "2026-08-02",
+    changes: [
+      "Mapa: primeira fatia do levantamento espacial (Fase 6) — lista de levantamentos capturados pelo app iOS e scatter 2D top-down por qualidade de RTT",
+    ],
+    isCurrent: true,
+  },
+  {
     version: "0.9.0",
     date: "2026-08-02",
     changes: [
       "Diagnósticos: comparação entre resolvedores DNS (sistema, Cloudflare, Google, Quad9) — Fase 2",
     ],
-    isCurrent: true,
+    isCurrent: false,
   },
   {
     version: "0.8.0",

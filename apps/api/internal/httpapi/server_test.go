@@ -33,6 +33,7 @@ func newTestServer(pinger Pinger, users *fakeUsers, sessions *fakeSessions, orgs
 		UniFiDevices:      newFakeUniFiDevices(),
 		UniFiClients:      newFakeUniFiClients(),
 		Anomalies:         newFakeAnomalies(),
+		SpatialSurveys:    newFakeSpatialSurveys(),
 		RDAPClient:        &fakeRDAPClient{},
 	})
 }
@@ -52,6 +53,7 @@ type agentTestDeps struct {
 	unifiDevices      *fakeUniFiDevices
 	unifiClients      *fakeUniFiClients
 	anomalies         *fakeAnomalies
+	spatialSurveys    *fakeSpatialSurveys
 	rdapClient        *fakeRDAPClient
 }
 
@@ -68,6 +70,7 @@ func newAgentTestServer(users ...store.User) agentTestDeps {
 	fud := newFakeUniFiDevices()
 	fuc := newFakeUniFiClients()
 	fan := newFakeAnomalies()
+	fss := newFakeSpatialSurveys()
 	frc := &fakeRDAPClient{}
 
 	server := NewServer(Deps{
@@ -89,6 +92,7 @@ func newAgentTestServer(users ...store.User) agentTestDeps {
 		UniFiDevices:      fud,
 		UniFiClients:      fuc,
 		Anomalies:         fan,
+		SpatialSurveys:    fss,
 		RDAPClient:        frc,
 	})
 
@@ -105,6 +109,7 @@ func newAgentTestServer(users ...store.User) agentTestDeps {
 		unifiDevices:      fud,
 		unifiClients:      fuc,
 		anomalies:         fan,
+		spatialSurveys:    fss,
 		rdapClient:        frc,
 	}
 }

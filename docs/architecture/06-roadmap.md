@@ -181,12 +181,58 @@ Wake-on-LAN (via agente, ADR-008).
 > dependência declarada abaixo ("Fase 6 depende da Fase 2 e 3") está
 > tecnicamente desbloqueada.
 >
-> **Próximo passo real**: uma sessão com Xcode em um Mac de verdade e um
-> iPhone/iPad Pro com LiDAR — implementar e testar a captura guiada
-> (`ARWorldTrackingConfiguration` com reconstrução de cena), validar contra
-> um espaço físico real, e só então desenhar o modelo de dados do lado
-> backend a partir do que a captura realmente produz (não do que a Seção 6
-> do documento-fonte imaginou antes de qualquer protótipo).
+> **Atualização (2026-08-02)**: primeira fatia real implementada e enviada
+> a produção — o usuário confirmou ter um iPhone com LiDAR disponível pra
+> testar de verdade, o que muda a estratégia acima ("esperar Mac/iPhone
+> Pro nesta sessão de dev"): o código roda em produção real (via
+> `iOS TestFlight release`, que compila num runner macOS de verdade), e a
+> validação da sessão AR/LiDAR em si acontece no aparelho físico do
+> usuário, não neste ambiente de desenvolvimento (que segue sem
+> Xcode/simulador — só não é mais o único lugar onde o código pode ser
+> exercitado). **Escopo desta fatia, deliberadamente menor que o ER
+> especulativo original** (`05-modelo-dados.md` §6, `04-estrategia-lidar.md`):
+> - App iOS abre uma sessão `ARWorldTrackingConfiguration` com
+>   `sceneReconstruction = .mesh` quando `LiDARCapabilityChecker` confirma
+>   suporte (fallback sem malha, só tracking por feature points, em
+>   aparelhos sem LiDAR — já era um requisito de primeira classe, não um
+>   modo degradado).
+> - Botão "Capturar aqui" grava a posição real da câmera
+>   (`ARCamera.transform`) + SSID/BSSID atual (`NEHotspotNetwork.fetchCurrent`,
+>   com permissão de localização) + RTT real medido do próprio ponto até o
+>   backend (reaproveitando `/auth/me`, sem endpoint novo só pra isso) +
+>   estado do `NWPathMonitor` (Wi-Fi/celular, expensive/constrained). Cada
+>   ponto capturado aparece na cena AR como uma esfera colorida pela
+>   qualidade do RTT — feedback visual real, não pré-visualização de dado
+>   fictício.
+> - **Corte deliberado em relação ao ER original**: os campos
+>   `bssid`/`radio_band`/`channel`/`rssi_dbm`/`snr_db`/`phy_rate_mbps` por
+>   amostra do desenho especulativo **não são obtidos por nenhuma fonte
+>   real disponível hoje** — confirmado empiricamente nesta mesma sessão
+>   (Fase 3/5): a Network API local do UniFi não expõe RSSI/canal por
+>   cliente em `/clients` (só `type`, `id`, `name`, `connectedAt`,
+>   `ipAddress`, `macAddress`, `uplinkDeviceId`, `access.type`), e o iOS não
+>   expõe RSSI de forma confiável (`signalStrength` do `NEHotspotNetwork`,
+>   ver `01-limitacoes-tecnicas.md` §1.3). Persistir esses campos seria
+>   infraestrutura sem dado real pra popular — o mesmo princípio que já
+>   bloqueava a fase inteira. O esquema implementado
+>   (`spatial_surveys`/`spatial_survey_samples`, migração 0016) reflete só o
+>   que é honestamente capturável: posição + SSID/BSSID reportado + RTT
+>   medido + estado de rede do `NWPathMonitor`.
+> - **Também fora desta fatia** (adiado, não esquecido): correlação por
+>   timestamp com a telemetria contínua do agente/UniFi (arquitetura
+>   completa em `04-estrategia-lidar.md`), `floor_id`/múltiplos andares,
+>   malha 3D persistida (`MESH_ASSET`), heatmap interpolado pelo worker
+>   (`HEATMAP`), modo sem LiDAR com planta manual. A visualização web
+>   (`/map`) hoje é um scatter 2D top-down simples (SVG puro, sem
+>   biblioteca de gráfico), não um heatmap 3D.
+> - Validado: backend testado contra Postgres real efêmero (transação +
+>   batch insert + leitura, `docs/development-handoff/RELEASE_LOG.md`);
+>   testes automatizados dos handlers HTTP; funções puras de posição/RTT
+>   testáveis (`SpatialSurveyMathTests.swift`, Swift Testing — mesma
+>   ressalva de sempre sobre `xcodebuild test` não rodar no CI headless).
+>   A sessão AR/LiDAR em si (mesh reconstruction, captura real de
+>   posição/SSID/RTT em campo) depende do teste do usuário no aparelho
+>   físico — pendência real de validação de campo, não de implementação.
 
 Fluxo completo de `Spatial WiFi Survey` (detecção de LiDAR, captura guiada, malha,
 amostras, sincronização com métricas de rede, heatmap 2D/3D, modo AR, fallback sem

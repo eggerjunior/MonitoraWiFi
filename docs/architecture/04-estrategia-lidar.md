@@ -1,5 +1,16 @@
 # 04 — Estratégia do Spatial WiFi Survey (LiDAR)
 
+> **Nota (2026-08-02)**: este documento descreve a estratégia completa
+> imaginada na Fase 0. A primeira fatia real implementada
+> (`06-roadmap.md` Fase 6) é deliberadamente menor: sem correlação por
+> timestamp com telemetria UniFi/agente (RSSI/canal/PHY rate não são
+> expostos por nenhuma fonte real hoje — ver nota em `05-modelo-dados.md`
+> §6), sem `floor_id`/múltiplos andares, sem malha 3D persistida nem
+> heatmap interpolado pelo worker. Em vez de RSSI (que exigiria a fonte
+> UniFi indisponível), cada amostra mede RTT real ao backend a partir do
+> próprio ponto — dado que de fato varia com a posição, obtido sem
+> depender de nenhuma fonte ainda não confirmada.
+
 ## Princípio inegociável
 
 **O LiDAR nunca mede rádio.** Ele mede geometria (posição 3D, planos, volumes). Todo
