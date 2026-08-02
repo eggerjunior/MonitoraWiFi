@@ -147,5 +147,6 @@ open EggerNetworkIntelligence.xcodeproj
   — nunca imprime os segredos, configura os secrets direto no repositório).
 - ✅ Ícone definitivo (sinal de Wi-Fi em branco sobre o azul de marca
   `#0A6CFF`, `icon-1024.png`, gerado via Pillow/Python) substituiu o
-  placeholder (círculo + "E") — ver `docs/development-handoff/RELEASE_LOG.md`
-  para a entrada. Ainda não enviado a um novo build TestFlight nesta sessão.
+  placeholder (círculo + "E").
+- ✅ **0.7.1 (Build 15) enviado ao TestFlight com sucesso** — leva o ícone
+  definitivo (https://github.com/eggerjunior/MonitoraWiFi/actions/runs/30772924360).
