@@ -41,6 +41,7 @@ func TestUniFiInventory_FullFlow(t *testing.T) {
 				"external_id": "dev-1", "mac_address": "aa:bb:cc:dd:ee:ff", "ip_address": "192.168.110.79",
 				"name": "AP Teste", "model": "U7 Pro", "state": "ONLINE", "firmware_version": "8.7.11",
 				"features": []string{"accessPoint"}, "interfaces": []string{"radios"},
+				"uplink_device_id": "switch-1",
 			},
 		},
 		"clients": []map[string]any{
@@ -70,6 +71,9 @@ func TestUniFiInventory_FullFlow(t *testing.T) {
 	json.Unmarshal(devRec.Body.Bytes(), &devResp)
 	if len(devResp.Items) != 1 || devResp.Items[0]["model"] != "U7 Pro" {
 		t.Fatalf("dispositivos inesperados: %+v", devResp.Items)
+	}
+	if devResp.Items[0]["uplink_device_id"] != "switch-1" {
+		t.Fatalf("esperava uplink_device_id=switch-1 (topologia dispositivo->dispositivo), obtive: %+v", devResp.Items[0])
 	}
 
 	clientReq := httptest.NewRequest(http.MethodGet, "/api/v1/sites/"+siteID.String()+"/unifi/clients", nil)

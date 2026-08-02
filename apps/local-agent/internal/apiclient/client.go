@@ -125,6 +125,7 @@ type UniFiDevicePayload struct {
 	FirmwareVersion string   `json:"firmware_version"`
 	Features        []string `json:"features"`
 	Interfaces      []string `json:"interfaces"`
+	UplinkDeviceID  string   `json:"uplink_device_id"`
 }
 
 type UniFiClientPayload struct {

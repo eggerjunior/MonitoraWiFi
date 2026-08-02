@@ -201,6 +201,10 @@ export interface UniFiDevice {
   firmware_version: string;
   features: string[];
   interfaces: string[];
+  // external_id do dispositivo upstream (ex.: o switch a que um AP está
+  // conectado) — vazio pro dispositivo raiz (gateway). Confirmado em
+  // 2026-08-02 contra a instalação real (GET .../devices/{id}).
+  uplink_device_id: string;
 }
 
 export interface UniFiDeviceList {

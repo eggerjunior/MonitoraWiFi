@@ -62,6 +62,19 @@ type deviceDTO struct {
 	Interfaces        []string `json:"interfaces"`
 }
 
+// deviceDetailDTO espelha só o campo que precisamos da resposta de
+// detalhe de um device (`GET .../devices/{id}`) — bem mais rica que a de
+// lista (confirmado em 2026-08-02: a lista não traz `uplink`, `features`
+// e `interfaces` vêm em formatos diferentes na uma e na outra). Extrair só
+// o uplink aqui evita duplicar o parsing de radios/portas, que é escopo
+// de outra funcionalidade (capability-matrix itens 6/7, ainda não
+// consumidos pelo produto).
+type deviceDetailDTO struct {
+	Uplink *struct {
+		DeviceID string `json:"deviceId"`
+	} `json:"uplink"`
+}
+
 type clientDTO struct {
 	Type           string `json:"type"`
 	ID             string `json:"id"`
@@ -84,6 +97,11 @@ func (a *NetworkAPIAdapter) ListSites(ctx context.Context) ([]Site, error) {
 	return out, nil
 }
 
+// ListDevices busca a lista e, pra cada device, o detalhe (chamada extra
+// por device — só assim dá pra obter `uplink.deviceId`, confirmado
+// ausente na resposta de lista). Uma falha ao buscar o detalhe de um
+// device não derruba a sincronização inteira — só aquele device fica sem
+// uplink nesse ciclo (recuperável no próximo).
 func (a *NetworkAPIAdapter) ListDevices(ctx context.Context, siteID string) ([]Device, error) {
 	var env listEnvelope[deviceDTO]
 	path := fmt.Sprintf("/proxy/network/integration/v1/sites/%s/devices", siteID)
@@ -92,7 +110,7 @@ func (a *NetworkAPIAdapter) ListDevices(ctx context.Context, siteID string) ([]D
 	}
 	out := make([]Device, 0, len(env.Data))
 	for _, d := range env.Data {
-		out = append(out, Device{
+		device := Device{
 			ID:                d.ID,
 			MACAddress:        d.MACAddress,
 			IPAddress:         d.IPAddress,
@@ -103,9 +121,25 @@ func (a *NetworkAPIAdapter) ListDevices(ctx context.Context, siteID string) ([]D
 			FirmwareUpdatable: d.FirmwareUpdatable,
 			Features:          d.Features,
 			Interfaces:        d.Interfaces,
-		})
+		}
+		if uplink, err := a.getDeviceUplink(ctx, siteID, d.ID); err == nil {
+			device.UplinkDeviceID = uplink
+		}
+		out = append(out, device)
 	}
 	return out, nil
+}
+
+func (a *NetworkAPIAdapter) getDeviceUplink(ctx context.Context, siteID, deviceID string) (string, error) {
+	var detail deviceDetailDTO
+	path := fmt.Sprintf("/proxy/network/integration/v1/sites/%s/devices/%s", siteID, deviceID)
+	if err := a.getJSON(ctx, path, &detail); err != nil {
+		return "", err
+	}
+	if detail.Uplink == nil {
+		return "", nil
+	}
+	return detail.Uplink.DeviceID, nil
 }
 
 // ListClients busca todas as páginas — a API pagina em blocos de 25 por

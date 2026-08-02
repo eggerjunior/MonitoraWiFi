@@ -1285,6 +1285,14 @@ components:
           items:
             type: string
           description: "ex.: radios, ports"
+        uplink_device_id:
+          type: string
+          description: >
+            external_id do dispositivo upstream (ex.: o switch a que um AP
+            está conectado) — vazio para o dispositivo raiz (gateway).
+            Confirmado em 2026-08-02 contra a instalação real (campo
+            `uplink.deviceId` de `GET .../devices/{id}` da Network API
+            local).
 
     UniFiDeviceList:
       type: object

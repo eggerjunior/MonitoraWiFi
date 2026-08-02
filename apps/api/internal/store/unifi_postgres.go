@@ -29,9 +29,9 @@ func (s *PostgresUniFiDevices) ReplaceBySite(ctx context.Context, siteID uuid.UU
 			features, _ := json.Marshal(d.Features)
 			interfaces, _ := json.Marshal(d.Interfaces)
 			batch.Queue(
-				`INSERT INTO unifi_devices (site_id, external_id, mac_address, ip_address, name, model, state, firmware_version, features, interfaces)
-				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-				siteID, d.ExternalID, d.MACAddress, d.IPAddress, d.Name, d.Model, d.State, d.FirmwareVersion, features, interfaces)
+				`INSERT INTO unifi_devices (site_id, external_id, mac_address, ip_address, name, model, state, firmware_version, features, interfaces, uplink_device_id)
+				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+				siteID, d.ExternalID, d.MACAddress, d.IPAddress, d.Name, d.Model, d.State, d.FirmwareVersion, features, interfaces, d.UplinkDeviceID)
 		}
 		br := tx.SendBatch(ctx, batch)
 		for range devices {
@@ -50,7 +50,7 @@ func (s *PostgresUniFiDevices) ReplaceBySite(ctx context.Context, siteID uuid.UU
 
 func (s *PostgresUniFiDevices) ListBySite(ctx context.Context, siteID uuid.UUID) ([]UniFiDevice, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT id, site_id, external_id, mac_address, ip_address, name, model, state, firmware_version, features, interfaces
+		`SELECT id, site_id, external_id, mac_address, ip_address, name, model, state, firmware_version, features, interfaces, uplink_device_id
 		 FROM unifi_devices WHERE site_id = $1 ORDER BY name`, siteID)
 	if err != nil {
 		return nil, err
@@ -61,8 +61,12 @@ func (s *PostgresUniFiDevices) ListBySite(ctx context.Context, siteID uuid.UUID)
 	for rows.Next() {
 		var d UniFiDevice
 		var features, interfaces []byte
-		if err := rows.Scan(&d.ID, &d.SiteID, &d.ExternalID, &d.MACAddress, &d.IPAddress, &d.Name, &d.Model, &d.State, &d.FirmwareVersion, &features, &interfaces); err != nil {
+		var uplinkDeviceID *string
+		if err := rows.Scan(&d.ID, &d.SiteID, &d.ExternalID, &d.MACAddress, &d.IPAddress, &d.Name, &d.Model, &d.State, &d.FirmwareVersion, &features, &interfaces, &uplinkDeviceID); err != nil {
 			return nil, err
+		}
+		if uplinkDeviceID != nil {
+			d.UplinkDeviceID = *uplinkDeviceID
 		}
 		json.Unmarshal(features, &d.Features)
 		json.Unmarshal(interfaces, &d.Interfaces)

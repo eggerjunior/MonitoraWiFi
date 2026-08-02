@@ -10,6 +10,14 @@ export type VersionEntry = {
 
 export const versionHistory: VersionEntry[] = [
   {
+    version: "0.8.0",
+    date: "2026-08-02",
+    changes: [
+      "Dispositivos: topologia dispositivo→dispositivo — árvore gateway → switch → AP, confirmada contra a instalação real (Fase 3)",
+    ],
+    isCurrent: true,
+  },
+  {
     version: "0.7.0",
     date: "2026-08-02",
     changes: [
@@ -17,7 +25,7 @@ export const versionHistory: VersionEntry[] = [
       "Alertas: anomalias estatísticas reais (worker de baseline, Fase 7) com severidade derivada do z-score — Fase 4",
       "Histórico: ping tests, speed tests e anomalias recentes numa tela só — Fase 4",
     ],
-    isCurrent: true,
+    isCurrent: false,
   },
   {
     version: "0.6.0",

@@ -61,6 +61,14 @@ final class NetworkViewModel {
     func wiredClientCount(forDeviceExternalID externalID: String) -> Int {
         clients.filter { $0.type == "WIRED" && $0.uplinkDeviceId == externalID }.count
     }
+
+    /// Nome do dispositivo upstream (topologia dispositivo→dispositivo,
+    /// confirmado em 2026-08-02) — nil pro dispositivo raiz (gateway) ou
+    /// se o uplink apontar pra um device que não está mais na lista atual.
+    func uplinkName(for device: UniFiDevice) -> String? {
+        guard !device.uplinkDeviceId.isEmpty else { return nil }
+        return devices.first { $0.externalId == device.uplinkDeviceId }?.name
+    }
 }
 
 struct NetworkView: View {
@@ -134,6 +142,11 @@ struct NetworkView: View {
                                 Text("\(device.model) · \(device.firmwareVersion.isEmpty ? "firmware indisponível" : device.firmwareVersion)")
                                     .font(.caption)
                                     .foregroundStyle(Color.egger(.textSecondary, scheme: colorScheme))
+                                if let uplinkName = viewModel.uplinkName(for: device) {
+                                    Text("Conectado a: \(uplinkName)")
+                                        .font(.caption)
+                                        .foregroundStyle(Color.egger(.textDisabled, scheme: colorScheme))
+                                }
                             }
                         }
                     }

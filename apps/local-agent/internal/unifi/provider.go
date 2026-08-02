@@ -34,6 +34,12 @@ type Device struct {
 	FirmwareUpdatable bool
 	Features          []string // ex.: "switching", "accessPoint"
 	Interfaces        []string // ex.: "ports", "radios"
+	// UplinkDeviceID é o ID do dispositivo upstream (ex.: o switch a que um
+	// AP está conectado) — confirmado em 2026-08-02 via GET
+	// .../devices/{id} real (campo `uplink.deviceId`, ausente na resposta
+	// da LISTA de devices, só na de detalhe). Vazio para o dispositivo raiz
+	// (gateway) ou quando a chamada de detalhe falha — nunca inventado.
+	UplinkDeviceID string
 }
 
 type Client struct {

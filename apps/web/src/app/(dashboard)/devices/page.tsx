@@ -1,11 +1,15 @@
 import { apiFetch } from "@/lib/api-server";
 import { getCurrentSite } from "@/lib/current-site";
 import type { UniFiDeviceList } from "@/lib/api-types";
+import { buildDeviceTree, type DeviceNode } from "@/lib/unifi-topology";
 
 // Primeiro dashboard real da Fase 3/4: inventário de dispositivos UniFi
 // sincronizado pelo agente local — nunca simulado. Detalhe de rádio/porta
-// ainda não está disponível (capability-matrix.md "a validar") — por isso
-// só os campos confirmados aparecem aqui.
+// (capability-matrix.md, itens confirmados como indisponíveis nesta versão
+// da Network API) segue fora — só os campos confirmados aparecem aqui.
+// Topologia dispositivo→dispositivo (uplink_device_id, confirmado em
+// 2026-08-02) organiza a lista em árvore gateway → switch → AP em vez de
+// lista plana.
 export default async function DevicesPage() {
   const current = await getCurrentSite();
   if ("error" in current) {
@@ -14,6 +18,7 @@ export default async function DevicesPage() {
   const { site } = current;
 
   const devices = await apiFetch<UniFiDeviceList>(`/sites/${site.id}/unifi/devices`);
+  const tree = buildDeviceTree(devices.items);
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -29,42 +34,58 @@ export default async function DevicesPage() {
         <EmptyCard message="Nenhum dispositivo sincronizado ainda. Requer um agente local enrolado com UNIFI_BASE_URL/UNIFI_API_KEY/UNIFI_SITE_ID configurados." />
       ) : (
         <ul className="space-y-2">
-          {devices.items.map((d) => (
-            <li
-              key={d.id}
-              className="rounded-lg border border-egg-border bg-egg-surface p-4"
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-egg-text-primary">{d.name}</span>
-                <StateBadge state={d.state} />
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-                <Field label="Modelo" value={d.model} />
-                <Field label="Firmware" value={d.firmware_version || "Indisponível"} />
-                <Field label="IP" value={d.ip_address || "Indisponível"} />
-                <Field label="MAC" value={d.mac_address} />
-              </div>
-              <div className="mt-2 flex flex-wrap gap-1">
-                {d.features.map((f) => (
-                  <span
-                    key={f}
-                    className="rounded-full bg-egg-accent/10 px-2 py-0.5 text-xs text-egg-accent"
-                  >
-                    {f}
-                  </span>
-                ))}
-              </div>
-            </li>
+          {tree.map((node) => (
+            <DeviceTreeItem key={node.id} node={node} depth={0} />
           ))}
         </ul>
       )}
 
       <p className="text-xs text-egg-text-disabled">
-        Detalhe de rádio (canal, potência, utilização) e estatística por porta
-        ainda não confirmados contra a instalação real — não exibidos até
-        serem validados (ver docs/unifi/capability-matrix.md).
+        Potência de transmissão, utilização de canal, clientes/airtime/retries
+        por rádio, e contadores RX/TX/erros/PoE por porta confirmados
+        indisponíveis nesta versão da Network API local — não exibidos (ver
+        docs/unifi/capability-matrix.md).
       </p>
     </div>
+  );
+}
+
+function DeviceTreeItem({ node, depth }: { node: DeviceNode; depth: number }) {
+  return (
+    <li style={{ marginLeft: depth * 24 }}>
+      <div className="rounded-lg border border-egg-border bg-egg-surface p-4">
+        <div className="flex items-center justify-between">
+          <span className="font-medium text-egg-text-primary">
+            {depth > 0 && <span className="mr-1 text-egg-text-disabled">└</span>}
+            {node.name}
+          </span>
+          <StateBadge state={node.state} />
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+          <Field label="Modelo" value={node.model} />
+          <Field label="Firmware" value={node.firmware_version || "Indisponível"} />
+          <Field label="IP" value={node.ip_address || "Indisponível"} />
+          <Field label="MAC" value={node.mac_address} />
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1">
+          {node.features.map((f) => (
+            <span
+              key={f}
+              className="rounded-full bg-egg-accent/10 px-2 py-0.5 text-xs text-egg-accent"
+            >
+              {f}
+            </span>
+          ))}
+        </div>
+      </div>
+      {node.children.length > 0 && (
+        <ul className="mt-2 space-y-2">
+          {node.children.map((child) => (
+            <DeviceTreeItem key={child.id} node={child} depth={depth + 1} />
+          ))}
+        </ul>
+      )}
+    </li>
   );
 }
 

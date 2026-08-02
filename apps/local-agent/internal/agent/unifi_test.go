@@ -31,6 +31,11 @@ func TestSyncUniFiOnce(t *testing.T) {
 					},
 				},
 			})
+		case "/proxy/network/integration/v1/sites/site-1/devices/dev-1":
+			json.NewEncoder(w).Encode(map[string]any{
+				"id":     "dev-1",
+				"uplink": map[string]any{"deviceId": "switch-1"},
+			})
 		case "/proxy/network/integration/v1/sites/site-1/clients":
 			json.NewEncoder(w).Encode(map[string]any{
 				"offset": 0, "limit": 200, "count": 1, "totalCount": 1,
@@ -93,6 +98,9 @@ func TestSyncUniFiOnce(t *testing.T) {
 	device := devices[0].(map[string]any)
 	if device["model"] != "U7 Pro" || device["firmware_version"] != "8.7.11" {
 		t.Fatalf("payload de dispositivo inesperado: %+v", device)
+	}
+	if device["uplink_device_id"] != "switch-1" {
+		t.Fatalf("esperava uplink_device_id=switch-1 (da resposta de detalhe real), obtive: %+v", device)
 	}
 
 	clients, ok := receivedBody["clients"].([]any)

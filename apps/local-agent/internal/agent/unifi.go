@@ -1,9 +1,9 @@
-// Integração UniFi (Fase 3, início — ADR-007): sincroniza o inventário de
-// dispositivos/clientes do site periodicamente. Não implementa detalhe de
-// rádio/porta, eventos/alarmes, DPI nem topologia dispositivo→dispositivo
-// ainda — esses campos continuam "a validar" em
-// docs/unifi/capability-matrix.md até serem confirmados contra a instalação
-// real (nunca inventados).
+// Integração UniFi (Fase 3): sincroniza o inventário de dispositivos/
+// clientes do site periodicamente, incluindo topologia dispositivo→
+// dispositivo (uplink_device_id, confirmado em 2026-08-02 contra a
+// instalação real). Não implementa detalhe de rádio/porta, eventos/
+// alarmes nem DPI — confirmados indisponíveis nesta versão da Network API
+// local (ver docs/unifi/capability-matrix.md).
 package agent
 
 import (
@@ -53,6 +53,7 @@ func (a *Agent) syncUniFiOnce(ctx context.Context) {
 			FirmwareVersion: d.FirmwareVersion,
 			Features:        d.Features,
 			Interfaces:      d.Interfaces,
+			UplinkDeviceID:  d.UplinkDeviceID,
 		})
 	}
 

@@ -23,6 +23,7 @@ type unifiDevicePayload struct {
 	FirmwareVersion string   `json:"firmware_version"`
 	Features        []string `json:"features"`
 	Interfaces      []string `json:"interfaces"`
+	UplinkDeviceID  string   `json:"uplink_device_id"`
 }
 
 type unifiClientPayload struct {
@@ -63,6 +64,7 @@ func (s *Server) handleUniFiInventory(w http.ResponseWriter, r *http.Request) {
 			FirmwareVersion: d.FirmwareVersion,
 			Features:        d.Features,
 			Interfaces:      d.Interfaces,
+			UplinkDeviceID:  d.UplinkDeviceID,
 		})
 	}
 
@@ -124,6 +126,7 @@ func (s *Server) handleListUniFiDevices(w http.ResponseWriter, r *http.Request) 
 			"firmware_version": d.FirmwareVersion,
 			"features":         d.Features,
 			"interfaces":       d.Interfaces,
+			"uplink_device_id": d.UplinkDeviceID,
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": items})

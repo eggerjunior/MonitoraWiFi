@@ -35,22 +35,39 @@ func TestNetworkAPIAdapter_ListSites(t *testing.T) {
 	}
 }
 
+// TestNetworkAPIAdapter_ListDevices cobre também o uplink (item 9 de
+// verificacoes-pendentes-instalacao.md, confirmado em 2026-08-02 contra a
+// instalação real): ListDevices busca a lista e, pra cada device, o
+// detalhe — só a resposta de detalhe traz `uplink.deviceId`.
 func TestNetworkAPIAdapter_ListDevices(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/proxy/network/integration/v1/sites/site-1/devices" {
+		switch r.URL.Path {
+		case "/proxy/network/integration/v1/sites/site-1/devices":
+			json.NewEncoder(w).Encode(map[string]any{
+				"offset": 0, "limit": 25, "count": 1, "totalCount": 1,
+				"data": []map[string]any{
+					{
+						"id": "dev-1", "macAddress": "aa:bb:cc:dd:ee:ff", "ipAddress": "192.168.110.79",
+						"name": "AP Exemplo", "model": "U7 Pro", "state": "ONLINE",
+						"firmwareVersion": "8.7.11", "firmwareUpdatable": false,
+						"features": []string{"accessPoint"}, "interfaces": []string{"radios"},
+					},
+				},
+			})
+		case "/proxy/network/integration/v1/sites/site-1/devices/dev-1":
+			// Resposta real de detalhe (forma real observada contra a
+			// instalação real, 2026-08-02): uplink vem aninhado, ausente
+			// na resposta de lista.
+			json.NewEncoder(w).Encode(map[string]any{
+				"id":   "dev-1",
+				"name": "AP Exemplo",
+				"uplink": map[string]any{
+					"deviceId": "switch-1",
+				},
+			})
+		default:
 			t.Errorf("path inesperado: %s", r.URL.Path)
 		}
-		json.NewEncoder(w).Encode(map[string]any{
-			"offset": 0, "limit": 25, "count": 1, "totalCount": 1,
-			"data": []map[string]any{
-				{
-					"id": "dev-1", "macAddress": "aa:bb:cc:dd:ee:ff", "ipAddress": "192.168.110.79",
-					"name": "AP Exemplo", "model": "U7 Pro", "state": "ONLINE",
-					"firmwareVersion": "8.7.11", "firmwareUpdatable": false,
-					"features": []string{"accessPoint"}, "interfaces": []string{"radios"},
-				},
-			},
-		})
 	}))
 	defer server.Close()
 
@@ -68,6 +85,40 @@ func TestNetworkAPIAdapter_ListDevices(t *testing.T) {
 	}
 	if len(d.Features) != 1 || d.Features[0] != "accessPoint" {
 		t.Fatalf("features inesperadas: %+v", d.Features)
+	}
+	if d.UplinkDeviceID != "switch-1" {
+		t.Fatalf("esperava uplink_device_id=switch-1 (da resposta de detalhe real), obtive %q", d.UplinkDeviceID)
+	}
+}
+
+// TestNetworkAPIAdapter_ListDevices_SemUplink cobre o dispositivo raiz
+// (gateway) — resposta de detalhe real sem o campo `uplink` (confirmado:
+// só dispositivos com upstream têm esse campo).
+func TestNetworkAPIAdapter_ListDevices_SemUplink(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/proxy/network/integration/v1/sites/site-1/devices":
+			json.NewEncoder(w).Encode(map[string]any{
+				"offset": 0, "limit": 25, "count": 1, "totalCount": 1,
+				"data": []map[string]any{
+					{"id": "gw-1", "name": "Gateway", "model": "UCG Max", "state": "ONLINE", "features": []string{"switching"}, "interfaces": []string{"ports"}},
+				},
+			})
+		case "/proxy/network/integration/v1/sites/site-1/devices/gw-1":
+			json.NewEncoder(w).Encode(map[string]any{"id": "gw-1", "name": "Gateway"})
+		default:
+			t.Errorf("path inesperado: %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	adapter := NewNetworkAPIAdapter(server.URL, "test-key")
+	devices, err := adapter.ListDevices(context.Background(), "site-1")
+	if err != nil {
+		t.Fatalf("erro inesperado: %v", err)
+	}
+	if len(devices) != 1 || devices[0].UplinkDeviceID != "" {
+		t.Fatalf("esperava UplinkDeviceID vazio pro dispositivo raiz, obtive: %+v", devices)
 	}
 }
 

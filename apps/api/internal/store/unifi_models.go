@@ -23,6 +23,10 @@ type UniFiDevice struct {
 	FirmwareVersion string
 	Features        []string
 	Interfaces      []string
+	// UplinkDeviceID é o external_id do dispositivo upstream (ex.: o
+	// switch a que um AP está conectado) — confirmado em 2026-08-02 via
+	// GET .../devices/{id} real. Vazio para o dispositivo raiz (gateway).
+	UplinkDeviceID string
 }
 
 type UniFiClient struct {

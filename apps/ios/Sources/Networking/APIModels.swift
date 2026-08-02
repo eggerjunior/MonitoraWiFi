@@ -384,6 +384,10 @@ public struct UniFiDevice: Codable, Sendable, Identifiable {
     public let firmwareVersion: String
     public let features: [String]
     public let interfaces: [String]
+    /// external_id do dispositivo upstream (ex.: o switch a que um AP está
+    /// conectado) — vazio pro dispositivo raiz (gateway). Confirmado em
+    /// 2026-08-02 contra a instalação real.
+    public let uplinkDeviceId: String
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -396,6 +400,7 @@ public struct UniFiDevice: Codable, Sendable, Identifiable {
         case firmwareVersion = "firmware_version"
         case features
         case interfaces
+        case uplinkDeviceId = "uplink_device_id"
     }
 }
 
