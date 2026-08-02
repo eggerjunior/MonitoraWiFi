@@ -63,7 +63,7 @@ final class SpatialSurveyViewModel: NSObject {
         let position = SpatialSurveyMath.position(from: transform)
 
         let rttMs = await client.measureRTTToBackend()
-        let network = await Self.fetchCurrentNetwork()
+        let (ssid, bssid) = await Self.fetchCurrentNetworkIdentity()
         let path = currentPath
         let interfaceType = path.map(SpatialSurveyMath.interfaceType(from:)) ?? "other"
 
@@ -71,8 +71,8 @@ final class SpatialSurveyViewModel: NSObject {
             positionX: Double(position.x),
             positionY: Double(position.y),
             positionZ: Double(position.z),
-            ssid: network?.ssid,
-            bssid: network?.bssid,
+            ssid: ssid,
+            bssid: bssid,
             rttMs: rttMs,
             isExpensive: path?.isExpensive ?? false,
             isConstrained: path?.isConstrained ?? false,
@@ -86,10 +86,13 @@ final class SpatialSurveyViewModel: NSObject {
         SpatialSampleMarker.addMarker(to: arView, at: transform, qualityLabel: lastCaptureLabel ?? "falhou")
     }
 
-    private static func fetchCurrentNetwork() async -> NEHotspotNetwork? {
+    /// Extrai só ssid/bssid (tipos `Sendable`) dentro do completion handler —
+    /// `NEHotspotNetwork` em si não é `Sendable`, então nunca atravessa a
+    /// fronteira da continuation.
+    private static func fetchCurrentNetworkIdentity() async -> (ssid: String?, bssid: String?) {
         await withCheckedContinuation { continuation in
             NEHotspotNetwork.fetchCurrent { network in
-                continuation.resume(returning: network)
+                continuation.resume(returning: (network?.ssid, network?.bssid))
             }
         }
     }
