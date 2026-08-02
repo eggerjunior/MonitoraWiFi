@@ -223,6 +223,21 @@ public actor APIClient {
         return try await get("/rdap/lookup?query=\(encoded)")
     }
 
+    /// Anomalias estatísticas (Fase 7, worker) — só leitura.
+    public func anomalies(siteId: String, page: Int = 1, pageSize: Int = 50) async throws -> Page<Anomaly> {
+        try await get("/sites/\(siteId)/anomalies?page=\(page)&page_size=\(pageSize)")
+    }
+
+    /// Histórico de ping/speed test do agente (Fase 2/4) — série real, não
+    /// o resultado sob demanda de PingCommandResult (Fase 5).
+    public func pingTests(siteId: String, page: Int = 1, pageSize: Int = 20) async throws -> Page<PingTestRecord> {
+        try await get("/sites/\(siteId)/ping-tests?page=\(page)&page_size=\(pageSize)")
+    }
+
+    public func speedTests(siteId: String, page: Int = 1, pageSize: Int = 20) async throws -> Page<SpeedTestRecord> {
+        try await get("/sites/\(siteId)/speed-tests?page=\(page)&page_size=\(pageSize)")
+    }
+
     /// Inventário UniFi (Fase 3/4, início) — sincronizado pelo agente local,
     /// nunca chamado diretamente pelo app (ADR-001).
     public func uniFiDevices(siteId: String) async throws -> UniFiDeviceList {

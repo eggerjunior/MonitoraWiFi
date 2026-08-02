@@ -309,6 +309,70 @@ public struct RdapResult: Codable, Sendable {
     }
 }
 
+/// Anomalia estatística (Fase 7, worker) — nunca reportada sem histórico
+/// suficiente no bucket (hora do dia × dia da semana).
+public struct Anomaly: Codable, Sendable, Identifiable {
+    public let id: String
+    public let metric: String
+    public let observedAt: String
+    public let value: Double
+    public let bucketMean: Double
+    public let bucketSize: Int
+    public let zScore: Double
+    public let detectedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case metric
+        case observedAt = "observed_at"
+        case value
+        case bucketMean = "bucket_mean"
+        case bucketSize = "bucket_size"
+        case zScore = "z_score"
+        case detectedAt = "detected_at"
+    }
+}
+
+/// Resultado de ping periódico do agente (Fase 2) — histórico real, não o
+/// ping sob demanda de PingCommandResult (Fase 5).
+public struct PingTestRecord: Codable, Sendable, Identifiable {
+    public let id: String
+    public let target: String
+    public let protocolName: String
+    public let latencyMsP50: Double?
+    public let packetLossPct: Double?
+    public let jitterMs: Double?
+    public let executedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case target
+        case protocolName = "protocol"
+        case latencyMsP50 = "latency_ms_p50"
+        case packetLossPct = "packet_loss_pct"
+        case jitterMs = "jitter_ms"
+        case executedAt = "executed_at"
+    }
+}
+
+public struct SpeedTestRecord: Codable, Sendable, Identifiable {
+    public let id: String
+    public let mode: String
+    public let downloadMbps: Double?
+    public let uploadMbps: Double?
+    public let bufferbloatMs: Double?
+    public let executedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case mode
+        case downloadMbps = "download_mbps"
+        case uploadMbps = "upload_mbps"
+        case bufferbloatMs = "bufferbloat_ms"
+        case executedAt = "executed_at"
+    }
+}
+
 public struct UniFiDevice: Codable, Sendable, Identifiable {
     public let id: String
     public let externalId: String

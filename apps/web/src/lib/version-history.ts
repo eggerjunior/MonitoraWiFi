@@ -10,12 +10,22 @@ export type VersionEntry = {
 
 export const versionHistory: VersionEntry[] = [
   {
+    version: "0.7.0",
+    date: "2026-08-02",
+    changes: [
+      "Switches: tela dedicada (antes misturado em Dispositivos) — Fase 4",
+      "Alertas: anomalias estatísticas reais (worker de baseline, Fase 7) com severidade derivada do z-score — Fase 4",
+      "Histórico: ping tests, speed tests e anomalias recentes numa tela só — Fase 4",
+    ],
+    isCurrent: true,
+  },
+  {
     version: "0.6.0",
     date: "2026-08-02",
     changes: [
       "Diagnósticos: SSL/TLS checker, RDAP/WHOIS, HTTP client sob demanda, LAN scanner, Wake-on-LAN e port scanner — Fase 5 completa",
     ],
-    isCurrent: true,
+    isCurrent: false,
   },
   {
     version: "0.5.0",

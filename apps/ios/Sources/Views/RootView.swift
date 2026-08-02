@@ -6,6 +6,7 @@ enum AppSection: String, CaseIterable, Identifiable {
     case map = "Mapa"
     case tools = "Ferramentas"
     case alerts = "Alertas"
+    case history = "Histórico"
 
     var id: String { rawValue }
 
@@ -16,12 +17,13 @@ enum AppSection: String, CaseIterable, Identifiable {
         case .map: "map"
         case .tools: "wrench.and.screwdriver"
         case .alerts: "bell"
+        case .history: "clock.arrow.circlepath"
         }
     }
 }
 
 /// Navegação adaptativa (Seção 15): `TabView` em iPhone (compacto),
-/// `NavigationSplitView` em iPad (regular) — mesmas 5 seções nos dois casos,
+/// `NavigationSplitView` em iPad (regular) — mesmas 6 seções nos dois casos,
 /// só muda o chrome de navegação.
 struct RootView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -76,7 +78,9 @@ struct RootView: View {
         case .map:
             PlaceholderView(section: section)
         case .alerts:
-            PlaceholderView(section: section)
+            AlertsView(client: session.client)
+        case .history:
+            HistoryView(client: session.client)
         }
     }
 }

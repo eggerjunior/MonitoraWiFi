@@ -163,6 +163,17 @@ export interface PortScanCommandResult {
   executed_at: string;
 }
 
+export interface Anomaly {
+  id: string;
+  metric: string;
+  observed_at: string;
+  value: number;
+  bucket_mean: number;
+  bucket_size: number;
+  z_score: number;
+  detected_at: string;
+}
+
 export interface Command {
   id: string;
   site_id: string;

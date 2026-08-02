@@ -75,6 +75,24 @@ serem respondidas.
 > (Fase 3) implementados em web e iOS, consumindo dado real com proveniência
 > declarada. **Faltam**: Switches (sem tela dedicada — hoje aparece junto de
 > Dispositivos), Alertas, Histórico — nenhum começado.
+>
+> **Atualização (2026-08-02)**: Switches (seção dedicada, filtra
+> `features.includes("switching")`, mesmo padrão já usado pra Wi-Fi com
+> `"accessPoint"`), Alertas (anomalias reais do worker de baseline —
+> Fase 7 — com severidade derivada do z-score na própria UI, já que ainda
+> não existe schema de alerta com severidade/status próprio) e Histórico
+> (ping tests, speed tests e anomalias recentes, sem biblioteca de
+> gráfico — nenhuma existe no projeto, segue o padrão de lista já usado no
+> resto do produto) implementados em web e iOS. **Achado real durante a
+> implementação**: apesar deste status dizer "Internet... implementado em
+> web e iOS", o iOS nunca teve nenhuma tela de Internet (nenhuma
+> referência a ping/speed test em todo `apps/ios/Sources` antes desta
+> sessão) — os modelos `PingTestRecord`/`SpeedTestRecord` e os métodos
+> `APIClient.pingTests`/`speedTests` foram criados agora para alimentar o
+> Histórico, e incidentalmente já deixam o terreno pronto para uma tela
+> "Internet" dedicada no iOS no futuro, que segue sem existir. **Fase 4
+> completa** nas 4 telas descritas no escopo original (Internet, Wi-Fi,
+> Clientes/Dispositivos/Switches, Alertas, Histórico).
 
 Internet, Wi-Fi, Clientes, APs, Switches, Alertas, Histórico — todos consumindo dado
 real (agente + UniFi), com badge de proveniência (`02-arquitetura-proposta.md` §2.6)

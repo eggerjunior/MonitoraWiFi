@@ -16,10 +16,21 @@ public struct VersionEntry: Identifiable, Sendable {
 public enum VersionHistory {
     /// Fallbacks defensivos — usados apenas se o Info.plist não tiver os
     /// valores (não deveria acontecer em um build gerado pelo XcodeGen).
-    public static let fallbackVersionString = "0.3.0 (Build 10)"
+    public static let fallbackVersionString = "0.4.0 (Build 11)"
     public static let fallbackCommit = "dev"
 
     public static let entries: [VersionEntry] = [
+        VersionEntry(
+            version: "0.4.0",
+            build: "11",
+            date: "2026-08-02",
+            changes: [
+                "Rede: seção Switches dedicada (antes misturado em Dispositivos) — Fase 4",
+                "Alertas: anomalias estatísticas reais (worker de baseline, Fase 7) com severidade derivada do z-score — Fase 4",
+                "Histórico: nova aba com ping tests, speed tests e anomalias recentes — Fase 4",
+            ],
+            isCurrent: true
+        ),
         VersionEntry(
             version: "0.3.0",
             build: "10",
@@ -27,7 +38,7 @@ public enum VersionHistory {
             changes: [
                 "Ferramentas: SSL/TLS checker, RDAP/WHOIS, HTTP client sob demanda, LAN scanner, Wake-on-LAN e port scanner — Fase 5 completa, paridade com o web",
             ],
-            isCurrent: true
+            isCurrent: false
         ),
         VersionEntry(
             version: "0.2.0",

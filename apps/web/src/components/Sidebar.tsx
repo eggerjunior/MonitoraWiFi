@@ -9,10 +9,12 @@ const NAV_ITEMS = [
   { href: "/internet", label: "Internet" },
   { href: "/wifi", label: "Wi-Fi" },
   { href: "/devices", label: "Dispositivos" },
+  { href: "/switches", label: "Switches" },
   { href: "/clients", label: "Clientes" },
   { href: "/map", label: "Mapa" },
   { href: "/diagnostics", label: "Diagnósticos" },
   { href: "/alerts", label: "Alertas" },
+  { href: "/history", label: "Histórico" },
   { href: "/reports", label: "Relatórios" },
   { href: "/settings", label: "Configurações" },
 ] as const;

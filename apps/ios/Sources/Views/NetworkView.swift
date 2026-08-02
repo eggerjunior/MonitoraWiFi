@@ -50,8 +50,16 @@ final class NetworkViewModel {
         devices.filter { $0.features.contains("accessPoint") }
     }
 
+    var switches: [UniFiDevice] {
+        devices.filter { $0.features.contains("switching") }
+    }
+
     func wirelessClientCount(forDeviceExternalID externalID: String) -> Int {
         clients.filter { $0.type == "WIRELESS" && $0.uplinkDeviceId == externalID }.count
+    }
+
+    func wiredClientCount(forDeviceExternalID externalID: String) -> Int {
+        clients.filter { $0.type == "WIRED" && $0.uplinkDeviceId == externalID }.count
     }
 }
 
@@ -86,6 +94,28 @@ struct NetworkView: View {
                                         .foregroundStyle(ap.state == "ONLINE" ? Color.egger(.success, scheme: colorScheme) : Color.egger(.textSecondary, scheme: colorScheme))
                                 }
                                 Text("\(ap.model) · \(viewModel.wirelessClientCount(forDeviceExternalID: ap.externalId)) clientes sem fio")
+                                    .font(.caption)
+                                    .foregroundStyle(Color.egger(.textSecondary, scheme: colorScheme))
+                            }
+                        }
+                    }
+                }
+
+                Section("Switches (\(viewModel.switches.count))") {
+                    if viewModel.switches.isEmpty {
+                        Text("Nenhum switch sincronizado ainda.")
+                            .foregroundStyle(Color.egger(.textSecondary, scheme: colorScheme))
+                    } else {
+                        ForEach(viewModel.switches) { sw in
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text(sw.name).font(.headline)
+                                    Spacer()
+                                    Text(sw.state)
+                                        .font(.caption)
+                                        .foregroundStyle(sw.state == "ONLINE" ? Color.egger(.success, scheme: colorScheme) : Color.egger(.textSecondary, scheme: colorScheme))
+                                }
+                                Text("\(sw.model) · \(viewModel.wiredClientCount(forDeviceExternalID: sw.externalId)) clientes cabeados")
                                     .font(.caption)
                                     .foregroundStyle(Color.egger(.textSecondary, scheme: colorScheme))
                             }
