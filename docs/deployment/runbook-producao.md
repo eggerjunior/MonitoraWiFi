@@ -14,7 +14,8 @@ Três containers Docker na rede `monitorawifi_net`:
 
 - `monitorawifi-postgres` (`postgres:16-alpine`, volume
   `/opt/data/monitorawifi/postgres`, sem porta publicada)
-- `monitorawifi-api` (sem porta publicada, só acessível pela rede interna)
+- `monitorawifi-api` (publicado em `127.0.0.1:8422`, **além** de estar na
+  rede interna — ver "achado real" abaixo)
 - `monitorawifi-web` (publicado em `127.0.0.1:8421`, exposto ao público via
   nginx do Hestia em `wifi.egger.app.br`)
 
@@ -24,6 +25,30 @@ precisa também de `API_BASE_URL=http://monitorawifi-api:8080/api/v1`
 passado explicitamente (não vem do `.env` compartilhado — achado real de
 2026-08-02, ver RELEASE_LOG: um redeploy usando só `--env-file` deixou
 essa variável de fora e o web ficou tentando falar com `localhost:8080`).
+
+**Roteamento nginx (`nginx.ssl.conf`, porta 443) tem DOIS destinos, não
+um só**:
+- `location /api/v1/` → `proxy_pass http://127.0.0.1:8422` — backend Go
+  **direto**, usado pelo agente local (`BACKEND_URL`) e pelo app iOS
+  nativo (nenhum dos dois passa pelo BFF do Next.js).
+- `location /` → `proxy_pass http://127.0.0.1:8421` — web (Next.js),
+  usado pelo navegador. O BFF do próprio Next.js (`/api/auth/*`,
+  `/api/sites/*/commands` etc.) fala com a API pela rede interna Docker
+  (`API_BASE_URL`), não por essa porta pública.
+
+**Achado real (incidente de 2026-08-02)**: um redeploy do
+`monitorawifi-api` sem `-p 127.0.0.1:8422:8080` remove essa porta —
+`docker stop`+`rm`+`run` substitui o container inteiro, então qualquer
+publicação de porta do container anterior que não for repetida no novo
+`docker run` simplesmente desaparece. O container sobe saudável (health
+check interno via rede Docker funciona normalmente), o navegador continua
+funcionando (o BFF do web usa a rede interna, não essa porta), **mas o
+agente e o app iOS passam a receber 502 do nginx silenciosamente** — o
+sintoma só aparece do lado de fora, nunca nos health checks internos.
+Isso já aconteceu de verdade (agente real ficou ~1h30 recebendo 502
+contínuo até ser percebido pelo log do próprio agente, não por
+monitoramento do lado do servidor). **Por isso o passo 6 abaixo inclui
+uma checagem pela rota pública real, não só pela rede interna.**
 
 Worker de anomalias (Fase 7) roda via `docker run --rm` avulso, agendado
 por cron do host a cada 6h (não é um container de longa duração).
@@ -66,17 +91,28 @@ por cron do host a cada 6h (não é um container de longa duração).
    docker stop monitorawifi-api monitorawifi-web
    docker rm monitorawifi-api monitorawifi-web
    docker run -d --name monitorawifi-api --network monitorawifi_net \
-     --env-file /opt/apps/monitorawifi/.env --restart unless-stopped monitorawifi-api:<hash>
+     --env-file /opt/apps/monitorawifi/.env -p 127.0.0.1:8422:8080 \
+     --restart unless-stopped monitorawifi-api:<hash>
    docker run -d --name monitorawifi-web --network monitorawifi_net \
      -e API_BASE_URL=http://monitorawifi-api:8080/api/v1 \
      -p 127.0.0.1:8421:3000 --restart unless-stopped monitorawifi-web:<hash>
    '
    ```
-6. **Verificar saúde** (o container distroless da API não tem
-   shell/curl — usar um container efêmero na mesma rede):
+   **Nunca esquecer o `-p 127.0.0.1:8422:8080` da API** — ver "achado
+   real" acima. Confirmar com `docker port monitorawifi-api` antes de
+   seguir pro próximo passo se tiver qualquer dúvida.
+6. **Verificar saúde — pela rede interna E pela rota pública real**
+   (o container distroless da API não tem shell/curl — usar um container
+   efêmero na mesma rede pra checagem interna):
    ```bash
    ssh ... 'docker run --rm --network monitorawifi_net curlimages/curl:8.10.1 \
      -s -o /dev/null -w "healthz=%{http_code}\n" http://monitorawifi-api:8080/healthz'
+   # ESSENCIAL — é a rota que o agente e o iOS realmente usam, e a única
+   # que teria pego o incidente de 2026-08-02 na hora (a checagem interna
+   # sozinha não detecta a porta 8422 faltando):
+   curl -s -o /dev/null -w "api pública=%{http_code}\n" https://wifi.egger.app.br/api/v1/auth/me
+   # esperado: 401 (rota existe, só falta sessão) — 502 aqui significa
+   # que a porta 8422 não está publicada no container novo.
    curl -s -o /dev/null -w "%{http_code}\n" https://wifi.egger.app.br/login
    ```
 7. Registrar o deploy em `docs/development-handoff/RELEASE_LOG.md`

@@ -4,6 +4,40 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-02 — Incidente real: agente em produção sem conectividade por ~1h30
+
+- **Causa raiz**: `nginx.ssl.conf` (porta 443, a config ativa — não a de
+  porta 80 revisada anteriormente) tem `location /api/v1/` roteando pra
+  `127.0.0.1:8422`, além do `location /` genérico pro web em `:8421`. Essa
+  porta 8422 é usada só pelo agente local e pelo app iOS (falam direto com
+  o backend Go, sem passar pelo BFF do Next.js) — nunca foi checada nos
+  deploys anteriores desta sessão porque toda verificação de saúde usou a
+  rede interna Docker ou `/login` (servido pelo web, que fala com a API
+  pela rede interna, não por essa porta).
+- **O que aconteceu**: o primeiro redeploy do `monitorawifi-api` nesta
+  sessão (Fase 5, imagem `77d4ab3c`, ~00:45 UTC) substituiu o container
+  sem repetir `-p 127.0.0.1:8422:8080` — a porta simplesmente deixou de
+  existir. O agente real do usuário (rodando no mini PC dele, fora da
+  rede Docker) começou a receber 502 do nginx às 00:47:49 UTC e continuou
+  recebendo por ~1h30, através de mais dois redeploys da API
+  (`f3813137`, `7e916db5`) que repetiram o mesmo erro. Detectado pelo
+  próprio usuário, olhando o log do agente (`docker logs egger-agent`) —
+  nenhum monitoramento do lado do servidor pegou isso, porque `/healthz`
+  interno e `/login` continuaram respondendo 200 o tempo todo.
+- **Sem perda de dado real**: o agente mantém fila local com backoff
+  (Fase 2) — toda telemetria que falhou durante a janela ficou
+  "mantida na fila local para nova tentativa" nos próprios logs, não foi
+  descartada. Deve reenviar sozinho assim que a conectividade voltar.
+- **Corrigido**: `monitorawifi-api` redeployado com
+  `-p 127.0.0.1:8422:8080`. Confirmado pela rota pública real
+  (`https://wifi.egger.app.br/api/v1/auth/me` → 401, correto — antes
+  dava 502) e pela interna (`/healthz` → 200).
+- **Runbook corrigido** (`docs/deployment/runbook-producao.md`) — o
+  comando de redeploy documentado tinha o mesmo erro (eu tinha
+  documentado o comando errado que eu mesmo vinha rodando). Passo de
+  verificação de saúde agora inclui checagem pela rota pública real como
+  passo obrigatório, não só pela rede interna.
+
 ## 2026-08-02 — Endpoint de revogação de agente em produção
 
 - Commit `7e916db`. `POST /sites/{siteId}/agents/{agentId}/revoke` — gap
