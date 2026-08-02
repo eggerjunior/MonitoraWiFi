@@ -180,6 +180,7 @@ public enum CommandResult: Sendable {
     case traceroute(TracerouteCommandResult)
     case sslCheck(SslCheckCommandResult)
     case httpRequest(HttpRequestCommandResult)
+    case lanScan(LanScanCommandResult)
 }
 
 extension CommandResult: Decodable {
@@ -196,6 +197,8 @@ extension CommandResult: Decodable {
             self = .sslCheck(v)
         } else if let v = try? HttpRequestCommandResult(from: decoder) {
             self = .httpRequest(v)
+        } else if let v = try? LanScanCommandResult(from: decoder) {
+            self = .lanScan(v)
         } else {
             throw DecodingError.dataCorruptedError(in: try decoder.singleValueContainer(), debugDescription: "Formato de resultado de comando não reconhecido")
         }
@@ -244,6 +247,11 @@ public struct HttpRequestCommandResult: Codable, Sendable {
         case contentLength = "content_length"
         case durationMs = "duration_ms"
     }
+}
+
+public struct LanScanCommandResult: Codable, Sendable {
+    public let cidr: String
+    public let hosts: [String]
 }
 
 public struct RdapEvent: Codable, Sendable {

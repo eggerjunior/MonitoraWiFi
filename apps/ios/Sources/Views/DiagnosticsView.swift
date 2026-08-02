@@ -25,6 +25,7 @@ final class DiagnosticsViewModel {
     var httpRequestURL = "http://localhost"
     var httpRequestMethod = "GET"
     var httpRequestBody = ""
+    var lanScanCIDR = "192.168.1.0/24"
 
     private(set) var pingCommand: Command?
     private(set) var batchPingCommand: Command?
@@ -32,6 +33,7 @@ final class DiagnosticsViewModel {
     private(set) var tracerouteCommand: Command?
     private(set) var sslCheckCommand: Command?
     private(set) var httpRequestCommand: Command?
+    private(set) var lanScanCommand: Command?
     private(set) var rdapResult: RdapResult?
     private(set) var rdapError: String?
     private(set) var isRdapLoading = false
@@ -174,6 +176,22 @@ final class DiagnosticsViewModel {
         isSubmitting = false
     }
 
+    func runLANScan() async {
+        guard let siteId else { return }
+        submitError = nil
+        isSubmitting = true
+        do {
+            let created = try await client.createLANScanCommand(siteId: siteId, cidr: lanScanCIDR)
+            lanScanCommand = created
+            startPolling(commandId: created.id) { [weak self] updated in self?.lanScanCommand = updated }
+        } catch let error as APIClient.ClientError {
+            submitError = Self.message(for: error)
+        } catch {
+            submitError = "Erro de rede ao criar o comando."
+        }
+        isSubmitting = false
+    }
+
     func runRdapLookup() async {
         rdapError = nil
         rdapResult = nil
@@ -237,6 +255,7 @@ struct DiagnosticsView: View {
                 tracerouteSection
                 sslCheckSection
                 httpRequestSection
+                lanScanSection
             }
 
             if let submitError = viewModel.submitError {
@@ -455,6 +474,42 @@ struct DiagnosticsView: View {
                     Text(result.bodySnippet)
                         .font(.system(.caption, design: .monospaced))
                         .lineLimit(6)
+                }
+                if command.status == "failed" {
+                    Text(command.error ?? "Falha não especificada.")
+                        .foregroundStyle(Color.egger(.critical, scheme: colorScheme))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var lanScanSection: some View {
+        Section("LAN scanner") {
+            Text("Bloco CIDR privado (RFC 1918), no máximo /22.")
+                .font(.caption)
+                .foregroundStyle(Color.egger(.textSecondary, scheme: colorScheme))
+            TextField("CIDR (ex.: 192.168.1.0/24)", text: $viewModel.lanScanCIDR)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button {
+                Task { await viewModel.runLANScan() }
+            } label: {
+                Text("Executar")
+            }
+            .disabled(viewModel.isSubmitting || viewModel.lanScanCIDR.isEmpty)
+
+            if let command = viewModel.lanScanCommand {
+                StatusRow(status: command.status, colorScheme: colorScheme)
+                if command.status == "completed", case .lanScan(let result) = command.result {
+                    if result.hosts.isEmpty {
+                        Text("Nenhum host respondeu.")
+                            .foregroundStyle(Color.egger(.textSecondary, scheme: colorScheme))
+                    } else {
+                        ForEach(result.hosts, id: \.self) { host in
+                            Text(host).font(.system(.caption, design: .monospaced))
+                        }
+                    }
                 }
                 if command.status == "failed" {
                     Text(command.error ?? "Falha não especificada.")

@@ -1093,7 +1093,7 @@ components:
       properties:
         type:
           type: string
-          enum: [ping, dns_lookup, traceroute, batch_ping, ssl_check, http_request]
+          enum: [ping, dns_lookup, traceroute, batch_ping, ssl_check, http_request, lan_scan]
         params:
           type: object
           description: >
@@ -1105,6 +1105,8 @@ components:
             (padrão 443, 1-65535) }. "http_request": { url: string (http ou
             https), method?: GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS (padrão
             GET), headers?: object (string->string), body?: string }.
+            "lan_scan": { cidr: string — precisa ser um bloco IPv4 privado
+            (RFC 1918) de no máximo /22 (1024 endereços) }.
 
     Command:
       type: object

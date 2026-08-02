@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -26,7 +27,14 @@ var supportedCommandTypes = map[string]bool{
 	store.AgentCommandTypeBatchPing:   true,
 	store.AgentCommandTypeSSLCheck:    true,
 	store.AgentCommandTypeHTTPRequest: true,
+	store.AgentCommandTypeLANScan:     true,
 }
+
+// minLANScanPrefixLen limita o tamanho do bloco CIDR aceito pro LAN
+// scanner a no máximo 1024 endereços (/22) — bastante pra descobrir
+// dispositivos numa LAN residencial/pequena empresa, sem virar uma
+// varredura de rede arbitrariamente grande.
+const minLANScanPrefixLen = 22
 
 var supportedHTTPMethods = map[string]bool{
 	"GET": true, "POST": true, "PUT": true, "PATCH": true, "DELETE": true, "HEAD": true, "OPTIONS": true,
@@ -75,6 +83,45 @@ type httpRequestCommandParams struct {
 	Method  string            `json:"method"`
 	Headers map[string]string `json:"headers"`
 	Body    string            `json:"body"`
+}
+
+type lanScanCommandParams struct {
+	CIDR string `json:"cidr"`
+}
+
+// validatePrivateIPv4CIDR implementa a mitigação exigida pelo threat model
+// (§5, "Riscos específicos... port scanner/LAN scanner") antes de expor uma
+// ferramenta que varre múltiplos hosts: o alvo nunca pode ser uma rede
+// pública (só existe risco de "usar o backend como ferramenta de ataque a
+// terceiros" se o alvo puder ser de terceiros) e o bloco não pode ser maior
+// que o necessário pra descobrir dispositivos numa LAN residencial/pequena.
+func validatePrivateIPv4CIDR(cidr string) error {
+	_, ipnet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return errors.New("params.cidr inválido")
+	}
+	// ParseCIDR já devolve ipnet.IP como o endereço de rede (mascarado) —
+	// verificamos a rede e o broadcast, não o endereço original informado
+	// (que pode não estar alinhado à máscara).
+	network := ipnet.IP.To4()
+	if network == nil || len(ipnet.Mask) != net.IPv4len {
+		return errors.New("params.cidr precisa ser um bloco IPv4")
+	}
+	ones, _ := ipnet.Mask.Size()
+	if ones < minLANScanPrefixLen {
+		return fmt.Errorf("params.cidr aceita no máximo /%d (1024 endereços)", minLANScanPrefixLen)
+	}
+	if !network.IsPrivate() {
+		return errors.New("params.cidr precisa estar dentro de um intervalo privado (RFC 1918)")
+	}
+	broadcast := make(net.IP, len(network))
+	for i := range broadcast {
+		broadcast[i] = network[i] | ^ipnet.Mask[i]
+	}
+	if !broadcast.IsPrivate() {
+		return errors.New("params.cidr precisa estar inteiramente dentro de um intervalo privado (RFC 1918)")
+	}
+	return nil
 }
 
 // handleCreateCommand valida o tipo/params antes de persistir — nunca
@@ -237,6 +284,26 @@ func (s *Server) handleCreateCommand(w http.ResponseWriter, r *http.Request) {
 		}
 		if !supportedHTTPMethods[strings.ToUpper(p.Method)] {
 			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.method inválido (GET, POST, PUT, PATCH, DELETE, HEAD ou OPTIONS)")
+			return
+		}
+		req.Params, _ = json.Marshal(p)
+
+	case store.AgentCommandTypeLANScan:
+		var p lanScanCommandParams
+		if len(req.Params) == 0 {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.cidr é obrigatório para type=lan_scan")
+			return
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params inválido")
+			return
+		}
+		if p.CIDR == "" {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.cidr é obrigatório")
+			return
+		}
+		if err := validatePrivateIPv4CIDR(p.CIDR); err != nil {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", err.Error())
 			return
 		}
 		req.Params, _ = json.Marshal(p)

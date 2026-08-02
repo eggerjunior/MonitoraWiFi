@@ -144,6 +144,12 @@ export interface HttpRequestCommandResult {
   executed_at: string;
 }
 
+export interface LanScanCommandResult {
+  cidr: string;
+  hosts: string[];
+  executed_at: string;
+}
+
 export interface Command {
   id: string;
   site_id: string;

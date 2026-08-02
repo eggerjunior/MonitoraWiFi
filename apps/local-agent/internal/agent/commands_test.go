@@ -256,6 +256,59 @@ func TestPollAndRunCommands_HTTPRequest(t *testing.T) {
 	}
 }
 
+func TestPollAndRunCommands_LANScan(t *testing.T) {
+	// CIDR real pequeno (127.0.0.0/30, todo ele loopback local de verdade)
+	// — o SO responde ECONNREFUSED de verdade nas portas comuns pra cada um
+	// dos 4 endereços (nenhum serviço ouvindo nelas neste ambiente), o que
+	// já basta pra provar que o host está de pé.
+	var reportedBody map[string]any
+	claimed := false
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/agents/agent-1/commands":
+			if claimed {
+				json.NewEncoder(w).Encode(map[string]any{"items": []map[string]any{}})
+				return
+			}
+			claimed = true
+			params, _ := json.Marshal(map[string]any{"cidr": "127.0.0.0/30"})
+			json.NewEncoder(w).Encode(map[string]any{
+				"items": []map[string]any{
+					{"id": "cmd-8", "site_id": "site-1", "type": "lan_scan", "params": json.RawMessage(params), "status": "claimed"},
+				},
+			})
+		case r.Method == http.MethodPost && r.URL.Path == "/agents/agent-1/commands/cmd-8/result":
+			json.NewDecoder(r.Body).Decode(&reportedBody)
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Errorf("requisição inesperada: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	a := newTestAgentForCommands(t, server.URL)
+	a.pollAndRunCommands(t.Context())
+
+	if reportedBody == nil {
+		t.Fatal("esperava que o agente reportasse um resultado, nenhum recebido")
+	}
+	if reportedBody["status"] != "completed" {
+		t.Fatalf("status reportado = %v, esperado completed: %+v", reportedBody["status"], reportedBody)
+	}
+	result, ok := reportedBody["result"].(map[string]any)
+	if !ok {
+		t.Fatalf("esperava campo result no reporte, recebi: %+v", reportedBody)
+	}
+	hosts, ok := result["hosts"].([]any)
+	// Todo 127.0.0.0/8 é loopback local — os 4 endereços do /30 aparecem
+	// como vivos (usa portas comuns; o SO responde ECONNREFUSED de
+	// verdade nas que não têm o listener real).
+	if !ok || len(hosts) != 4 {
+		t.Fatalf("esperava 4 hosts no resultado (127.0.0.0/8 é loopback), recebi: %+v", result["hosts"])
+	}
+}
+
 func TestPollAndRunCommands_TipoNaoSuportado(t *testing.T) {
 	var reportedBody map[string]any
 	claimed := false

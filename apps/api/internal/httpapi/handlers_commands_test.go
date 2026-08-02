@@ -494,6 +494,41 @@ func TestCreateCommand_HTTPRequest_RequerURLValida(t *testing.T) {
 	}
 }
 
+func TestCreateCommand_LANScan_RequerCIDRPrivadoELimitado(t *testing.T) {
+	siteID := uuid.New()
+	admin := store.User{ID: uuid.New(), Email: "admin@example.com", PasswordHash: mustHash(t, "senha12345"), Role: store.RoleAdministrator}
+	deps := newAgentTestServer(admin)
+	cookie := loginAndGetCookie(t, deps.server, "admin@example.com", "senha12345")
+	enrollTestAgent(t, deps, siteID)
+
+	post := func(cidr string) int {
+		var body []byte
+		if cidr == "" {
+			body, _ = json.Marshal(map[string]any{"type": "lan_scan"})
+		} else {
+			body, _ = json.Marshal(map[string]any{"type": "lan_scan", "params": map[string]any{"cidr": cidr}})
+		}
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(body))
+		req.AddCookie(cookie)
+		rec := httptest.NewRecorder()
+		deps.server.Routes().ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	if code := post(""); code != http.StatusBadRequest {
+		t.Fatalf("esperava 400 sem cidr, recebeu %d", code)
+	}
+	if code := post("8.8.8.0/24"); code != http.StatusBadRequest {
+		t.Fatalf("esperava 400 pra CIDR público, recebeu %d", code)
+	}
+	if code := post("10.0.0.0/8"); code != http.StatusBadRequest {
+		t.Fatalf("esperava 400 pra bloco maior que /22, recebeu %d", code)
+	}
+	if code := post("192.168.1.0/24"); code != http.StatusAccepted {
+		t.Fatalf("esperava 202 pra CIDR privado e dentro do limite, recebeu %d", code)
+	}
+}
+
 // TestCreateCommand_RateLimit confirma o gap real de segurança encontrado
 // na revisão do threat model (§5, "rate limiting antes de abrir qualquer
 // endpoint de teste ativo"): sem limite, uma conta comprometida poderia

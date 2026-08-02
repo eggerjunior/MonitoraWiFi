@@ -185,6 +185,14 @@ public actor APIClient {
         return try await postJSON("/sites/\(siteId)/commands", body: Body(type: "http_request", params: Params(url: url, method: method, body: body)))
     }
 
+    /// LAN scanner (Fase 5) — varre um bloco CIDR privado (RFC 1918, no
+    /// máximo /22) por hosts reais, executado pelo agente do site.
+    public func createLANScanCommand(siteId: String, cidr: String) async throws -> Command {
+        struct Params: Encodable { let cidr: String }
+        struct Body: Encodable { let type: String; let params: Params }
+        return try await postJSON("/sites/\(siteId)/commands", body: Body(type: "lan_scan", params: Params(cidr: cidr)))
+    }
+
     /// RDAP/WHOIS (Fase 5) — consulta pública sobre domínio/IP, resolvida
     /// pelo backend via bootstrap real da IANA. Não passa pelo agente do
     /// site (a informação é da internet, não da LAN).

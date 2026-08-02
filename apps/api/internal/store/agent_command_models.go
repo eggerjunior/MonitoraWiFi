@@ -46,6 +46,7 @@ const (
 	AgentCommandTypeBatchPing   = "batch_ping"
 	AgentCommandTypeSSLCheck    = "ssl_check"
 	AgentCommandTypeHTTPRequest = "http_request"
+	AgentCommandTypeLANScan     = "lan_scan"
 )
 
 type AgentCommandStore interface {

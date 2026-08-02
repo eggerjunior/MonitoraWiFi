@@ -5,6 +5,7 @@ import { DnsLookupTool } from "@/components/DnsLookupTool";
 import { TracerouteTool } from "@/components/TracerouteTool";
 import { SslCheckTool } from "@/components/SslCheckTool";
 import { HttpRequestTool } from "@/components/HttpRequestTool";
+import { LanScanTool } from "@/components/LanScanTool";
 import { RdapTool } from "@/components/RdapTool";
 import { SubnetCalculator } from "@/components/SubnetCalculator";
 
@@ -38,6 +39,7 @@ export default async function DiagnosticsPage() {
           <TracerouteTool siteId={current.site.id} />
           <SslCheckTool siteId={current.site.id} />
           <HttpRequestTool siteId={current.site.id} />
+          <LanScanTool siteId={current.site.id} />
         </>
       )}
 

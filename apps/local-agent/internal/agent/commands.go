@@ -60,6 +60,8 @@ func (a *Agent) runCommand(ctx context.Context, cmd apiclient.Command) {
 		a.runSSLCheckCommand(ctx, cmd)
 	case "http_request":
 		a.runHTTPRequestCommand(ctx, cmd)
+	case "lan_scan":
+		a.runLANScanCommand(ctx, cmd)
 	default:
 		// O backend já valida o tipo na criação (CHECK constraint +
 		// validação no handler) — chegar aqui com um tipo desconhecido só
@@ -358,6 +360,36 @@ func (a *Agent) runHTTPRequestCommand(ctx context.Context, cmd apiclient.Command
 		"content_length": resp.ContentLength,
 		"duration_ms":    durationMs,
 		"executed_at":    time.Now().UTC().Format(time.RFC3339Nano),
+	}
+	if err := a.client.ReportCommandResult(ctx, a.identity.AgentID, a.identity.AgentSecret, cmd.ID, "completed", payload, ""); err != nil {
+		a.logger.Error("erro ao reportar resultado do comando", slog.String("command_id", cmd.ID), slog.Any("error", err))
+	}
+}
+
+type lanScanCommandParams struct {
+	CIDR string `json:"cidr"`
+}
+
+func (a *Agent) runLANScanCommand(ctx context.Context, cmd apiclient.Command) {
+	var params lanScanCommandParams
+	if err := json.Unmarshal(cmd.Params, &params); err != nil {
+		a.reportCommandFailure(ctx, cmd.ID, "params inválido: "+err.Error())
+		return
+	}
+
+	scanCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+
+	result, err := probes.ScanLAN(scanCtx, params.CIDR, probes.DefaultLANScanOptions())
+	if err != nil {
+		a.reportCommandFailure(ctx, cmd.ID, err.Error())
+		return
+	}
+
+	payload := map[string]any{
+		"cidr":        result.CIDR,
+		"hosts":       result.Hosts,
+		"executed_at": result.ExecutedAt.Format(time.RFC3339Nano),
 	}
 	if err := a.client.ReportCommandResult(ctx, a.identity.AgentID, a.identity.AgentSecret, cmd.ID, "completed", payload, ""); err != nil {
 		a.logger.Error("erro ao reportar resultado do comando", slog.String("command_id", cmd.ID), slog.Any("error", err))
