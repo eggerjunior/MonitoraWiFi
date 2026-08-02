@@ -141,6 +141,8 @@ func (s *Server) Routes() http.Handler {
 		s.requirePermission(auth.PermManageIntegrations, s.handleCreateAgentEnrollmentToken)))
 	mux.HandleFunc("GET /api/v1/sites/{siteId}/agents", s.withObservability("agents.list",
 		s.requirePermission(auth.PermView, s.handleListAgents)))
+	mux.HandleFunc("POST /api/v1/sites/{siteId}/agents/{agentId}/revoke", s.withObservability("agents.revoke",
+		s.requirePermission(auth.PermManageIntegrations, s.handleRevokeAgent)))
 
 	mux.HandleFunc("GET /api/v1/sites/{siteId}/ping-tests", s.withObservability("ping-tests.list",
 		s.requirePermission(auth.PermView, s.handleListPingTests)))

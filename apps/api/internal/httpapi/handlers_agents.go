@@ -172,6 +172,49 @@ func (s *Server) handleListAgents(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleRevokeAgent revoga a credencial de um agente — a partir daí,
+// toda requisição autenticada com esse agente (heartbeat, telemetria,
+// claim de comando) é rejeitada com 401 (requireAgentAuth já checa
+// RevokedAt). Não existe "unrevoke": um agente revogado precisa ser
+// enrolado de novo com um token novo. Antes desta rota, a única forma de
+// revogar era `UPDATE agents SET revoked_at = now()` direto no Postgres
+// (ver docs/deployment/runbook-producao.md) — gap real fechado aqui.
+func (s *Server) handleRevokeAgent(w http.ResponseWriter, r *http.Request) {
+	correlationID := correlationIDFromContext(r.Context())
+
+	siteID, err := uuid.Parse(r.PathValue("siteId"))
+	if err != nil {
+		writeError(w, correlationID, http.StatusBadRequest, "invalid_site_id", "siteId inválido")
+		return
+	}
+	agentID, err := uuid.Parse(r.PathValue("agentId"))
+	if err != nil {
+		writeError(w, correlationID, http.StatusBadRequest, "invalid_agent_id", "agentId inválido")
+		return
+	}
+
+	agent, err := s.agents.Get(r.Context(), agentID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, correlationID, http.StatusNotFound, "not_found", "agente não encontrado")
+			return
+		}
+		writeError(w, correlationID, http.StatusInternalServerError, "internal_error", "erro ao buscar agente")
+		return
+	}
+	if agent.SiteID != siteID {
+		writeError(w, correlationID, http.StatusNotFound, "not_found", "agente não encontrado neste site")
+		return
+	}
+
+	if err := s.agents.Revoke(r.Context(), agentID, time.Now().UTC()); err != nil {
+		writeError(w, correlationID, http.StatusInternalServerError, "internal_error", "erro ao revogar agente")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "revoked"})
+}
+
 type agentHeartbeatRequest struct {
 	Status      string   `json:"status"`
 	QueuedItems int      `json:"queued_items"`

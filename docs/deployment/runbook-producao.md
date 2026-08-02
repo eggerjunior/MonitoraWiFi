@@ -126,7 +126,12 @@ passo 1 se a migração já tiver corrompido dado.
    ```
 3. Confirmar heartbeat: `GET /api/v1/sites/{siteId}/agents` deve mostrar
    `last_seen_at` atualizando a cada poucos segundos.
-4. Revogar um agente comprometido/descomissionado: não existe endpoint
-   de revogação exposto ainda — hoje é feito via `UPDATE agents SET
-   revoked_at = now()` direto no Postgres (pendência real: expor isso
-   como ação de API, ver Fase 8 "faltam").
+4. Revogar um agente comprometido/descomissionado (Fase 8):
+   ```bash
+   curl -X POST https://wifi.egger.app.br/api/v1/sites/{siteId}/agents/{agentId}/revoke \
+     -H "Cookie: <cookie de sessão de um usuário com manage_integrations>"
+   ```
+   A partir daí, toda requisição autenticada com a credencial desse
+   agente (heartbeat, telemetria, claim de comando) é rejeitada com 401
+   — efeito imediato, sem precisar reiniciar nada. Não existe
+   "unrevoke": enrolar de novo exige um token novo.

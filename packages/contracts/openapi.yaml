@@ -238,6 +238,45 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /sites/{siteId}/agents/{agentId}/revoke:
+    post:
+      tags: [agents]
+      summary: >
+        Revoga a credencial de um agente (Fase 8) — a partir daí, toda
+        requisição autenticada com esse agente (heartbeat, telemetria,
+        claim de comando) é rejeitada com 401. Não existe "unrevoke": um
+        agente revogado precisa ser enrolado de novo com um token novo.
+      operationId: revokeAgent
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Agente revogado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Agente não encontrado (ou não pertence a este site)
+
   /agents/enroll:
     post:
       tags: [agents]

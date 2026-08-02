@@ -62,6 +62,12 @@ type AgentStore interface {
 	Get(ctx context.Context, id uuid.UUID) (Agent, error)
 	ListBySite(ctx context.Context, siteID uuid.UUID, page Page) ([]Agent, int, error)
 	UpdateLastSeen(ctx context.Context, id uuid.UUID, at time.Time) error
+	// Revoke marca o agente como revogado — a partir daí, toda requisição
+	// autenticada com a credencial desse agente (heartbeat, telemetria,
+	// claim de comando) é rejeitada com 401 (ver requireAgentAuth). Nunca
+	// reverte (não existe "unrevoke" — um agente revogado precisa ser
+	// enrolado de novo com um token novo).
+	Revoke(ctx context.Context, id uuid.UUID, at time.Time) error
 }
 
 type AgentEnrollmentTokenStore interface {

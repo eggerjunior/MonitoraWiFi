@@ -69,6 +69,13 @@ func (s *PostgresAgents) UpdateLastSeen(ctx context.Context, id uuid.UUID, at ti
 	return err
 }
 
+// Revoke é idempotente (ON CONFLICT-like: um agente já revogado só tem a
+// data sobrescrita) — revogar duas vezes nunca é erro.
+func (s *PostgresAgents) Revoke(ctx context.Context, id uuid.UUID, at time.Time) error {
+	_, err := s.Pool.Exec(ctx, `UPDATE agents SET revoked_at = $2 WHERE id = $1`, id, at)
+	return err
+}
+
 func (s *PostgresAgentEnrollmentTokens) Create(ctx context.Context, t AgentEnrollmentToken) error {
 	_, err := s.Pool.Exec(ctx,
 		`INSERT INTO agent_enrollment_tokens (id, site_id, token_hash, created_by, created_at, expires_at)

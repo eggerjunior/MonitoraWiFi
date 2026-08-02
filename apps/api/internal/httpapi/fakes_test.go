@@ -164,6 +164,16 @@ func (f *fakeAgents) UpdateLastSeen(ctx context.Context, id uuid.UUID, at time.T
 	return nil
 }
 
+func (f *fakeAgents) Revoke(ctx context.Context, id uuid.UUID, at time.Time) error {
+	a, ok := f.byID[id]
+	if !ok {
+		return store.ErrNotFound
+	}
+	a.RevokedAt = &at
+	f.byID[id] = a
+	return nil
+}
+
 type fakeAgentEnrollmentTokens struct {
 	byHash map[string]store.AgentEnrollmentToken
 }

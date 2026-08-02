@@ -95,6 +95,76 @@ func TestAgentEnrollment_FullFlow(t *testing.T) {
 	}
 }
 
+// TestRevokeAgent_BloqueiaHeartbeatRealAposRevogar prova o efeito real da
+// revogação, não só o campo no banco: um heartbeat com a mesma credencial
+// que funcionava antes passa a ser rejeitado com 401 depois do revoke.
+func TestRevokeAgent_BloqueiaHeartbeatRealAposRevogar(t *testing.T) {
+	siteID := uuid.New()
+	admin := store.User{ID: uuid.New(), Email: "admin@example.com", PasswordHash: mustHash(t, "senha12345"), Role: store.RoleAdministrator}
+	deps := newAgentTestServer(admin)
+	cookie := loginAndGetCookie(t, deps.server, "admin@example.com", "senha12345")
+	agentID, agentSecret := enrollTestAgent(t, deps, siteID)
+
+	hbBody, _ := json.Marshal(map[string]any{"status": "ok"})
+	hbReq := httptest.NewRequest(http.MethodPost, "/api/v1/agents/"+agentID+"/heartbeat", bytes.NewReader(hbBody))
+	hbReq.Header.Set("Authorization", "Bearer "+agentSecret)
+	hbRec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(hbRec, hbReq)
+	if hbRec.Code != http.StatusOK {
+		t.Fatalf("esperava 200 no heartbeat antes de revogar, recebeu %d: %s", hbRec.Code, hbRec.Body.String())
+	}
+
+	revokeReq := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/agents/"+agentID+"/revoke", nil)
+	revokeReq.AddCookie(cookie)
+	revokeRec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(revokeRec, revokeReq)
+	if revokeRec.Code != http.StatusOK {
+		t.Fatalf("esperava 200 ao revogar, recebeu %d: %s", revokeRec.Code, revokeRec.Body.String())
+	}
+
+	hbReq2 := httptest.NewRequest(http.MethodPost, "/api/v1/agents/"+agentID+"/heartbeat", bytes.NewReader(hbBody))
+	hbReq2.Header.Set("Authorization", "Bearer "+agentSecret)
+	hbRec2 := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(hbRec2, hbReq2)
+	if hbRec2.Code != http.StatusUnauthorized {
+		t.Fatalf("esperava 401 no heartbeat depois de revogar (mesma credencial de antes), recebeu %d: %s", hbRec2.Code, hbRec2.Body.String())
+	}
+}
+
+func TestRevokeAgent_SiteErradoRetorna404(t *testing.T) {
+	siteID := uuid.New()
+	outroSiteID := uuid.New()
+	admin := store.User{ID: uuid.New(), Email: "admin@example.com", PasswordHash: mustHash(t, "senha12345"), Role: store.RoleAdministrator}
+	deps := newAgentTestServer(admin)
+	cookie := loginAndGetCookie(t, deps.server, "admin@example.com", "senha12345")
+	agentID, _ := enrollTestAgent(t, deps, siteID)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+outroSiteID.String()+"/agents/"+agentID+"/revoke", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("esperava 404 ao revogar por um site que não é o do agente, recebeu %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestRevokeAgent_ViewerSemPermissao(t *testing.T) {
+	siteID := uuid.New()
+	viewer := store.User{ID: uuid.New(), Email: "viewer@example.com", PasswordHash: mustHash(t, "senha12345"), Role: store.RoleViewer}
+	deps := newAgentTestServer(viewer)
+	cookie := loginAndGetCookie(t, deps.server, "viewer@example.com", "senha12345")
+
+	// Permissão é checada antes de qualquer busca de agente — um UUID
+	// aleatório (nenhum agente real enrolado) já basta pra provar o 403.
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/agents/"+uuid.New().String()+"/revoke", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("esperava 403 (viewer sem PermManageIntegrations), recebeu %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestAgentTelemetry_IdempotentReplay(t *testing.T) {
 	admin := store.User{ID: uuid.New(), Email: "admin@example.com", PasswordHash: mustHash(t, "senha12345"), Role: store.RoleAdministrator}
 	deps := newAgentTestServer(admin)
