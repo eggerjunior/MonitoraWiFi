@@ -30,3 +30,26 @@ func TestToPingTestPayload_IdempotencyKeyIsStableAndUnique(t *testing.T) {
 		t.Fatalf("payload não preservou target/protocol: %+v", p1)
 	}
 }
+
+func TestToSpeedTestPayload_IdempotencyKeyIsStableAndUnique(t *testing.T) {
+	download := 100.0
+	executedAt := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	r1 := probes.SpeedTestResult{Mode: "internet", DownloadMbps: &download, ExecutedAt: executedAt}
+	r2 := probes.SpeedTestResult{Mode: "internet", DownloadMbps: &download, ExecutedAt: executedAt}
+	r3 := probes.SpeedTestResult{Mode: "lan", DownloadMbps: &download, ExecutedAt: executedAt}
+
+	p1 := toSpeedTestPayload(r1)
+	p2 := toSpeedTestPayload(r2)
+	p3 := toSpeedTestPayload(r3)
+
+	if p1.IdempotencyKey != p2.IdempotencyKey {
+		t.Fatalf("mesmo resultado deveria gerar a mesma chave: %q vs %q", p1.IdempotencyKey, p2.IdempotencyKey)
+	}
+	if p1.IdempotencyKey == p3.IdempotencyKey {
+		t.Fatalf("modos diferentes não deveriam colidir na mesma chave: %q", p1.IdempotencyKey)
+	}
+	if p1.Mode != "internet" || p1.DownloadMbps != r1.DownloadMbps {
+		t.Fatalf("payload não preservou mode/download: %+v", p1)
+	}
+}
