@@ -7,11 +7,11 @@
   --egger-color-border: #D8DBE0;
   --egger-color-text-primary: #12151A;
   --egger-color-text-secondary: #4B5563;
-  --egger-color-text-disabled: #9CA3AF;
+  --egger-color-text-disabled: #6D7787;
   --egger-color-accent: #0A6CFF;
   --egger-color-accent-pressed: #0854CC;
-  --egger-color-success: #0F8A3F;
-  --egger-color-warning: #B5750B;
+  --egger-color-success: #0F893E;
+  --egger-color-warning: #A3690A;
   --egger-color-critical: #C22C2C;
   --egger-color-info: #0A6CFF;
   --egger-color-unavailable: #8A8F98;
@@ -25,7 +25,7 @@
   --egger-color-border: #2A313C;
   --egger-color-text-primary: #F2F4F7;
   --egger-color-text-secondary: #AEB4BF;
-  --egger-color-text-disabled: #5B6270;
+  --egger-color-text-disabled: #7B8394;
   --egger-color-accent: #4C9AFF;
   --egger-color-accent-pressed: #7AB6FF;
   --egger-color-success: #3FCB78;
@@ -43,7 +43,7 @@
   --egger-color-border: #2A313C;
   --egger-color-text-primary: #F2F4F7;
   --egger-color-text-secondary: #AEB4BF;
-  --egger-color-text-disabled: #5B6270;
+  --egger-color-text-disabled: #7B8394;
   --egger-color-accent: #4C9AFF;
   --egger-color-accent-pressed: #7AB6FF;
   --egger-color-success: #3FCB78;
@@ -60,11 +60,11 @@
   --egger-color-border: #D8DBE0;
   --egger-color-text-primary: #12151A;
   --egger-color-text-secondary: #4B5563;
-  --egger-color-text-disabled: #9CA3AF;
+  --egger-color-text-disabled: #6D7787;
   --egger-color-accent: #0A6CFF;
   --egger-color-accent-pressed: #0854CC;
-  --egger-color-success: #0F8A3F;
-  --egger-color-warning: #B5750B;
+  --egger-color-success: #0F893E;
+  --egger-color-warning: #A3690A;
   --egger-color-critical: #C22C2C;
   --egger-color-info: #0A6CFF;
   --egger-color-unavailable: #8A8F98;

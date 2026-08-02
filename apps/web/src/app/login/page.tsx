@@ -58,7 +58,7 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-md border border-egg-border bg-egg-background px-3 py-2 text-sm text-egg-text-primary outline-none focus:border-egg-accent"
+              className="mt-1 w-full rounded-md border border-egg-border bg-egg-background px-3 py-2 text-sm text-egg-text-primary focus:border-egg-accent focus:outline focus:outline-2 focus:outline-egg-accent focus:outline-offset-1"
             />
           </div>
 
@@ -75,7 +75,7 @@ export default function LoginPage() {
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-md border border-egg-border bg-egg-background px-3 py-2 text-sm text-egg-text-primary outline-none focus:border-egg-accent"
+              className="mt-1 w-full rounded-md border border-egg-border bg-egg-background px-3 py-2 text-sm text-egg-text-primary focus:border-egg-accent focus:outline focus:outline-2 focus:outline-egg-accent focus:outline-offset-1"
             />
           </div>
 

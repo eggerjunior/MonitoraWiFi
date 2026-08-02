@@ -54,6 +54,7 @@ export function Sidebar() {
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
+                aria-label={collapsed ? item.label : undefined}
                 title={collapsed ? item.label : undefined}
                 className={`block rounded-md px-3 py-2 text-sm ${
                   active

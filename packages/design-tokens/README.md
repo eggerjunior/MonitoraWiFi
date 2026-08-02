@@ -17,3 +17,17 @@ node scripts/generate.mjs
   `EggerMetricSource`).
 
 Qualquer mudança de paleta/tipografia/espaçamento começa em `tokens.json`.
+
+## Contraste (WCAG AA)
+
+Toda cor de texto/status em `color.light`/`color.dark` precisa manter
+razão de contraste >= 4.5:1 contra `surface` (texto normal, não
+"large text" — os textos que usam essas cores no produto, ex.: badge de
+status "ONLINE", rodam em `text-xs`/`caption`, abaixo do tamanho que
+qualificaria pra exceção de 3:1 do WCAG). Auditoria em 2026-08-02
+encontrou 4 cores abaixo do mínimo (`textDisabled` claro e escuro,
+`success` e `warning` claro) — ajustadas pro valor mais próximo do
+original que ainda cruza 4.5:1 (ver `docs/testing/acessibilidade.md`
+pro cálculo e antes/depois completos). Ao alterar qualquer cor aqui,
+recalcular o contraste contra `surface` e `background` nos dois temas
+antes de commitar.
