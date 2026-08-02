@@ -244,11 +244,19 @@ recomendações com evidência/confiança/impacto/risco, relatórios completos.
 > físico disponível); **runbook de produção**
 > (`docs/deployment/runbook-producao.md`) e **manual do usuário**
 > (`docs/user-guide/manual-do-usuario.md`), ambos com passos reais já
-> testados nesta e em sessões anteriores, não especulativos. **Faltam**:
-> agendamento do worker (Fase 7) — na verdade já resolvido, cron a cada
-> 6h em produção desde 2026-08-01, este item estava desatualizado aqui;
-> nenhuma auditoria WCAG com ferramenta dedicada (axe-core) nem teste com
-> leitor de tela real; nenhuma verificação de VoiceOver em hardware real.
+> testados nesta e em sessões anteriores, não especulativos. **Atualização
+> (2026-08-02)**: auditoria WCAG automatizada real rodada com
+> `@axe-core/playwright` — `/login` em produção real (0 violations, dois
+> temas) e as 12 rotas autenticadas do dashboard contra uma stack local
+> inteiramente containerizada e efêmera (Postgres com as 14 migrações
+> reais + api/web buildados dos Dockerfiles reais + dado de exemplo +
+> login real via formulário), 0 violations em todas as 24 combinações
+> (12 rotas × 2 temas) — confirma que a revisão manual anterior já tinha
+> corrigido os problemas reais existentes. Infraestrutura de teste
+> (containers/rede `a11y-*`) já removida, nada ficou em produção. **Faltam**
+> (deliberadamente adiado, não esquecido): teste com leitor de tela real
+> (NVDA/JAWS/VoiceOver macOS) e verificação de VoiceOver/Dynamic Type do
+> iOS em hardware real — ambiente sem dispositivo físico/simulador.
 
 Hardening de segurança, performance, acessibilidade (WCAG, VoiceOver, Dynamic Type),
 suíte de testes completa, preparação App Store/TestFlight

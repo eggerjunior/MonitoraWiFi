@@ -83,11 +83,44 @@ Tokens regenerados (`node packages/design-tokens/scripts/generate.mjs`) —
   esquecida: validar com Xcode/dispositivo real antes de qualquer
   auditoria de acessibilidade se considerar "fechada".
 
+## Web — auditoria automatizada (axe-core/Playwright, 2026-08-02)
+
+Depois da revisão manual acima (que já corrigiu os 6 achados reais), rodada
+uma auditoria automatizada real com `@axe-core/playwright` contra:
+
+1. **`/login` em produção real** (`https://wifi.egger.app.br/login`),
+   sem necessidade de autenticação — **0 violations**, temas claro e
+   escuro.
+2. **Todas as 12 rotas autenticadas do dashboard**, contra uma stack local
+   inteiramente containerizada (nunca produção): Postgres efêmero com as
+   14 migrações reais aplicadas, `monitorawifi-api`/`monitorawifi-web`
+   buildados a partir do Dockerfile real de cada app, populados com
+   organização/site/usuário/agente/dispositivos UniFi/testes de
+   ping-speedtest/anomalia de exemplo, login real via formulário
+   (Playwright preenche e-mail/senha e submete, sem pular a tela de
+   login). Rotas cobertas: `/`, `/internet`, `/wifi`, `/devices`,
+   `/switches`, `/clients`, `/map`, `/diagnostics`, `/alerts`,
+   `/history`, `/reports`, `/settings` — cada uma nos temas claro e
+   escuro (24 combinações).
+
+**Resultado: 0 violations em todas as 24 combinações.** Nenhuma correção
+adicional foi necessária além da revisão manual já registrada acima —
+axe-core confirma que os 6 achados manuais (contraste + foco + rótulo
+acessível) eram de fato os problemas reais do produto, não apenas parte
+deles.
+
+Infraestrutura de teste (`a11y-pg`, `a11y-api`, `a11y-web`,
+`a11y-audit-runner`, rede `a11y-net`) era inteiramente efêmera —
+removida ao final da auditoria, nenhum resquício em produção.
+
 ## O que não foi feito (fora de escopo desta auditoria)
 
-- Certificação WCAG formal (auditoria completa exigiria ferramenta
-  dedicada — ex.: axe-core rodando contra o site real — e revisão manual
-  de navegação por teclado em cada uma das ~20 rotas, não só as
-  encontradas nesta revisão pontual).
-- Teste com leitor de tela real no web (NVDA/JAWS/VoiceOver macOS).
-- Qualquer verificação de VoiceOver/Dynamic Type do iOS em hardware real.
+- Teste com leitor de tela real no web (NVDA/JAWS/VoiceOver macOS) — o
+  axe-core detecta problemas estruturais/de contraste, não substitui
+  navegação real por leitor de tela.
+- Navegação manual por teclado (Tab/Shift+Tab/Enter/Esc) em cada rota,
+  além do que o axe-core cobre automaticamente (ordem de foco lógica,
+  armadilhas de foco em modais).
+- Qualquer verificação de VoiceOver/Dynamic Type do iOS em hardware real
+  (ambiente sem Xcode/simulador/dispositivo físico — mesma limitação já
+  registrada acima).
