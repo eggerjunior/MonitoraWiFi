@@ -4,6 +4,30 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-02 — Fase 7 (cobertura de speed test) + Fase 8 (hardening) em produção
+
+- Commit `f381313`. Sem migração nova — nenhuma mudança de schema nesta
+  entrega. Backup prévio de rotina mesmo assim
+  (`backup-20260801-225642.sql.gz`).
+- API/web reconstruídos e reimplantados (`monitorawifi-api:f3813137`,
+  `monitorawifi-web:f3813137`). Saudáveis: `GET /healthz` agora responde
+  `{"status":"ok","version":"0.1.0","commit":"f3813137"}` (primeiro
+  deploy com versionamento formal da API — confirma a injeção via
+  ldflags funcionando de verdade em produção, não só em teste local).
+  `/readyz` 200, `https://wifi.egger.app.br/login` 200.
+- `egger-worker:latest` reconstruído (agora com cobertura de speed test)
+  e **rodado manualmente uma vez contra produção** pra confirmar o
+  comportamento honesto: as 4 métricas (ping + 3 novas de speed test)
+  reportaram corretamente "sem histórico suficiente ainda" — nenhum
+  falso positivo, consistente com produção ter só ~1 dia de dado real. O
+  cron a cada 6h (já configurado) segue rodando essa mesma imagem.
+- Web: correções de acessibilidade (contraste de cores, aria-label do
+  menu recolhido, foco visível no login) e Sidebar/tokens regenerados —
+  já no ar, sem necessidade de passo extra além do redeploy padrão.
+- Runbook de produção e manual do usuário publicados (ver
+  `docs/deployment/` e `docs/user-guide/`) — usados nesta própria sessão
+  pra conduzir o deploy acima.
+
 ## 2026-08-02 — Fase 4 completa: Switches, Alertas, Histórico em produção
 
 - Commit `2394189`. Três telas que faltavam (web + iOS): Switches (rota/seção
