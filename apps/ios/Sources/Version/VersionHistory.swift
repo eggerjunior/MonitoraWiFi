@@ -16,10 +16,19 @@ public struct VersionEntry: Identifiable, Sendable {
 public enum VersionHistory {
     /// Fallbacks defensivos — usados apenas se o Info.plist não tiver os
     /// valores (não deveria acontecer em um build gerado pelo XcodeGen).
-    public static let fallbackVersionString = "0.7.1 (Build 15)"
+    public static let fallbackVersionString = "0.8.0 (Build 16)"
     public static let fallbackCommit = "dev"
 
     public static let entries: [VersionEntry] = [
+        VersionEntry(
+            version: "0.8.0",
+            build: "16",
+            date: "2026-08-02",
+            changes: [
+                "Relatórios: nova aba com diagnósticos e recomendações reais do motor de correlação (Fase 7) — internet lenta/Wi-Fi lento com evidência/confiança/impacto/risco — e geração de relatório sob demanda, paridade com o web",
+            ],
+            isCurrent: true
+        ),
         VersionEntry(
             version: "0.7.1",
             build: "15",
@@ -27,7 +36,7 @@ public enum VersionHistory {
             changes: [
                 "Ícone definitivo do app (substitui o placeholder gerado programaticamente)",
             ],
-            isCurrent: true
+            isCurrent: false
         ),
         VersionEntry(
             version: "0.7.0",

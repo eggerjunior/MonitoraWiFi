@@ -249,6 +249,33 @@ public actor APIClient {
         try await get("/sites/\(siteId)/anomalies?page=\(page)&page_size=\(pageSize)")
     }
 
+    /// Diagnósticos do motor de correlação (Fase 7, worker) — só leitura,
+    /// nunca gerado sem evidência real (anomalias).
+    public func diagnoses(siteId: String, page: Int = 1, pageSize: Int = 50) async throws -> Page<Diagnosis> {
+        try await get("/sites/\(siteId)/diagnoses?page=\(page)&page_size=\(pageSize)")
+    }
+
+    /// Recomendações (Fase 7) — sempre amarradas a um diagnóstico real.
+    public func recommendations(siteId: String, page: Int = 1, pageSize: Int = 50) async throws -> Page<Recommendation> {
+        try await get("/sites/\(siteId)/recommendations?page=\(page)&page_size=\(pageSize)")
+    }
+
+    /// Gera um relatório sob demanda (Fase 7) — sem período informado, o
+    /// backend usa os últimos 7 dias.
+    public func createReport(siteId: String) async throws -> Report {
+        struct EmptyBody: Encodable {}
+        return try await postJSON("/sites/\(siteId)/reports", body: EmptyBody())
+    }
+
+    public func reports(siteId: String, page: Int = 1, pageSize: Int = 20) async throws -> Page<Report> {
+        try await get("/sites/\(siteId)/reports?page=\(page)&page_size=\(pageSize)")
+    }
+
+    /// Relatório com o conteúdo completo (a listagem não inclui `content`).
+    public func report(id: String) async throws -> Report {
+        try await get("/reports/\(id)")
+    }
+
     /// Histórico de ping/speed test do agente (Fase 2/4) — série real, não
     /// o resultado sob demanda de PingCommandResult (Fase 5).
     public func pingTests(siteId: String, page: Int = 1, pageSize: Int = 20) async throws -> Page<PingTestRecord> {

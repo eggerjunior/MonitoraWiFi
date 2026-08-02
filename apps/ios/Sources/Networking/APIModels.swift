@@ -459,6 +459,156 @@ public struct UniFiClientList: Codable, Sendable {
     public let items: [UniFiClient]
 }
 
+// MARK: - Fase 7 (motor de correlação/diagnóstico + recomendações + relatórios)
+
+/// Referência a uma anomalia real usada como evidência de um diagnóstico ou
+/// recomendação — nunca uma evidência inventada (ver
+/// apps/worker/internal/diagnostics).
+public struct AnomalyEvidenceRef: Codable, Sendable {
+    public let anomalyId: String
+    public let metric: String
+    public let observedAt: String
+    public let value: Double
+    public let bucketMean: Double
+    public let zScore: Double
+
+    enum CodingKeys: String, CodingKey {
+        case anomalyId = "anomaly_id"
+        case metric
+        case observedAt = "observed_at"
+        case value
+        case bucketMean = "bucket_mean"
+        case zScore = "z_score"
+    }
+}
+
+/// Diagnóstico do motor de correlação (Fase 7) — nunca gerado sem evidência
+/// real (anomalias já detectadas). Paridade com
+/// apps/web/src/lib/api-types.ts (Diagnosis).
+public struct Diagnosis: Codable, Sendable, Identifiable {
+    public let id: String
+    public let category: String
+    public let summary: String
+    public let confidence: Double
+    public let impact: String
+    public let risk: String
+    public let evidence: [AnomalyEvidenceRef]
+    public let windowStart: String
+    public let windowEnd: String
+    public let detectedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case category
+        case summary
+        case confidence
+        case impact
+        case risk
+        case evidence
+        case windowStart = "window_start"
+        case windowEnd = "window_end"
+        case detectedAt = "detected_at"
+    }
+}
+
+/// Recomendação (Fase 7) — sempre amarrada a um diagnosisId real, nunca
+/// gerada sozinha.
+public struct Recommendation: Codable, Sendable, Identifiable {
+    public let id: String
+    public let diagnosisId: String
+    public let action: String
+    public let confidence: Double
+    public let impact: String
+    public let risk: String
+    public let evidence: [AnomalyEvidenceRef]
+    public let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case diagnosisId = "diagnosis_id"
+        case action
+        case confidence
+        case impact
+        case risk
+        case evidence
+        case createdAt = "created_at"
+    }
+}
+
+public struct ReportContentDiagnosis: Codable, Sendable {
+    public let category: String
+    public let summary: String
+    public let confidence: Double
+    public let impact: String
+    public let risk: String
+    public let windowStart: String
+    public let windowEnd: String
+
+    enum CodingKeys: String, CodingKey {
+        case category
+        case summary
+        case confidence
+        case impact
+        case risk
+        case windowStart = "window_start"
+        case windowEnd = "window_end"
+    }
+}
+
+public struct ReportContentRecommendation: Codable, Sendable {
+    public let category: String
+    public let action: String
+    public let confidence: Double
+    public let impact: String
+    public let risk: String
+}
+
+/// Conteúdo agregado de um relatório (Fase 7) — só vem em POST /reports e
+/// GET /reports/{id}, nunca na listagem (ver handlers_reports.go).
+public struct ReportContent: Codable, Sendable {
+    public let periodStart: String
+    public let periodEnd: String
+    public let anomalyCount: Int
+    public let anomaliesByMetric: [String: Int]
+    public let diagnoses: [ReportContentDiagnosis]
+    public let recommendations: [ReportContentRecommendation]
+
+    enum CodingKeys: String, CodingKey {
+        case periodStart = "period_start"
+        case periodEnd = "period_end"
+        case anomalyCount = "anomaly_count"
+        case anomaliesByMetric = "anomalies_by_metric"
+        case diagnoses
+        case recommendations
+    }
+}
+
+/// Relatório de diagnóstico (Fase 7) — gerado sob demanda, agregando
+/// anomalias/diagnósticos/recomendações reais de um período. Sem
+/// armazenamento de objetos externo: o conteúdo vai inteiro no próprio
+/// registro.
+public struct Report: Codable, Sendable, Identifiable {
+    public let id: String
+    public let siteId: String
+    public let kind: String
+    public let periodStart: String
+    public let periodEnd: String
+    public let generatedBy: String?
+    public let generatedAt: String
+    public let content: ReportContent?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case siteId = "site_id"
+        case kind
+        case periodStart = "period_start"
+        case periodEnd = "period_end"
+        case generatedBy = "generated_by"
+        case generatedAt = "generated_at"
+        case content
+    }
+}
+
 public struct Page<Item: Codable & Sendable>: Codable, Sendable {
     public let items: [Item]
     public let page: Int
