@@ -34,6 +34,9 @@ func newTestServer(pinger Pinger, users *fakeUsers, sessions *fakeSessions, orgs
 		UniFiClients:      newFakeUniFiClients(),
 		Anomalies:         newFakeAnomalies(),
 		SpatialSurveys:    newFakeSpatialSurveys(),
+		Diagnoses:         newFakeDiagnoses(),
+		Recommendations:   newFakeRecommendations(),
+		Reports:           newFakeReports(),
 		RDAPClient:        &fakeRDAPClient{},
 	})
 }
@@ -54,6 +57,9 @@ type agentTestDeps struct {
 	unifiClients      *fakeUniFiClients
 	anomalies         *fakeAnomalies
 	spatialSurveys    *fakeSpatialSurveys
+	diagnoses         *fakeDiagnoses
+	recommendations   *fakeRecommendations
+	reports           *fakeReports
 	rdapClient        *fakeRDAPClient
 }
 
@@ -71,6 +77,9 @@ func newAgentTestServer(users ...store.User) agentTestDeps {
 	fuc := newFakeUniFiClients()
 	fan := newFakeAnomalies()
 	fss := newFakeSpatialSurveys()
+	fdg := newFakeDiagnoses()
+	frec := newFakeRecommendations()
+	frep := newFakeReports()
 	frc := &fakeRDAPClient{}
 
 	server := NewServer(Deps{
@@ -93,6 +102,9 @@ func newAgentTestServer(users ...store.User) agentTestDeps {
 		UniFiClients:      fuc,
 		Anomalies:         fan,
 		SpatialSurveys:    fss,
+		Diagnoses:         fdg,
+		Recommendations:   frec,
+		Reports:           frep,
 		RDAPClient:        frc,
 	})
 
@@ -110,6 +122,9 @@ func newAgentTestServer(users ...store.User) agentTestDeps {
 		unifiClients:      fuc,
 		anomalies:         fan,
 		spatialSurveys:    fss,
+		diagnoses:         fdg,
+		recommendations:   frec,
+		reports:           frep,
 		rdapClient:        frc,
 	}
 }

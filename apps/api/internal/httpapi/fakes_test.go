@@ -470,6 +470,75 @@ func (f *fakeSpatialSurveys) ListBySite(ctx context.Context, siteID uuid.UUID, p
 	return items, len(items), nil
 }
 
+type fakeDiagnoses struct {
+	bySite map[uuid.UUID][]store.Diagnosis
+}
+
+func newFakeDiagnoses() *fakeDiagnoses {
+	return &fakeDiagnoses{bySite: map[uuid.UUID][]store.Diagnosis{}}
+}
+
+func (f *fakeDiagnoses) ListBySite(ctx context.Context, siteID uuid.UUID, page store.Page) ([]store.Diagnosis, int, error) {
+	items := f.bySite[siteID]
+	return items, len(items), nil
+}
+
+type fakeRecommendations struct {
+	bySite map[uuid.UUID][]store.Recommendation
+}
+
+func newFakeRecommendations() *fakeRecommendations {
+	return &fakeRecommendations{bySite: map[uuid.UUID][]store.Recommendation{}}
+}
+
+func (f *fakeRecommendations) ListBySite(ctx context.Context, siteID uuid.UUID, page store.Page) ([]store.Recommendation, int, error) {
+	items := f.bySite[siteID]
+	return items, len(items), nil
+}
+
+type fakeReports struct {
+	byID   map[uuid.UUID]store.Report
+	bySite map[uuid.UUID][]uuid.UUID
+}
+
+func newFakeReports() *fakeReports {
+	return &fakeReports{byID: map[uuid.UUID]store.Report{}, bySite: map[uuid.UUID][]uuid.UUID{}}
+}
+
+func (f *fakeReports) Create(ctx context.Context, r store.Report) (store.Report, error) {
+	r.ID = uuid.New()
+	r.GeneratedAt = time.Now().UTC()
+	f.byID[r.ID] = r
+	f.bySite[r.SiteID] = append(f.bySite[r.SiteID], r.ID)
+	return r, nil
+}
+
+func (f *fakeReports) Get(ctx context.Context, id uuid.UUID) (store.Report, error) {
+	r, ok := f.byID[id]
+	if !ok {
+		return store.Report{}, store.ErrNotFound
+	}
+	return r, nil
+}
+
+func (f *fakeReports) ListBySite(ctx context.Context, siteID uuid.UUID, page store.Page) ([]store.Report, int, error) {
+	ids := f.bySite[siteID]
+	items := make([]store.Report, 0, len(ids))
+	for _, id := range ids {
+		full := f.byID[id]
+		items = append(items, store.Report{
+			ID:          full.ID,
+			SiteID:      full.SiteID,
+			Kind:        full.Kind,
+			PeriodStart: full.PeriodStart,
+			PeriodEnd:   full.PeriodEnd,
+			GeneratedBy: full.GeneratedBy,
+			GeneratedAt: full.GeneratedAt,
+		})
+	}
+	return items, len(items), nil
+}
+
 // fakeRDAPClient evita depender de bootstrap/servidores RDAP reais na
 // internet nos testes de handler — o cliente real (egger/api/internal/rdap)
 // já tem seus próprios testes com servidores HTTP locais reais.

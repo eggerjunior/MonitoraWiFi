@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS reports;
+DROP TABLE IF EXISTS recommendations;
+DROP TABLE IF EXISTS diagnoses;

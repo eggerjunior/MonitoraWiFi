@@ -4,6 +4,82 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-02 — Fase 7: motor de correlação/diagnóstico + recomendações + relatórios (implementado, não implantado em produção)
+
+- Retoma o item que o roadmap tinha deliberadamente adiado ("correlação
+  exige semanas de histórico real, produção só tem ~1 dia") — decisão
+  revisitada a pedido do usuário: implementado agora com a mesma guarda
+  defensiva do detector de anomalias (nunca diagnostica sem evidência real
+  suficiente), então não viola o princípio original, só muda quando o
+  código passa a existir.
+- **Backend** (`apps/worker/internal/diagnostics`, novo pacote puro e
+  testável): duas categorias com evidência real hoje — `internet_slow`
+  (ping/download/upload/bufferbloat, sempre medidos contra a internet) e
+  `wifi_slow` (evidência nova: baseline estendido pra cobrir `speed_tests`
+  modo `lan`, que o agente já coletava mas nenhum baseline usava). Cada
+  diagnóstico carrega confiança/impacto/risco + evidência rastreável
+  (anomalias reais com ID); recomendações são geradas 1:1 por diagnóstico,
+  nunca afirmando algo que os dados não sustentam (o texto de `wifi_slow`
+  só diz "internet normal" quando `internet_slow` de fato não disparou
+  junto). `cliente desconectando` ficou de fora — corte deliberado,
+  `unifi_clients` é snapshot substituído a cada sync (migração 0005), sem
+  histórico real de reconexões pra basear um diagnóstico honesto.
+- Migração `0016` já existia (spatial surveys) — nova migração `0017`
+  (`diagnoses`, `recommendations`, `reports`), validada up/down contra
+  Postgres 16 real.
+- **API** (`apps/api`): `GET /sites/{id}/diagnoses`, `GET
+  /sites/{id}/recommendations`, `POST /sites/{id}/reports` (agrega
+  anomalias/diagnósticos/recomendações reais do período — sem período
+  informado usa os últimos 7 dias; requer permissão "Exportar dados"),
+  `GET /sites/{id}/reports` (lista sem o conteúdo completo), `GET
+  /reports/{id}` (com conteúdo). `openapi.yaml` atualizado. Sem
+  armazenamento de objetos externo (não existe essa infraestrutura neste
+  projeto) — o conteúdo do relatório vai inteiro em `reports.content`
+  (jsonb), gerado no momento da requisição, não pré-computado.
+- **Web**: `/reports` deixa de ser placeholder — lista diagnósticos e
+  recomendações reais, mais um painel de relatórios (`ReportsPanel`) com
+  botão "Gerar relatório" e expansão sob demanda do conteúdo de um
+  relatório já gerado.
+- **Validação real** (mesma técnica de sessões anteriores — containers
+  efêmeros de Postgres 16 + worker + api + web, dados reais semeados, sem
+  tocar o Postgres de produção): migração `0017` validada up/down; worker
+  rodado de verdade e gerou 2 diagnósticos reais (`internet_slow` +
+  `wifi_slow`) a partir de 5 anomalias reais; API exercitada via HTTP real
+  (login, listagem de diagnósticos/recomendações, criação/listagem/detalhe
+  de relatório); web renderizado via SSR real (login real, cookie de
+  sessão manual pra contornar o `Secure` do cookie sobre HTTP puro — mesmo
+  obstáculo já documentado na entrada do heatmap) mostrando os
+  diagnósticos/recomendações reais na página. **Bug real encontrado e
+  corrigido nessa validação**: o resumo do diagnóstico dizia "anomalias
+  **reals**" (concatenação cega de "s" num plural irregular; corrigido
+  pra "reais").
+- `go build`/`go vet`/`go test` verdes em `apps/api` e `apps/worker`
+  (testes novos de handler com fakes + testes do motor de correlação);
+  `tsc --noEmit`/`lint`/`build` verdes em `apps/web`.
+- Web 0.12.0, API 0.6.0, worker 0.2.0 (bump de versão sem publicação).
+- **Não implantado em produção nesta entrada** — diferente da maioria das
+  entradas deste log, esta sessão só implementou e validou localmente
+  (containers efêmeros); o usuário não pediu deploy/push desta vez, só
+  implementação + commit local. Pendências reais antes de produção: build
+  e push das imagens Docker atualizadas (`monitorawifi-api`,
+  `monitorawifi-web`, `egger-worker`), aplicar a migração `0017` no
+  Postgres de produção (rotina de backup antes, como sempre), e o cron do
+  worker em produção passa a rodar a lógica de diagnóstico automaticamente
+  no próximo ciclo de 6h depois do deploy.
+
+## 2026-08-02 — Ícone definitivo do app iOS
+
+- Substituído o placeholder (círculo branco + "E" sobre azul) em
+  `apps/ios/Sources/Resources/Assets.xcassets/AppIcon.appiconset/icon-1024.png`
+  por um ícone definitivo: sinal de Wi-Fi (3 arcos + ponto) em branco sobre o
+  azul de marca `#0A6CFF` (mesmo accent de `packages/design-tokens/tokens.json`).
+  Gerado programaticamente com Pillow (script descartável em scratchpad, não
+  versionado — reproduzível a partir da descrição acima se precisar
+  regenerar/ajustar). PNG RGB opaco (sem canal alfa), 1024×1024, único
+  tamanho exigido pelo `Contents.json` (formato universal moderno do Xcode).
+- Sem novo build/deploy nesta entrada — só o asset trocado. Próximo build
+  TestFlight vai carregar o ícone novo automaticamente.
+
 ## 2026-08-02 — Heatmap interpolado (IDW) no /map + correção de sample_count
 
 - Commit `2716d10d`. Usuário perguntou diretamente "tem mapa de calor pra

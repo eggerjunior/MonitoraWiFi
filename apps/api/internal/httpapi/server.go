@@ -50,6 +50,9 @@ type Server struct {
 	unifiClients      store.UniFiClientStore
 	anomalies         store.AnomalyStore
 	spatialSurveys    store.SpatialSurveyStore
+	diagnoses         store.DiagnosisStore
+	recommendations   store.RecommendationStore
+	reports           store.ReportStore
 
 	rdapClient RDAPLookuper
 
@@ -80,6 +83,9 @@ type Deps struct {
 	UniFiClients      store.UniFiClientStore
 	Anomalies         store.AnomalyStore
 	SpatialSurveys    store.SpatialSurveyStore
+	Diagnoses         store.DiagnosisStore
+	Recommendations   store.RecommendationStore
+	Reports           store.ReportStore
 
 	RDAPClient RDAPLookuper
 }
@@ -104,6 +110,9 @@ func NewServer(d Deps) *Server {
 		unifiClients:      d.UniFiClients,
 		anomalies:         d.Anomalies,
 		spatialSurveys:    d.SpatialSurveys,
+		diagnoses:         d.Diagnoses,
+		recommendations:   d.Recommendations,
+		reports:           d.Reports,
 		rdapClient:        d.RDAPClient,
 		sessionTTL:        d.SessionTTL,
 		loginLimiter:      ratelimit.New(30, 10), // 30/min por IP, burst 10 — ajustável em produção
@@ -164,6 +173,18 @@ func (s *Server) Routes() http.Handler {
 
 	mux.HandleFunc("GET /api/v1/sites/{siteId}/anomalies", s.withObservability("anomalies.list",
 		s.requirePermission(auth.PermView, s.handleListAnomalies)))
+
+	mux.HandleFunc("GET /api/v1/sites/{siteId}/diagnoses", s.withObservability("diagnoses.list",
+		s.requirePermission(auth.PermView, s.handleListDiagnoses)))
+	mux.HandleFunc("GET /api/v1/sites/{siteId}/recommendations", s.withObservability("recommendations.list",
+		s.requirePermission(auth.PermView, s.handleListRecommendations)))
+
+	mux.HandleFunc("POST /api/v1/sites/{siteId}/reports", s.withObservability("reports.create",
+		s.requirePermission(auth.PermExportData, s.handleCreateReport)))
+	mux.HandleFunc("GET /api/v1/sites/{siteId}/reports", s.withObservability("reports.list",
+		s.requirePermission(auth.PermView, s.handleListReports)))
+	mux.HandleFunc("GET /api/v1/reports/{reportId}", s.withObservability("reports.get",
+		s.requirePermission(auth.PermView, s.handleGetReport)))
 
 	mux.HandleFunc("GET /api/v1/rdap/lookup", s.withObservability("rdap.lookup",
 		s.requirePermission(auth.PermRunTests, s.handleRDAPLookup)))

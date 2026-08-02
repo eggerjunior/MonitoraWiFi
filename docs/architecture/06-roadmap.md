@@ -281,9 +281,51 @@ LiDAR, comparação entre levantamentos).
 > violaria o mesmo princípio que já bloqueia isso aqui há duas atualizações
 > ("não é útil implementar anomalias contra dados sintéticos de poucas
 > horas"). Retomar quando houver semanas de histórico real acumulado.
+>
+> **Atualização (2026-08-02)**: decisão revisitada a pedido do usuário —
+> em vez de esperar semanas de histórico, o motor de correlação/diagnóstico
+> foi implementado agora **com a mesma guarda defensiva já usada pelo
+> detector de anomalias**: nunca diagnostica/recomenda sem evidência real
+> (anomalias já detectadas) suficiente, então roda honestamente "sem nada a
+> diagnosticar" enquanto o histórico for pequeno, e produz diagnóstico real
+> assim que houver anomalia real — sem esperar um volume artificial mínimo.
+> **Implementado** (`apps/worker/internal/diagnostics`, motor baseado em
+> regras, não ML): duas categorias com evidência real disponível hoje —
+> **internet_slow** (anomalias em `ping_latency_ms_p50`/
+> `speedtest_download_mbps`/`speedtest_upload_mbps`/`speedtest_bufferbloat_ms`,
+> todas medidas contra a internet real) e **wifi_slow** (evidência nova:
+> baseline estendido pra cobrir `speed_tests` modo `lan`, que já era
+> coletado pelo agente mas não alimentava nenhum baseline até agora — sem
+> essa extensão não haveria nenhuma fonte real pra distinguir "Wi-Fi lento"
+> de "Internet lenta"). Cada diagnóstico carrega confiança (cresce com o
+> número de métricas distintas que corroboram), impacto e risco (dos
+> mesmos limiares de z-score já usados em Alertas), e a evidência bruta
+> (anomalias reais, com ID rastreável). Recomendações são geradas 1:1 por
+> diagnóstico, com texto que nunca afirma algo não sustentado pelos dados
+> (ex.: a recomendação de wifi_slow só diz "a internet está normal" quando
+> internet_slow de fato não foi diagnosticada na mesma janela).
+> **Categoria "cliente desconectando" ficou de fora** desta fatia — corte
+> deliberado, não esquecido: `unifi_clients` é um snapshot substituído a
+> cada sincronização (migração 0005), não uma série histórica, então não
+> existe hoje nenhuma fonte real que prove reconexões repetidas de um
+> cliente ao longo do tempo (o mesmo tipo de corte já aplicado a RSSI/DPI
+> em outras fases). **Relatórios** (`reports`, migração 0017): gerados sob
+> demanda (`POST /sites/{id}/reports`, sem período informado usa os
+> últimos 7 dias) agregando anomalias/diagnósticos/recomendações reais do
+> período — sem armazenamento de objetos externo (não há essa
+> infraestrutura neste projeto), conteúdo inteiro em `reports.content`
+> (jsonb). Web: `/reports` deixa de ser placeholder — lista diagnósticos,
+> recomendações e relatórios já gerados, com botão para gerar um novo.
+> **Validado contra Postgres real** (mesma técnica de sessões anteriores:
+> containers efêmeros de Postgres+worker+api+web, dados reais semeados) —
+> encontrado e corrigido um bug real nessa validação: o resumo do
+> diagnóstico dizia "anomalias **reals**" (plural incorreto de "real"; o
+> correto é "reais") por concatenar "s" cegamente num plural irregular.
+> Web 0.12.0, API 0.6.0, worker 0.2.0.
 
 Anomalias estatísticas explicáveis (baseline por hora/dia da semana), motor de
-correlação/diagnóstico (Internet lenta, Wi-Fi lento, cliente desconectando),
+correlação/diagnóstico (Internet lenta, Wi-Fi lento — cliente desconectando
+segue sem fonte de dado real disponível, ver atualização acima),
 recomendações com evidência/confiança/impacto/risco, relatórios completos.
 
 ## Fase 8 — Produção

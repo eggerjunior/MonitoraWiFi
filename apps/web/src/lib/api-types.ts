@@ -187,6 +187,86 @@ export interface Anomaly {
   detected_at: string;
 }
 
+export type DiagnosisCategory = "internet_slow" | "wifi_slow";
+export type ImpactLevel = "low" | "medium" | "high";
+export type RiskLevel = "low" | "medium" | "high";
+
+export interface AnomalyEvidenceRef {
+  anomaly_id: string;
+  metric: string;
+  observed_at: string;
+  value: number;
+  bucket_mean: number;
+  z_score: number;
+}
+
+// Diagnosis (Fase 7, motor de correlação): nunca gerado sem evidência real
+// (anomalias) — ver apps/worker/internal/diagnostics.
+export interface Diagnosis {
+  id: string;
+  category: DiagnosisCategory;
+  summary: string;
+  confidence: number;
+  impact: ImpactLevel;
+  risk: RiskLevel;
+  evidence: AnomalyEvidenceRef[];
+  window_start: string;
+  window_end: string;
+  detected_at: string;
+}
+
+// Recommendation (Fase 7): sempre amarrada a um diagnosis_id real.
+export interface Recommendation {
+  id: string;
+  diagnosis_id: string;
+  action: string;
+  confidence: number;
+  impact: ImpactLevel;
+  risk: RiskLevel;
+  evidence: AnomalyEvidenceRef[];
+  created_at: string;
+}
+
+export interface ReportContentDiagnosis {
+  category: DiagnosisCategory;
+  summary: string;
+  confidence: number;
+  impact: ImpactLevel;
+  risk: RiskLevel;
+  window_start: string;
+  window_end: string;
+}
+
+export interface ReportContentRecommendation {
+  category: DiagnosisCategory;
+  action: string;
+  confidence: number;
+  impact: ImpactLevel;
+  risk: RiskLevel;
+}
+
+export interface ReportContent {
+  period_start: string;
+  period_end: string;
+  anomaly_count: number;
+  anomalies_by_metric: Record<string, number>;
+  diagnoses: ReportContentDiagnosis[];
+  recommendations: ReportContentRecommendation[];
+}
+
+// Report (Fase 7): gerado sob demanda — content só vem em POST/GET por ID,
+// nunca na listagem (ver apps/api/internal/httpapi/handlers_reports.go).
+export interface Report {
+  id: string;
+  site_id: string;
+  kind: "diagnostics_summary";
+  period_start: string;
+  period_end: string;
+  generated_by?: string;
+  generated_at: string;
+  content?: ReportContent;
+}
+
 export interface Command {
   id: string;
   site_id: string;

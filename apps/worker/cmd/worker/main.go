@@ -1,13 +1,18 @@
 // Comando do worker (Fase 7): calcula baseline estatístico por site a
-// partir do histórico de ping_tests e speed_tests (modo "internet") e
-// detecta anomalias no período recente, uma métrica por vez
+// partir do histórico de ping_tests e speed_tests (modos "internet" e
+// "lan") e detecta anomalias no período recente, uma métrica por vez
 // (ping_latency_ms_p50, speedtest_download_mbps, speedtest_upload_mbps,
-// speedtest_bufferbloat_ms). Execução única — agendado via cron do host
-// a cada 6h em produção (Fase 8, ver docs/development-handoff/RELEASE_LOG.md).
+// speedtest_bufferbloat_ms, speedtest_lan_download_mbps,
+// speedtest_lan_upload_mbps). Em seguida roda o motor de correlação
+// (internal/diagnostics) sobre as anomalias recentes do site, gravando
+// diagnósticos + recomendações quando houver evidência real suficiente.
+// Execução única — agendado via cron do host a cada 6h em produção (Fase 8,
+// ver docs/development-handoff/RELEASE_LOG.md).
 package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -18,6 +23,7 @@ import (
 
 	"egger/worker/internal/baseline"
 	"egger/worker/internal/buildinfo"
+	"egger/worker/internal/diagnostics"
 	"egger/worker/internal/store"
 )
 
@@ -48,9 +54,11 @@ var metrics = map[string]metricFetcher{
 		}
 		return out, nil
 	},
-	"speedtest_download_mbps":  store.ListSpeedTestDownload,
-	"speedtest_upload_mbps":    store.ListSpeedTestUpload,
-	"speedtest_bufferbloat_ms": store.ListSpeedTestBufferbloat,
+	"speedtest_download_mbps":     store.ListSpeedTestDownload,
+	"speedtest_upload_mbps":       store.ListSpeedTestUpload,
+	"speedtest_bufferbloat_ms":    store.ListSpeedTestBufferbloat,
+	"speedtest_lan_download_mbps": store.ListSpeedTestLANDownload,
+	"speedtest_lan_upload_mbps":   store.ListSpeedTestLANUpload,
 }
 
 func main() {
@@ -91,6 +99,7 @@ func run(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger) error {
 
 	now := time.Now().UTC()
 	totalAnomalies := 0
+	totalDiagnoses := 0
 
 	for _, site := range sites {
 		for metricName, fetch := range metrics {
@@ -101,9 +110,19 @@ func run(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger) error {
 			}
 			totalAnomalies += count
 		}
+
+		count, err := processDiagnostics(ctx, pool, logger, site.ID, now)
+		if err != nil {
+			logger.Error("erro ao processar diagnósticos", slog.String("site_id", site.ID.String()), slog.Any("error", err))
+			continue
+		}
+		totalDiagnoses += count
 	}
 
-	logger.Info("worker concluído", slog.Int("sites_processados", len(sites)), slog.Int("anomalias_totais", totalAnomalies))
+	logger.Info("worker concluído",
+		slog.Int("sites_processados", len(sites)),
+		slog.Int("anomalias_totais", totalAnomalies),
+		slog.Int("diagnosticos_totais", totalDiagnoses))
 	return nil
 }
 
@@ -160,4 +179,118 @@ func processMetric(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger,
 		slog.Int("recent_samples", len(recent)),
 		slog.Int("anomalies_found", len(anomalies)))
 	return len(anomalies), nil
+}
+
+// evidenceRef é o formato serializado em `diagnoses.evidence`/
+// `recommendations.evidence` (jsonb) — referencia o ID real da anomalia
+// (rastreável até a linha em `anomalies`), nunca um resumo solto.
+type evidenceRef struct {
+	AnomalyID  string    `json:"anomaly_id"`
+	Metric     string    `json:"metric"`
+	ObservedAt time.Time `json:"observed_at"`
+	Value      float64   `json:"value"`
+	BucketMean float64   `json:"bucket_mean"`
+	ZScore     float64   `json:"z_score"`
+}
+
+// processDiagnostics roda o motor de correlação (internal/diagnostics)
+// sobre as anomalias do site na mesma janela recente usada para detectá-las
+// (recentWindow) — nunca diagnostica a partir de anomalias fora dessa
+// janela, mesmo que ainda estejam na tabela de uma execução anterior.
+func processDiagnostics(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger, siteID uuid.UUID, now time.Time) (int, error) {
+	recentAnomalies, err := store.ListRecentAnomalies(ctx, pool, siteID, now.Add(-recentWindow))
+	if err != nil {
+		return 0, fmt.Errorf("ler anomalias recentes: %w", err)
+	}
+	if len(recentAnomalies) == 0 {
+		logger.Info("sem anomalia recente — nada a diagnosticar", slog.String("site_id", siteID.String()))
+		return 0, nil
+	}
+
+	evidence := make([]diagnostics.AnomalyEvidence, len(recentAnomalies))
+	for i, a := range recentAnomalies {
+		evidence[i] = diagnostics.AnomalyEvidence{
+			ID:         a.ID.String(),
+			Metric:     a.Metric,
+			ObservedAt: a.ObservedAt,
+			Value:      a.Value,
+			BucketMean: a.BucketMean,
+			ZScore:     a.ZScore,
+		}
+	}
+
+	diags := diagnostics.Diagnose(evidence)
+	if len(diags) == 0 {
+		logger.Info("nenhuma anomalia na direção de um problema real — nada a diagnosticar",
+			slog.String("site_id", siteID.String()), slog.Int("anomalias_avaliadas", len(evidence)))
+		return 0, nil
+	}
+
+	recs := diagnostics.Recommend(diags)
+	recsByCategory := make(map[string]diagnostics.Recommendation, len(recs))
+	for _, r := range recs {
+		recsByCategory[r.Category] = r
+	}
+
+	for _, d := range diags {
+		evidenceJSON, err := json.Marshal(toEvidenceRefs(d.Evidence))
+		if err != nil {
+			return 0, fmt.Errorf("serializar evidência do diagnóstico: %w", err)
+		}
+		diagnosisID, err := store.UpsertDiagnosis(ctx, pool, store.DiagnosisRecord{
+			SiteID:      siteID,
+			Category:    d.Category,
+			Summary:     d.Summary,
+			Confidence:  d.Confidence,
+			Impact:      d.Impact,
+			Risk:        d.Risk,
+			EvidenceRaw: evidenceJSON,
+			WindowStart: d.WindowStart,
+			WindowEnd:   d.WindowEnd,
+		})
+		if err != nil {
+			return 0, fmt.Errorf("gravar diagnóstico: %w", err)
+		}
+
+		rec, ok := recsByCategory[d.Category]
+		if !ok {
+			continue
+		}
+		recEvidenceJSON, err := json.Marshal(toEvidenceRefs(rec.Evidence))
+		if err != nil {
+			return 0, fmt.Errorf("serializar evidência da recomendação: %w", err)
+		}
+		if err := store.UpsertRecommendation(ctx, pool, store.RecommendationRecord{
+			DiagnosisID: diagnosisID,
+			SiteID:      siteID,
+			Action:      rec.Action,
+			Confidence:  rec.Confidence,
+			Impact:      rec.Impact,
+			Risk:        rec.Risk,
+			EvidenceRaw: recEvidenceJSON,
+		}); err != nil {
+			return 0, fmt.Errorf("gravar recomendação: %w", err)
+		}
+	}
+
+	logger.Info("processamento de diagnósticos concluído",
+		slog.String("site_id", siteID.String()),
+		slog.Int("anomalias_avaliadas", len(evidence)),
+		slog.Int("diagnosticos_gerados", len(diags)))
+	return len(diags), nil
+}
+
+func toEvidenceRefs(evidence []diagnostics.AnomalyEvidence) []evidenceRef {
+	out := make([]evidenceRef, len(evidence))
+	for i, e := range evidence {
+		out[i] = evidenceRef{
+			AnomalyID:  e.ID,
+			Metric:     e.Metric,
+			ObservedAt: e.ObservedAt,
+			Value:      e.Value,
+			BucketMean: e.BucketMean,
+			ZScore:     e.ZScore,
+		}
+	}
+	return out
 }

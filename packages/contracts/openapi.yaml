@@ -34,6 +34,19 @@ tags:
     description: Inventário UniFi sincronizado pelo agente (Fase 3, início — ADR-007)
   - name: anomalies
     description: Anomalias estatísticas detectadas pelo worker (Fase 7, início)
+  - name: diagnoses
+    description: >
+      Diagnósticos do motor de correlação (Fase 7) — categorias
+      internet_slow/wifi_slow, sempre com evidência (anomalias reais),
+      confiança, impacto e risco.
+  - name: recommendations
+    description: >
+      Recomendações geradas a partir de um diagnóstico real (Fase 7) — nunca
+      uma recomendação solta sem evidência/confiança/impacto/risco.
+  - name: reports
+    description: >
+      Relatórios de diagnóstico gerados sob demanda (Fase 7), agregando
+      anomalias/diagnósticos/recomendações reais de um período.
   - name: spatial-surveys
     description: >
       Levantamento espacial (Fase 6, "Spatial WiFi Survey") — posição real
@@ -637,6 +650,154 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+
+  /sites/{siteId}/diagnoses:
+    get:
+      tags: [diagnoses]
+      summary: >
+        Lista diagnósticos do motor de correlação (Fase 7) — calculados pelo
+        worker a partir de anomalias reais, nunca gerados sem evidência.
+      operationId: listDiagnoses
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Lista paginada de diagnósticos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosisPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /sites/{siteId}/recommendations:
+    get:
+      tags: [recommendations]
+      summary: >
+        Lista recomendações (Fase 7) — cada uma amarrada a um diagnóstico
+        real (diagnosis_id), com evidência/confiança/impacto/risco.
+      operationId: listRecommendations
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Lista paginada de recomendações
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendationPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /sites/{siteId}/reports:
+    post:
+      tags: [reports]
+      summary: >
+        Gera um relatório sob demanda (Fase 7), agregando anomalias/
+        diagnósticos/recomendações reais do período — sem período informado,
+        usa os últimos 7 dias. Requer a permissão "Exportar dados".
+      operationId: createReport
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                period_start:
+                  type: string
+                  format: date-time
+                period_end:
+                  type: string
+                  format: date-time
+      responses:
+        "201":
+          description: Relatório gerado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+        "400":
+          description: period_start/period_end inválidos
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    get:
+      tags: [reports]
+      summary: Lista relatórios já gerados do site (sem o conteúdo completo — ver GET /reports/{reportId}).
+      operationId: listReports
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: Lista paginada de relatórios (sem content)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /reports/{reportId}:
+    get:
+      tags: [reports]
+      summary: Busca um relatório com o conteúdo completo.
+      operationId: getReport
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Relatório com conteúdo completo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Relatório não encontrado
 
   /sites/{siteId}/spatial-surveys:
     post:
@@ -1469,6 +1630,146 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Anomaly"
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+
+    Diagnosis:
+      type: object
+      required: [id, category, summary, confidence, impact, risk, evidence, window_start, window_end, detected_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        category:
+          type: string
+          enum: [internet_slow, wifi_slow]
+        summary:
+          type: string
+          description: Frase explicando o diagnóstico em português, com contagem de anomalias e desvio médio.
+        confidence:
+          type: number
+          description: 0–1, cresce com o número de métricas distintas que corroboram o diagnóstico.
+        impact:
+          type: string
+          enum: [low, medium, high]
+        risk:
+          type: string
+          enum: [low, medium, high]
+        evidence:
+          type: array
+          description: Anomalias reais (com anomaly_id rastreável) que sustentam este diagnóstico.
+          items:
+            type: object
+        window_start:
+          type: string
+          format: date-time
+        window_end:
+          type: string
+          format: date-time
+        detected_at:
+          type: string
+          format: date-time
+
+    DiagnosisPage:
+      type: object
+      required: [items, page, page_size, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Diagnosis"
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+
+    Recommendation:
+      type: object
+      required: [id, diagnosis_id, action, confidence, impact, risk, evidence, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        diagnosis_id:
+          type: string
+          format: uuid
+          description: Nunca uma recomendação solta — sempre amarrada a um diagnóstico real.
+        action:
+          type: string
+        confidence:
+          type: number
+        impact:
+          type: string
+          enum: [low, medium, high]
+        risk:
+          type: string
+          enum: [low, medium, high]
+        evidence:
+          type: array
+          items:
+            type: object
+        created_at:
+          type: string
+          format: date-time
+
+    RecommendationPage:
+      type: object
+      required: [items, page, page_size, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Recommendation"
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+
+    Report:
+      type: object
+      required: [id, site_id, kind, period_start, period_end, generated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        site_id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [diagnostics_summary]
+        period_start:
+          type: string
+          format: date-time
+        period_end:
+          type: string
+          format: date-time
+        generated_by:
+          type: string
+          format: uuid
+        generated_at:
+          type: string
+          format: date-time
+        content:
+          type: object
+          description: Só presente em POST /reports e GET /reports/{reportId} — omitido na listagem.
+
+    ReportPage:
+      type: object
+      required: [items, page, page_size, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Report"
         page:
           type: integer
         page_size:

@@ -145,6 +145,7 @@ open EggerNetworkIntelligence.xcodeproj
   `python3 scripts/create_dist_cert.py eggerjunior/MonitoraWiFi` (requer
   `ASC_KEY_ID`/`ASC_ISSUER_ID`/`ASC_KEY_PATH` no ambiente e `gh` autenticado
   — nunca imprime os segredos, configura os secrets direto no repositório).
-- Pendência: ícone do app ainda é um placeholder gerado programaticamente
-  (círculo azul + "E") — trocar por um ícone definitivo antes de distribuir
-  além de testadores internos.
+- ✅ Ícone definitivo (sinal de Wi-Fi em branco sobre o azul de marca
+  `#0A6CFF`, `icon-1024.png`, gerado via Pillow/Python) substituiu o
+  placeholder (círculo + "E") — ver `docs/development-handoff/RELEASE_LOG.md`
+  para a entrada. Ainda não enviado a um novo build TestFlight nesta sessão.
