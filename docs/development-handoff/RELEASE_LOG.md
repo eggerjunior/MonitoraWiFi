@@ -4,6 +4,30 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-02 — Fase 4 completa: Switches, Alertas, Histórico em produção
+
+- Commit `2394189`. Três telas que faltavam (web + iOS): Switches (rota/seção
+  dedicada), Alertas (dado real de `GET /sites/{id}/anomalies`, severidade
+  derivada do z-score), Histórico (ping tests/speed tests/anomalias, sem
+  lib de gráfico nova). Nenhuma mudança de backend — os 3 endpoints já
+  existiam.
+- Web 0.7.0: `docker build`/redeploy (`monitorawifi-web:2394189`),
+  confirmado saudável (`/login` 200) e as 3 rotas novas registradas de
+  verdade (`/switches`, `/history`, `/alerts` → 307 auth redirect, igual
+  a `/devices`; comparado com uma rota inexistente → 404, prova que não é
+  coincidência de configuração de proxy).
+- iOS 0.4.0 (Build 11): `iOS CI (build validation)` verde (compilou as 6
+  abas, incluindo a nova "Histórico") antes do `iOS TestFlight release`,
+  que **terminou com sucesso**
+  (https://github.com/eggerjunior/MonitoraWiFi/actions/runs/30726961459).
+- **Fase 4 concluída em produção** nas 4 superfícies (backend, agente —
+  sem mudança nesta entrega —, web, iOS).
+- Achado real registrado no roadmap: o iOS nunca teve tela de "Internet"
+  apesar do status da Fase 4 dizer o contrário — corrigido no
+  `06-roadmap.md`, e os modelos criados agora pro Histórico
+  (`PingTestRecord`/`SpeedTestRecord`) deixam o terreno pronto pra uma
+  tela dedicada futura.
+
 ## 2026-08-02 — Fase 5 completa: deploy das 6 ferramentas restantes em produção
 
 - Commits: `8c265e2` (SSL/TLS checker), `48a319d` (RDAP/WHOIS), `a5afb3c`

@@ -92,7 +92,11 @@ serem respondidas.
 > Histórico, e incidentalmente já deixam o terreno pronto para uma tela
 > "Internet" dedicada no iOS no futuro, que segue sem existir. **Fase 4
 > completa** nas 4 telas descritas no escopo original (Internet, Wi-Fi,
-> Clientes/Dispositivos/Switches, Alertas, Histórico).
+> Clientes/Dispositivos/Switches, Alertas, Histórico). **Atualização
+> (2026-08-02)**: deploy completo em produção — web 0.7.0 reimplantado e
+> confirmado saudável, iOS 0.4.0 (Build 11) enviado ao TestFlight com
+> sucesso. Nenhuma mudança de backend/agente foi necessária (os 3
+> endpoints já existiam desde as Fases 2/3/7).
 
 Internet, Wi-Fi, Clientes, APs, Switches, Alertas, Histórico — todos consumindo dado
 real (agente + UniFi), com badge de proveniência (`02-arquitetura-proposta.md` §2.6)
