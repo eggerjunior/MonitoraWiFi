@@ -4,6 +4,20 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-02 — Endpoint de revogação de agente em produção
+
+- Commit `7e916db`. `POST /sites/{siteId}/agents/{agentId}/revoke` — gap
+  real encontrado escrevendo o runbook de produção (até então, revogar
+  só era possível via UPDATE direto no Postgres). Sem migração nova
+  (usa a coluna `revoked_at` já existente). Backup prévio de rotina.
+- API reconstruída e reimplantada (`monitorawifi-api:7e916db5`),
+  confirmada saudável (`/healthz` com version/commit corretos, `/readyz`
+  200, `/login` 200). **Não testado contra o agente real de produção**
+  (revogar o agente real derrubaria o monitoramento de verdade do
+  usuário) — validado ponta a ponta só com testes automatizados
+  (heartbeat real aceito antes da revogação, rejeitado com 401 logo
+  depois, mesma credencial).
+
 ## 2026-08-02 — Fase 7 (cobertura de speed test) + Fase 8 (hardening) em produção
 
 - Commit `f381313`. Sem migração nova — nenhuma mudança de schema nesta
