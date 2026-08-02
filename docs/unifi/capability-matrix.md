@@ -54,7 +54,7 @@ adaptador legado opt-in), `indisponível` (confirmado que não existe), `a valid
 | Persistência série-temporal | confirmado | PostgreSQL + TimescaleDB (ou particionamento nativo se Timescale indisponível no ambiente de deploy) |
 | Execução de testes ativos contra a LAN do cliente | indisponível diretamente | Backend não está na LAN do cliente; sempre delega ao agente (ver ADR-001) |
 | Chamada direta à Network API local do UniFi | indisponível diretamente | Mesma razão acima — feito via agente |
-| Chamada à UniFi Site Manager API (cloud) | confirmado, opcional | `https://api.ui.com/v1/`, X-API-KEY, rate limit 10.000 req/min documentado |
+| Chamada à UniFi Site Manager API (cloud) | confirmado, opcional, decidido não habilitar (2026-08-02) | `https://api.ui.com/v1/`, X-API-KEY, rate limit 10.000 req/min documentado — usuário optou por manter o sistema 100% local/self-hosted, revisitável se surgir caso de uso real |
 
 ## 4. Agente local (Go, dentro da LAN)
 

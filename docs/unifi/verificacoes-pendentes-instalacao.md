@@ -33,11 +33,19 @@ ser assumido/simulado antes de resposta real; a Fase 3 (integração UniFi) trat
    **Achado extra**: o IP de gerenciamento do console é `192.168.110.1`,
    batendo com a sub-rede `Egger_Principal 192.168.110.0/24` esperada
    (ver item 11) — primeira confirmação real desse dado.
-5. **Parcialmente confirmado em 2026-08-01**: existe conta Ubiquiti vinculada
-   (login ativo em `unifi.ui.com`, visível no print). Usuário ainda não
-   decidiu se quer habilitar a Site Manager API (cloud, opcional) ou operar
-   100% self-hosted — decisão adiada, não bloqueia o restante do
-   levantamento.
+5. ✅ **Decisão registrada em 2026-08-02**: **não habilitar a Site Manager
+   API por ora** — decisão deliberada do usuário, não pendência esquecida.
+   Existe conta Ubiquiti vinculada (login ativo em `unifi.ui.com`,
+   confirmado em 2026-08-01), mas o benefício confirmado da API (lista de
+   sites/hosts, "Internet Health Metrics" agregadas — ver
+   `capability-matrix.md` §6) se sobrepõe ao que o agente local já mede
+   direto da LAN, e habilitá-la introduziria uma dependência de nuvem nova
+   (mais uma API key pra gerar/guardar, adaptador novo pra implementar/
+   testar) sem resolver eventos/alarmes — a documentação pública da Site
+   Manager API **não confirma** um endpoint de eventos/alarmes (correção:
+   uma entrada anterior deste documento presumiu isso sem checar). Sistema
+   segue 100% local/self-hosted. Revisitável se surgir um caso de uso real
+   (ex.: múltiplos sites) — não é uma decisão permanente.
 
 ## Campos realmente expostos pela Network API local nesta versão
 

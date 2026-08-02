@@ -71,10 +71,17 @@ agente (não mock).
 > mostra árvore gateway→switch→AP, iOS mostra "Conectado a". **Faltam**:
 > detecção automática de capability matrix por versão, adaptadores
 > SNMP/Syslog/Site Manager/legado (nenhum começado — SNMP e syslog
-> confirmados desabilitados nesta instalação, então esses adaptadores
-> não têm dado real pra consumir ainda mesmo se implementados; eventos/
-> alarmes ficam dependentes da Site Manager API — cloud, item 5, ainda
-> não decidida — já que a API local não os expõe).
+> confirmados desabilitados nesta instalação, então esses adaptadores não
+> têm dado real pra consumir ainda mesmo se implementados). **Decisão
+> registrada em 2026-08-02**: usuário optou por **não habilitar a Site
+> Manager API por ora** (sistema segue 100% local/self-hosted) — o
+> benefício confirmado dela (lista de sites, métricas agregadas de
+> internet) se sobrepõe ao que o agente já mede, e ela **não confirma**
+> um endpoint de eventos/alarmes (correção de uma suposição anterior
+> deste documento, que presumia isso sem checar a documentação real).
+> Eventos/alarmes seguem **sem fonte real confirmada nenhuma** (nem
+> local, nem cloud) — item genuinamente sem solução disponível agora,
+> não uma tarefa pendente de implementação.
 
 `UniFiIntegrationProvider` com adaptador Network API local funcional contra a
 instalação real, detecção de versão + capability matrix populada automaticamente,
