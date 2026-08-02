@@ -90,9 +90,20 @@ em cada card.
 > **Atualização (2026-08-01)**: ping em lote (`batch_ping`, até 20 alvos por
 > execução) implementado ponta a ponta e testado com sondas reais (dois
 > listeners TCP reais no teste do agente) — reaproveita a mesma fila de
-> comando sob demanda. **Faltam**: port scanner (com allowlist e auditoria),
-> SSL/TLS checker, RDAP/WHOIS, HTTP client, LAN scanner, Wake-on-LAN
-> (ADR-008) — nenhum começado ainda.
+> comando sob demanda. **Atualização (2026-08-01, continuação)**: as 6
+> ferramentas restantes implementadas e testadas localmente, nesta ordem —
+> SSL/TLS checker (handshake TLS real, valida cadeia contra raízes do
+> sistema), RDAP/WHOIS (roda direto no backend via bootstrap real da IANA,
+> sem agente, validado também contra a internet real: Verisign/APNIC), HTTP
+> client sob demanda (requisição real, corpo/headers reais, até 64KB),
+> LAN scanner (varredura concorrente por portas comuns, só aceita CIDR
+> privado RFC 1918 até /22), Wake-on-LAN (magic packet UDP real via agente,
+> ADR-008, só aceita destino privado/broadcast), e port scanner (só aceita
+> IPv4 privado literal — nunca hostname — e no máximo 1024 portas,
+> mitigação completa exigida pelo threat model §5 antes de expor a
+> ferramenta). **Fase 5 completa em código e testes locais** — falta apenas
+> o deploy em produção (migrações 0009-0013, releases do agente/API/web/
+> iOS), decisão do usuário sobre quando/como.
 
 Ping, batch ping, DNS lookup, traceroute, port scanner (com allowlist e auditoria),
 SSL/TLS checker, RDAP/WHOIS, HTTP client, LAN scanner, subnet calculator,
