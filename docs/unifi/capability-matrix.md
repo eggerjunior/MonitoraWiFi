@@ -84,6 +84,7 @@ adaptador legado opt-in), `indisponível` (confirmado que não existe), `a valid
 | Topologia dispositivo→dispositivo (uplink) | confirmado, implementado (2026-08-02) | `GET .../devices/{id}` real — campo `uplink.deviceId`, testado num AP (aponta pro switch) e num switch (aponta pro gateway). Em produção: `NetworkAPIAdapter.ListDevices` (agente), migração 0014 (backend), árvore de topologia (web), "Conectado a" (iOS) |
 | Topologia cliente→dispositivo (uplink) | confirmado (2026-08-01) | `GET .../clients` real — campo `uplinkDeviceId` por cliente |
 | DPI/categorização de aplicação por cliente | indisponível | Confirmado ausente em `GET .../clients` real (amostra de 5 clientes, nenhum campo de categoria/app) |
+| RSSI/força de sinal por cliente | indisponível | Confirmado ausente em `GET .../clients` (lista) **e** `GET .../clients/{id}` (detalhe) reais — testado contra um cliente WIRELESS real, mesmos 8 campos da lista, nenhum a mais. Diferente do padrão dos dispositivos (detalhe expõe mais que a lista), o detalhe de cliente não expõe rádio nenhum. A UniFi usa/mostra RSSI na própria interface dela — só não expõe pela Network API local integration v1. Único caminho restante é o adaptador legado (§8), não confirmado. |
 
 ## 6. UniFi Site Manager API (cloud, oficial v1.0)
 

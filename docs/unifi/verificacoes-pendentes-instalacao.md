@@ -94,7 +94,6 @@ ser assumido/simulado antes de resposta real; a Fase 3 (integração UniFi) trat
     dá pra distinguir se está desabilitado no console ou se é só a API que
     não expõe — mas pro propósito deste levantamento, o resultado prático
     é o mesmo: não há dado de DPI disponível pra consumir agora).
-
 ## Configuração de rede da instalação (para validar contra o modelo de dados)
 
 11. ✅ **Parcialmente confirmado em 2026-08-01** (via `GET .../sites/{id}/clients`,
@@ -135,6 +134,26 @@ ser assumido/simulado antes de resposta real; a Fase 3 (integração UniFi) trat
     habilitado** — nem "Versão 1/2C" nem "Versão 3" marcados.
 18. ✅ **Confirmado em 2026-08-02**: **syslog não está configurado** para
     nenhum coletor hoje.
+
+## Achados adicionais (fora da sequência original, mesmo tema dos itens 6-10)
+
+19. ✅ **Confirmado em 2026-08-02** (via `GET .../clients/{id}` real —
+    diferente do item 10, que testou a lista, este é o endpoint de
+    **detalhe** de um cliente específico): testado contra um cliente WIRED
+    (Hub M1 Churras) e depois, pra valer, contra um cliente WIRELESS real
+    (Rain Bird Irrigação, `4c:a1:61:01:17:f0`) — **os mesmos 8 campos da
+    lista, nenhum a mais**. Diferente do padrão encontrado nos dispositivos
+    (onde `GET .../devices/{id}` trouxe campos extras reais — `uplink`,
+    `interfaces.radios`, `interfaces.ports` — que a lista não tinha), o
+    detalhe de cliente **não** segue esse padrão: não expõe RSSI, SNR,
+    canal, PHY rate nem nenhum outro dado de rádio, nem pro cliente sem
+    fio testado. Fecha a dúvida levantada pelo usuário ("a UniFi não usa
+    força de sinal?") — a UniFi usa e mostra isso na própria interface
+    dela, mas a Network API local integration v1 (nem lista, nem detalhe)
+    não expõe esse dado pra clientes nesta versão. Único caminho que
+    resta pra força de sinal real é o adaptador legado (API não oficial,
+    ver `capability-matrix.md` §8) — não confirmado, maior risco (sem
+    contrato de estabilidade entre versões do UniFi Network).
 
 ## Processo de validação recomendado
 
