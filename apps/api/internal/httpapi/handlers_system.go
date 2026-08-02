@@ -1,9 +1,17 @@
 package httpapi
 
-import "net/http"
+import (
+	"net/http"
+
+	"egger/api/internal/buildinfo"
+)
 
 func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	writeJSON(w, http.StatusOK, map[string]string{
+		"status":  "ok",
+		"version": buildinfo.Version,
+		"commit":  buildinfo.GitCommit,
+	})
 }
 
 func (s *Server) handleReadyz(w http.ResponseWriter, r *http.Request) {

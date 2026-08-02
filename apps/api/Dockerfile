@@ -4,7 +4,12 @@ WORKDIR /src
 COPY apps/api/go.mod apps/api/go.sum ./
 RUN go mod download
 COPY apps/api/ ./
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/api ./cmd/api
+
+# Versionamento (skill ildemar_app-versioning): VERSION é a fonte única,
+# GIT_COMMIT é injetado pelo processo de release — nunca hardcoded.
+# Fallback "dev" cobre builds locais sem --build-arg.
+ARG GIT_COMMIT=dev
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X egger/api/internal/buildinfo.Version=$(cat VERSION) -X egger/api/internal/buildinfo.GitCommit=${GIT_COMMIT}" -o /out/api ./cmd/api
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/migrate ./cmd/migrate
 
 FROM gcr.io/distroless/static-debian12:nonroot AS runtime
