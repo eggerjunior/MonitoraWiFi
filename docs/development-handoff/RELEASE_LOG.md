@@ -24,8 +24,11 @@ Record every deploy, TestFlight/App Store upload, web publish and external proce
   agente real já enrolado (mini PC do usuário) continua rodando a imagem
   anterior até ele mesmo atualizar — fora do meu acesso, é hardware
   dele.
-- iOS 0.5.0 (Build 12): `iOS CI` verde antes do `iOS TestFlight release`
-  — ver próxima entrada ou `gh run view` pro resultado do upload.
+- iOS 0.5.0 (Build 12): `iOS CI` verde, depois `iOS TestFlight release`
+  **concluído com sucesso** (2m8s,
+  https://github.com/eggerjunior/MonitoraWiFi/actions/runs/30730192951).
+- **Fase 3 (topologia dispositivo→dispositivo) concluída em produção**
+  nas 4 superfícies (backend, agente, web, iOS).
 - **Nota operacional real**: o disco deste ambiente de desenvolvimento
   encheu durante o deploy (imagens/cache Docker acumulados nas várias
   validações contra Postgres real desta sessão) — `docker system prune
