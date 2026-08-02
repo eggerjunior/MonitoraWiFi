@@ -163,6 +163,19 @@ export interface PortScanCommandResult {
   executed_at: string;
 }
 
+export interface DnsResolverResult {
+  resolver: string;
+  addresses: string[];
+  duration_ms: number;
+  error: string;
+}
+
+export interface DnsResolverCompareCommandResult {
+  hostname: string;
+  resolvers: DnsResolverResult[];
+  executed_at: string;
+}
+
 export interface Anomaly {
   id: string;
   metric: string;

@@ -183,6 +183,7 @@ public enum CommandResult: Sendable {
     case lanScan(LanScanCommandResult)
     case wakeOnLan(WakeOnLanCommandResult)
     case portScan(PortScanCommandResult)
+    case dnsResolverCompare(DnsResolverCompareCommandResult)
 }
 
 extension CommandResult: Decodable {
@@ -205,6 +206,8 @@ extension CommandResult: Decodable {
             self = .wakeOnLan(v)
         } else if let v = try? PortScanCommandResult(from: decoder) {
             self = .portScan(v)
+        } else if let v = try? DnsResolverCompareCommandResult(from: decoder) {
+            self = .dnsResolverCompare(v)
         } else {
             throw DecodingError.dataCorruptedError(in: try decoder.singleValueContainer(), debugDescription: "Formato de resultado de comando não reconhecido")
         }
@@ -280,6 +283,32 @@ public struct PortScanCommandResult: Codable, Sendable {
         case target
         case openPorts = "open_ports"
     }
+}
+
+/// Resultado da resolução contra um resolvedor específico dentro da
+/// comparação (Fase 2) — nunca inventa endereço quando `error` vem
+/// preenchido (Seção 2.1).
+public struct DnsResolverResult: Codable, Sendable, Identifiable {
+    public let resolver: String
+    public let addresses: [String]
+    public let durationMs: Double
+    public let error: String
+    public var id: String { resolver }
+
+    enum CodingKeys: String, CodingKey {
+        case resolver
+        case addresses
+        case durationMs = "duration_ms"
+        case error
+    }
+}
+
+/// Comparação entre resolvedores DNS (lista fixa: sistema, Cloudflare,
+/// Google, Quad9 — ver apps/local-agent/internal/probes/probes.go,
+/// KnownResolvers).
+public struct DnsResolverCompareCommandResult: Codable, Sendable {
+    public let hostname: String
+    public let resolvers: [DnsResolverResult]
 }
 
 public struct RdapEvent: Codable, Sendable {

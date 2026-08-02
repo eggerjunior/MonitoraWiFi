@@ -203,3 +203,75 @@ func ProbeDNS(ctx context.Context, hostname string, resolverAddr string, opts Op
 	}
 	return summarize(target, "dns", samples, opts.Attempts, executedAt)
 }
+
+// ResolverEntry identifica um resolvedor DNS pra comparação (Fase 2,
+// "comparação entre resolvedores"). Addr vazio significa "resolvedor padrão
+// da rede/sistema" (mesma convenção do parâmetro resolverAddr de ProbeDNS).
+type ResolverEntry struct {
+	Name string
+	Addr string
+}
+
+// KnownResolvers é a lista fixa usada pela comparação — deliberadamente não
+// configurável pelo usuário: aceitar um endereço de resolvedor arbitrário
+// transformaria o agente num primitivo de relay DNS genérico, um risco não
+// coberto pelo threat model atual (docs/security/threat-model.md só aceita
+// hostname/alvo livre pra ferramentas de diagnóstico de alvo único, nunca um
+// novo parâmetro de "servidor pra usar").
+func KnownResolvers() []ResolverEntry {
+	return []ResolverEntry{
+		{Name: "sistema (padrão da rede)", Addr: ""},
+		{Name: "Cloudflare", Addr: "1.1.1.1:53"},
+		{Name: "Google", Addr: "8.8.8.8:53"},
+		{Name: "Quad9", Addr: "9.9.9.9:53"},
+	}
+}
+
+// ResolverResult é o resultado da resolução contra um resolvedor específico
+// — nunca inventa endereços quando a resolução falha, o erro é reportado
+// explicitamente (Seção 2.1: nunca simular dado).
+type ResolverResult struct {
+	Resolver   string
+	Addresses  []string
+	DurationMs float64
+	Error      string
+}
+
+// CompareDNSResolvers resolve o mesmo hostname contra cada resolvedor da
+// lista informada e devolve o resultado individual de cada um — permite
+// detectar resposta divergente entre resolvedores (ex.: DNS de operadora
+// redirecionando/filtrando) e comparar latência. `resolvers` é parâmetro (não
+// lida direto com KnownResolvers()) pra manter a função testável contra
+// alvos controlados, mesmo padrão de ProbeDNS aceitar resolverAddr.
+func CompareDNSResolvers(ctx context.Context, hostname string, resolvers []ResolverEntry, timeout time.Duration) []ResolverResult {
+	results := make([]ResolverResult, 0, len(resolvers))
+	for _, entry := range resolvers {
+		resolverAddr := entry.Addr
+		resolver := &net.Resolver{
+			PreferGo: true,
+			Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+				d := net.Dialer{Timeout: timeout}
+				addr := address
+				if resolverAddr != "" {
+					addr = resolverAddr
+				}
+				return d.DialContext(ctx, network, addr)
+			},
+		}
+
+		lookupCtx, cancel := context.WithTimeout(ctx, timeout)
+		start := time.Now()
+		addrs, err := resolver.LookupHost(lookupCtx, hostname)
+		durationMs := float64(time.Since(start).Microseconds()) / 1000
+		cancel()
+
+		res := ResolverResult{Resolver: entry.Name, DurationMs: durationMs}
+		if err != nil {
+			res.Error = err.Error()
+		} else {
+			res.Addresses = addrs
+		}
+		results = append(results, res)
+	}
+	return results
+}

@@ -37,9 +37,13 @@ de desenvolvimento. Critérios de aceite detalhados em `07-criterios-aceite-fase
 > modo LAN (iPerf3) implementado e testado com servidor real. **Atualização
 > (2026-08-01)**: primeiro agente real enrolado em produção — rodando como
 > container Docker num mini PC (Home Assistant OS) dentro da LAN residencial,
-> heartbeat confirmado (`last_seen_at` atualizando no banco). **Falta**:
-> comparação entre resolvedores DNS. Ver `apps/local-agent/README.md` para o
-> detalhamento completo.
+> heartbeat confirmado (`last_seen_at` atualizando no banco). **Atualização
+> (2026-08-02)**: comparação entre resolvedores DNS implementada — novo
+> comando sob demanda `dns_resolver_compare`, resolve contra o resolvedor
+> padrão da rede e três resolvedores públicos fixos (Cloudflare, Google,
+> Quad9), disponível nas 4 superfícies (agente, backend, web, iOS). **Fase 2
+> concluída** — nenhum item pendente restante. Ver `apps/local-agent/README.md`
+> para o detalhamento completo.
 
 Registro/enrolamento do agente (ADR-006), heartbeat, ping (ICMP/TCP/HTTP/DNS),
 speed test (Internet e LAN), buffer offline com backoff exponencial, streaming de

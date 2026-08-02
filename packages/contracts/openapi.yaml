@@ -1132,7 +1132,7 @@ components:
       properties:
         type:
           type: string
-          enum: [ping, dns_lookup, traceroute, batch_ping, ssl_check, http_request, lan_scan, wake_on_lan, port_scan]
+          enum: [ping, dns_lookup, traceroute, batch_ping, ssl_check, http_request, lan_scan, wake_on_lan, port_scan, dns_resolver_compare]
         params:
           type: object
           description: >
@@ -1151,7 +1151,10 @@ components:
             port?: integer (padrão 9, 1-65535) }. "port_scan": { target:
             string — precisa ser um IPv4 privado literal (RFC 1918, não
             aceita hostname), start_port: integer, end_port: integer
-            (intervalo de no máximo 1024 portas) }.
+            (intervalo de no máximo 1024 portas) }. "dns_resolver_compare": {
+            hostname: string } — resolve contra uma lista fixa de
+            resolvedores (sistema, Cloudflare, Google, Quad9), não
+            configurável pelo usuário.
 
     Command:
       type: object

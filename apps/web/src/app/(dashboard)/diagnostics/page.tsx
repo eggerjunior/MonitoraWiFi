@@ -2,6 +2,7 @@ import { getCurrentSite } from "@/lib/current-site";
 import { PingTool } from "@/components/PingTool";
 import { BatchPingTool } from "@/components/BatchPingTool";
 import { DnsLookupTool } from "@/components/DnsLookupTool";
+import { DnsResolverCompareTool } from "@/components/DnsResolverCompareTool";
 import { TracerouteTool } from "@/components/TracerouteTool";
 import { SslCheckTool } from "@/components/SslCheckTool";
 import { HttpRequestTool } from "@/components/HttpRequestTool";
@@ -38,6 +39,7 @@ export default async function DiagnosticsPage() {
           <PingTool siteId={current.site.id} />
           <BatchPingTool siteId={current.site.id} />
           <DnsLookupTool siteId={current.site.id} />
+          <DnsResolverCompareTool siteId={current.site.id} />
           <TracerouteTool siteId={current.site.id} />
           <SslCheckTool siteId={current.site.id} />
           <HttpRequestTool siteId={current.site.id} />

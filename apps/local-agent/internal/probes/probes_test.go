@@ -108,6 +108,47 @@ func TestProbeDNS_NonExistentDomain(t *testing.T) {
 	}
 }
 
+func TestCompareDNSResolvers_MisturaSucessoEFalha(t *testing.T) {
+	// "localhost" não serve de alvo aqui: o resolvedor Go trata nomes
+	// presentes em /etc/hosts como caso especial e nunca chega a discar o
+	// endereço de resolvedor customizado, o que mascararia o próprio
+	// comportamento sendo testado. Usa um hostname real da internet — este
+	// ambiente de desenvolvimento já confirmou ter acesso real à internet
+	// (mesma premissa da validação de RDAP/WHOIS, Fase 5).
+	resolvers := []ResolverEntry{
+		{Name: "sistema (padrão da rede)", Addr: ""},
+		// 203.0.113.1 é TEST-NET-3 (RFC 5737, documentação) — nunca roteável,
+		// garante timeout/falha determinística sem depender de nenhum
+		// resolvedor real estar de fato inalcançável por acaso.
+		{Name: "inalcançável (RFC 5737)", Addr: "203.0.113.1:53"},
+	}
+
+	results := CompareDNSResolvers(context.Background(), "cloudflare.com", resolvers, 3*time.Second)
+
+	if len(results) != 2 {
+		t.Fatalf("esperava 2 resultados, recebeu %d", len(results))
+	}
+
+	sistema := results[0]
+	if sistema.Resolver != "sistema (padrão da rede)" {
+		t.Fatalf("resolver inesperado no índice 0: %q", sistema.Resolver)
+	}
+	if sistema.Error != "" {
+		t.Fatalf("esperava sucesso resolvendo 'cloudflare.com' pelo sistema, recebeu erro: %s", sistema.Error)
+	}
+	if len(sistema.Addresses) == 0 {
+		t.Fatal("esperava ao menos um endereço resolvido pelo sistema — nunca inventar dado, mas também não esconder sucesso real")
+	}
+
+	inalcancavel := results[1]
+	if inalcancavel.Error == "" {
+		t.Fatal("esperava erro explícito contra um resolvedor inalcançável — nunca inventar endereço quando a resolução falha")
+	}
+	if len(inalcancavel.Addresses) != 0 {
+		t.Fatalf("não deveria haver endereços quando a resolução falhou, recebeu %v", inalcancavel.Addresses)
+	}
+}
+
 func TestSummarize_NeverInventsLatencyWithZeroSamples(t *testing.T) {
 	res := summarize("alvo", "tcp", nil, 5, time.Now())
 	if res.LatencyMsP50 != nil || res.LatencyMsP95 != nil || res.LatencyMsP99 != nil || res.JitterMs != nil {

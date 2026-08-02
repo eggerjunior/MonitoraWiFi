@@ -10,12 +10,20 @@ export type VersionEntry = {
 
 export const versionHistory: VersionEntry[] = [
   {
+    version: "0.9.0",
+    date: "2026-08-02",
+    changes: [
+      "Diagnósticos: comparação entre resolvedores DNS (sistema, Cloudflare, Google, Quad9) — Fase 2",
+    ],
+    isCurrent: true,
+  },
+  {
     version: "0.8.0",
     date: "2026-08-02",
     changes: [
       "Dispositivos: topologia dispositivo→dispositivo — árvore gateway → switch → AP, confirmada contra a instalação real (Fase 3)",
     ],
-    isCurrent: true,
+    isCurrent: false,
   },
   {
     version: "0.7.0",

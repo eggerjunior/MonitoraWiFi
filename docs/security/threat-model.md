@@ -155,3 +155,13 @@ UniFi, dados de localização física via LiDAR).
   como defesa em profundidade). Combinado com o rate limiting e a auditoria
   já existentes (acima), fecha o único item desta seção que ainda faltava
   pras ferramentas de teste ativo da Fase 5.
+- ✅ **Resolvido em 2026-08-02 (Fase 2)**: `dns_resolver_compare` (novo tipo
+  de comando, "comparação entre resolvedores DNS" — item pendente desde a
+  Fase 2) aceita `hostname` livre (mesmo perfil de risco aceito do
+  `dns_lookup`, acima), mas a lista de **resolvedores contra os quais
+  comparar é fixa no agente** (`probes.KnownResolvers`: sistema,
+  Cloudflare, Google, Quad9) — deliberadamente **não** um parâmetro vindo
+  do usuário. Endereço de resolvedor arbitrário informado pelo usuário
+  transformaria o agente num primitivo de relay/proxy DNS genérico, um
+  risco novo que esta lista fixa evita por construção, sem precisar de
+  allowlist adicional.

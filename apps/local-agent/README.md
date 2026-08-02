@@ -62,7 +62,22 @@ sucesso (2x, incluindo após adicionar o speed test).
   `net.ipv4.ping_group_range`) — dentro de containers sem essa capability,
   cai para 100% de perda reportada (nunca finge sucesso). Documentado em
   `internal/probes/icmp.go`.
-- **Comparação entre resolvedores DNS** ainda não implementada.
+
+## Resolvido em 2026-08-02
+
+- **Comparação entre resolvedores DNS** implementada
+  (`internal/probes/probes.go`, `CompareDNSResolvers`/`KnownResolvers`) —
+  resolve o mesmo hostname contra o resolvedor padrão da rede e três
+  resolvedores públicos conhecidos (Cloudflare `1.1.1.1`, Google `8.8.8.8`,
+  Quad9 `9.9.9.9`), lista fixa (não configurável pelo usuário — ver
+  `docs/security/threat-model.md`, item 2026-08-02, sobre por que um
+  endereço de resolvedor arbitrário não é aceito). Novo tipo de comando
+  sob demanda `dns_resolver_compare` (mesmo formato de params do
+  `dns_lookup`, só `hostname`), reaproveitando a mesma fila da Fase 5.
+  Testado com um resolvedor real (sistema, contra `cloudflare.com`) e um
+  resolvedor deliberadamente inalcançável (`203.0.113.1`, RFC 5737) na
+  mesma chamada — confirma sucesso e falha reportados corretamente lado a
+  lado, nunca inventando endereço quando a resolução falha.
 
 ## Resolvido nesta sessão (2026-08-01)
 

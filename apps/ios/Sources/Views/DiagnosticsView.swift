@@ -18,6 +18,7 @@ final class DiagnosticsViewModel {
     var batchTargetsRaw = "1.1.1.1\n8.8.8.8"
     var batchProtocolName = "icmp"
     var hostname = "example.com"
+    var dnsResolverCompareHostname = "example.com"
     var tracerouteTarget = "1.1.1.1"
     var sslCheckTarget = "example.com"
     var sslCheckPort = "443"
@@ -35,6 +36,7 @@ final class DiagnosticsViewModel {
     private(set) var pingCommand: Command?
     private(set) var batchPingCommand: Command?
     private(set) var dnsCommand: Command?
+    private(set) var dnsResolverCompareCommand: Command?
     private(set) var tracerouteCommand: Command?
     private(set) var sslCheckCommand: Command?
     private(set) var httpRequestCommand: Command?
@@ -126,6 +128,22 @@ final class DiagnosticsViewModel {
             let created = try await client.createDNSLookupCommand(siteId: siteId, hostname: hostname)
             dnsCommand = created
             startPolling(commandId: created.id) { [weak self] updated in self?.dnsCommand = updated }
+        } catch let error as APIClient.ClientError {
+            submitError = Self.message(for: error)
+        } catch {
+            submitError = "Erro de rede ao criar o comando."
+        }
+        isSubmitting = false
+    }
+
+    func runDNSResolverCompare() async {
+        guard let siteId else { return }
+        submitError = nil
+        isSubmitting = true
+        do {
+            let created = try await client.createDNSResolverCompareCommand(siteId: siteId, hostname: dnsResolverCompareHostname)
+            dnsResolverCompareCommand = created
+            startPolling(commandId: created.id) { [weak self] updated in self?.dnsResolverCompareCommand = updated }
         } catch let error as APIClient.ClientError {
             submitError = Self.message(for: error)
         } catch {
@@ -293,6 +311,7 @@ struct DiagnosticsView: View {
                 pingSection
                 batchPingSection
                 dnsLookupSection
+                dnsResolverCompareSection
                 tracerouteSection
                 sslCheckSection
                 httpRequestSection
@@ -411,6 +430,51 @@ struct DiagnosticsView: View {
                 if command.status == "completed", case .dnsLookup(let result) = command.result {
                     ForEach(result.addresses, id: \.self) { addr in
                         Text(addr).font(.system(.body, design: .monospaced))
+                    }
+                }
+                if command.status == "failed" {
+                    Text(command.error ?? "Falha não especificada.")
+                        .foregroundStyle(Color.egger(.critical, scheme: colorScheme))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var dnsResolverCompareSection: some View {
+        Section("Comparação entre resolvedores DNS") {
+            TextField("Hostname (ex.: example.com)", text: $viewModel.dnsResolverCompareHostname)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button {
+                Task { await viewModel.runDNSResolverCompare() }
+            } label: {
+                Text("Executar")
+            }
+            .disabled(viewModel.isSubmitting || viewModel.dnsResolverCompareHostname.isEmpty)
+
+            if let command = viewModel.dnsResolverCompareCommand {
+                StatusRow(status: command.status, colorScheme: colorScheme)
+                if command.status == "completed", case .dnsResolverCompare(let result) = command.result {
+                    ForEach(result.resolvers) { r in
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                Text(r.resolver).fontWeight(.medium)
+                                Spacer()
+                                Text(r.error.isEmpty ? String(format: "%.1f ms", r.durationMs) : "falhou")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if r.error.isEmpty {
+                                ForEach(r.addresses, id: \.self) { addr in
+                                    Text(addr).font(.system(.caption, design: .monospaced))
+                                }
+                            } else {
+                                Text(r.error)
+                                    .font(.caption)
+                                    .foregroundStyle(Color.egger(.critical, scheme: colorScheme))
+                            }
+                        }
                     }
                 }
                 if command.status == "failed" {

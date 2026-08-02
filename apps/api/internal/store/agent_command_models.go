@@ -40,15 +40,16 @@ const (
 )
 
 const (
-	AgentCommandTypePing        = "ping"
-	AgentCommandTypeDNSLookup   = "dns_lookup"
-	AgentCommandTypeTraceroute  = "traceroute"
-	AgentCommandTypeBatchPing   = "batch_ping"
-	AgentCommandTypeSSLCheck    = "ssl_check"
-	AgentCommandTypeHTTPRequest = "http_request"
-	AgentCommandTypeLANScan     = "lan_scan"
-	AgentCommandTypeWakeOnLAN   = "wake_on_lan"
-	AgentCommandTypePortScan    = "port_scan"
+	AgentCommandTypePing               = "ping"
+	AgentCommandTypeDNSLookup          = "dns_lookup"
+	AgentCommandTypeTraceroute         = "traceroute"
+	AgentCommandTypeBatchPing          = "batch_ping"
+	AgentCommandTypeSSLCheck           = "ssl_check"
+	AgentCommandTypeHTTPRequest        = "http_request"
+	AgentCommandTypeLANScan            = "lan_scan"
+	AgentCommandTypeWakeOnLAN          = "wake_on_lan"
+	AgentCommandTypePortScan           = "port_scan"
+	AgentCommandTypeDNSResolverCompare = "dns_resolver_compare"
 )
 
 type AgentCommandStore interface {

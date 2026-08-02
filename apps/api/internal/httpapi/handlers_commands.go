@@ -21,15 +21,16 @@ import (
 )
 
 var supportedCommandTypes = map[string]bool{
-	store.AgentCommandTypePing:        true,
-	store.AgentCommandTypeDNSLookup:   true,
-	store.AgentCommandTypeTraceroute:  true,
-	store.AgentCommandTypeBatchPing:   true,
-	store.AgentCommandTypeSSLCheck:    true,
-	store.AgentCommandTypeHTTPRequest: true,
-	store.AgentCommandTypeLANScan:     true,
-	store.AgentCommandTypeWakeOnLAN:   true,
-	store.AgentCommandTypePortScan:    true,
+	store.AgentCommandTypePing:               true,
+	store.AgentCommandTypeDNSLookup:          true,
+	store.AgentCommandTypeTraceroute:         true,
+	store.AgentCommandTypeBatchPing:          true,
+	store.AgentCommandTypeSSLCheck:           true,
+	store.AgentCommandTypeHTTPRequest:        true,
+	store.AgentCommandTypeLANScan:            true,
+	store.AgentCommandTypeWakeOnLAN:          true,
+	store.AgentCommandTypePortScan:           true,
+	store.AgentCommandTypeDNSResolverCompare: true,
 }
 
 // maxPortScanRange espelha o limite de sanidade do agente
@@ -414,6 +415,26 @@ func (s *Server) handleCreateCommand(w http.ResponseWriter, r *http.Request) {
 		}
 		if p.EndPort-p.StartPort+1 > maxPortScanRange {
 			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", fmt.Sprintf("o intervalo de portas aceita no máximo %d portas", maxPortScanRange))
+			return
+		}
+		req.Params, _ = json.Marshal(p)
+
+	case store.AgentCommandTypeDNSResolverCompare:
+		// Mesmo formato de params do dns_lookup (só hostname) — a lista de
+		// resolvedores é fixa no agente (probes.KnownResolvers), nunca um
+		// parâmetro vindo do usuário (ver comentário em KnownResolvers sobre
+		// por que um endereço de resolvedor arbitrário não é aceito).
+		var p dnsLookupCommandParams
+		if len(req.Params) == 0 {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.hostname é obrigatório para type=dns_resolver_compare")
+			return
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params inválido")
+			return
+		}
+		if p.Hostname == "" {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.hostname é obrigatório")
 			return
 		}
 		req.Params, _ = json.Marshal(p)

@@ -319,6 +319,32 @@ func TestCreateCommand_DNSLookup_RequerHostname(t *testing.T) {
 	}
 }
 
+func TestCreateCommand_DNSResolverCompare_RequerHostname(t *testing.T) {
+	siteID := uuid.New()
+	admin := store.User{ID: uuid.New(), Email: "admin@example.com", PasswordHash: mustHash(t, "senha12345"), Role: store.RoleAdministrator}
+	deps := newAgentTestServer(admin)
+	cookie := loginAndGetCookie(t, deps.server, "admin@example.com", "senha12345")
+	enrollTestAgent(t, deps, siteID)
+
+	badBody, _ := json.Marshal(map[string]any{"type": "dns_resolver_compare"})
+	badReq := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(badBody))
+	badReq.AddCookie(cookie)
+	badRec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(badRec, badReq)
+	if badRec.Code != http.StatusBadRequest {
+		t.Fatalf("esperava 400 sem hostname, recebeu %d: %s", badRec.Code, badRec.Body.String())
+	}
+
+	okBody, _ := json.Marshal(map[string]any{"type": "dns_resolver_compare", "params": map[string]string{"hostname": "example.com"}})
+	okReq := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(okBody))
+	okReq.AddCookie(cookie)
+	okRec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(okRec, okReq)
+	if okRec.Code != http.StatusAccepted {
+		t.Fatalf("esperava 202 com hostname, recebeu %d: %s", okRec.Code, okRec.Body.String())
+	}
+}
+
 func TestCreateCommand_Traceroute_RequerTarget(t *testing.T) {
 	siteID := uuid.New()
 	admin := store.User{ID: uuid.New(), Email: "admin@example.com", PasswordHash: mustHash(t, "senha12345"), Role: store.RoleAdministrator}

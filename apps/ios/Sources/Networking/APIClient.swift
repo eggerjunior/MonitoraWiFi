@@ -148,6 +148,12 @@ public actor APIClient {
         return try await postJSON("/sites/\(siteId)/commands", body: Body(type: "dns_lookup", params: Params(hostname: hostname)))
     }
 
+    public func createDNSResolverCompareCommand(siteId: String, hostname: String) async throws -> Command {
+        struct Params: Encodable { let hostname: String }
+        struct Body: Encodable { let type: String; let params: Params }
+        return try await postJSON("/sites/\(siteId)/commands", body: Body(type: "dns_resolver_compare", params: Params(hostname: hostname)))
+    }
+
     public func createTracerouteCommand(siteId: String, target: String) async throws -> Command {
         struct Params: Encodable { let target: String }
         struct Body: Encodable { let type: String; let params: Params }

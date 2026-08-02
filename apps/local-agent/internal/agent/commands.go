@@ -52,6 +52,8 @@ func (a *Agent) runCommand(ctx context.Context, cmd apiclient.Command) {
 		a.runPingCommand(ctx, cmd)
 	case "dns_lookup":
 		a.runDNSLookupCommand(ctx, cmd)
+	case "dns_resolver_compare":
+		a.runDNSResolverCompareCommand(ctx, cmd)
 	case "traceroute":
 		a.runTracerouteCommand(ctx, cmd)
 	case "batch_ping":
@@ -154,6 +156,39 @@ func (a *Agent) runDNSLookupCommand(ctx context.Context, cmd apiclient.Command) 
 		"hostname":    params.Hostname,
 		"addresses":   addrs,
 		"duration_ms": durationMs,
+		"executed_at": time.Now().UTC().Format(time.RFC3339Nano),
+	}
+	if err := a.client.ReportCommandResult(ctx, a.identity.AgentID, a.identity.AgentSecret, cmd.ID, "completed", payload, ""); err != nil {
+		a.logger.Error("erro ao reportar resultado do comando", slog.String("command_id", cmd.ID), slog.Any("error", err))
+	}
+}
+
+// runDNSResolverCompareCommand resolve o mesmo hostname contra a lista fixa
+// de resolvedores (probes.KnownResolvers) e reporta o resultado de cada um —
+// permite ao usuário perceber, por exemplo, o DNS da operadora devolvendo um
+// endereço diferente do Cloudflare/Google/Quad9 (filtro/redirecionamento).
+func (a *Agent) runDNSResolverCompareCommand(ctx context.Context, cmd apiclient.Command) {
+	var params dnsLookupCommandParams
+	if err := json.Unmarshal(cmd.Params, &params); err != nil {
+		a.reportCommandFailure(ctx, cmd.ID, "params inválido: "+err.Error())
+		return
+	}
+
+	results := probes.CompareDNSResolvers(ctx, params.Hostname, probes.KnownResolvers(), 5*time.Second)
+
+	resolvers := make([]map[string]any, 0, len(results))
+	for _, r := range results {
+		resolvers = append(resolvers, map[string]any{
+			"resolver":    r.Resolver,
+			"addresses":   r.Addresses,
+			"duration_ms": r.DurationMs,
+			"error":       r.Error,
+		})
+	}
+
+	payload := map[string]any{
+		"hostname":    params.Hostname,
+		"resolvers":   resolvers,
 		"executed_at": time.Now().UTC().Format(time.RFC3339Nano),
 	}
 	if err := a.client.ReportCommandResult(ctx, a.identity.AgentID, a.identity.AgentSecret, cmd.ID, "completed", payload, ""); err != nil {
