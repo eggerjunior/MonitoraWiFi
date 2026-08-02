@@ -41,22 +41,47 @@ ser assumido/simulado antes de resposta real; a Fase 3 (integração UniFi) trat
 
 ## Campos realmente expostos pela Network API local nesta versão
 
-6. Para os APs U7 Pro: a resposta da API inclui, por rádio, canal, largura de canal,
-   potência de transmissão, utilização do canal, número de clientes, airtime,
-   retries e PHY rate — ou apenas um subconjunto?
-7. Para o Switch Lite 16 PoE: a API expõe estatística por porta (RX/TX, erros, CRC,
-   flaps, consumo PoE em watts, orçamento PoE total) nesta versão?
-8. Eventos/alarmes (Seção 4.1 "Eventos e alarmes"): são entregues via polling da API,
-   via webhook nativo do UniFi, ou só observáveis via syslog do console?
-9. ✅ **Parcialmente confirmado em 2026-08-01**: `GET .../sites/{id}/clients`
-   já retorna `uplinkDeviceId` por cliente — topologia **cliente → dispositivo**
-   vem pronta da API, sem precisar inferir por LLDP. Ainda não confirmado:
-   topologia **dispositivo → dispositivo** (ex.: qual porta do switch um AP
-   está conectado) — precisa checar o endpoint de detalhe de dispositivo
-   (`/devices/{id}`), ainda não testado.
-10. DPI (Deep Packet Inspection / categorização de aplicação por cliente) está
-    habilitado neste console? Se sim, quais campos de categoria/aplicação a API
-    expõe por cliente?
+6. ✅ **Confirmado em 2026-08-02** (via `GET .../devices/{id}` real contra um
+   U7 Pro): só um **subconjunto**. Por rádio, a API expõe apenas
+   `wlanStandard`, `frequencyGHz`, `channelWidthMHz` e `channel` — os três
+   rádios (2.4/5/6GHz) desta instalação reportam `wlanStandard: "802.11be"`
+   (Wi-Fi 7), banda 6GHz em canal 117/80MHz. **Não expostos nesta versão**:
+   potência de transmissão, utilização do canal, número de clientes por
+   rádio, airtime, retries, PHY rate — nenhum desses campos aparece na
+   resposta. Capability matrix deve marcar canal/largura como
+   "confirmado", o resto como "indisponível nesta API/versão", não "a
+   validar".
+7. ✅ **Confirmado em 2026-08-02** (via `GET .../devices/{id}` real contra
+   a USW Lite 16 PoE): também só um **subconjunto**. Por porta, a API
+   expõe `idx`, `state` (UP/DOWN), `connector`, `maxSpeedMbps`,
+   `speedMbps` (velocidade negociada) e `poe.{standard,type,enabled,state}`.
+   **Não expostos nesta versão**: contadores RX/TX, erros, CRC, flaps,
+   consumo PoE em watts, orçamento PoE total. Mesma conclusão do item 6 —
+   capability matrix marca esses campos como "indisponível", não "a
+   validar".
+8. ✅ **Confirmado em 2026-08-02**: **não existe endpoint de
+   eventos/alarmes na Network API local integration v1** desta versão —
+   `GET .../alarms` e `GET .../events` retornam 404 explícito
+   (`"No endpoint GET /integration/v1/sites/{id}/alarms"`). Eventos/alarmes
+   **não podem ser entregues via polling desta API** — as únicas rotas que
+   sobram são syslog (item 18: **não configurado** nesta instalação) ou a
+   Site Manager API (cloud, item 5: ainda não decidido se será habilitada).
+   Sem uma dessas duas, a Fase 3 "eventos/alarmes" fica bloqueada
+   estruturalmente nesta instalação, não é falta de implementação.
+9. ✅ **Confirmado em 2026-08-02**: topologia **dispositivo → dispositivo**
+   vem pronta em `GET .../devices/{id}` — campo `uplink.deviceId` aponta
+   pro dispositivo upstream (o AP testado aponta pro switch; o switch
+   testado aponta pro Cloud Gateway Max). Não precisa inferir por LLDP,
+   igual ao que já valia pra topologia cliente→dispositivo (`uplinkDeviceId`
+   em `/clients`).
+10. ✅ **Confirmado em 2026-08-02** (via `GET .../clients` real, 5 clientes
+    de amostra): **nenhum campo de DPI/categoria/aplicação** aparece na
+    resposta — o objeto de cliente só tem `type`, `id`, `name`,
+    `connectedAt`, `ipAddress`, `macAddress`, `uplinkDeviceId`,
+    `access.type`. DPI não é exposto por este endpoint nesta versão (não
+    dá pra distinguir se está desabilitado no console ou se é só a API que
+    não expõe — mas pro propósito deste levantamento, o resultado prático
+    é o mesmo: não há dado de DPI disponível pra consumir agora).
 
 ## Configuração de rede da instalação (para validar contra o modelo de dados)
 

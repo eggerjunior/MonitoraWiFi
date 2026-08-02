@@ -76,10 +76,14 @@ adaptador legado opt-in), `indisponível` (confirmado que não existe), `a valid
 |---|---|---|
 | Inventário de dispositivos (gateway/AP/switch) | confirmado, implementado (2026-08-01) | `NetworkAPIAdapter.ListDevices` (`apps/local-agent/internal/unifi`) — testado contra a instalação real do usuário e validado ponta a ponta |
 | Lista de clientes conectados | confirmado, implementado (2026-08-01) | `NetworkAPIAdapter.ListClients`, com paginação real (confirmado: 80 clientes reais, resposta pagina em blocos de 25) |
-| Detalhe de rádio por AP (canal, largura, potência, airtime, retries) | a validar | Campos exatos variam por versão do UniFi Network — validar contra a versão real do cliente (ver `verificacoes-pendentes-instalacao.md`) |
-| Estatísticas de porta de switch (RX/TX/erros/PoE) | a validar | Depende da versão/modelo do switch exposto pela API dessa instalação |
-| Eventos/alarmes em tempo real | a validar | Confirmar se via polling, webhook ou apenas via UniFi OS syslog |
-| Topologia (LLDP entre dispositivos UniFi) | a validar | Confirmar disponibilidade na versão instalada |
+| Canal/largura de canal/padrão Wi-Fi por rádio de AP | confirmado (2026-08-02) | `GET .../devices/{id}` real — `interfaces.radios[].{wlanStandard,frequencyGHz,channelWidthMHz,channel}`, testado contra um U7 Pro real (802.11be nos 3 rádios) |
+| Potência de transmissão, utilização do canal, clientes/airtime/retries/PHY rate por rádio | indisponível | Confirmado ausente na resposta real de `GET .../devices/{id}` desta versão — não é "a validar", é confirmado que a API não expõe |
+| Estado/velocidade negociada/PoE por porta de switch | confirmado (2026-08-02) | `GET .../devices/{id}` real — `interfaces.ports[].{idx,state,connector,maxSpeedMbps,speedMbps,poe}`, testado contra uma USW Lite 16 PoE real |
+| Contadores RX/TX/erros/CRC/flaps/consumo PoE em watts por porta | indisponível | Confirmado ausente na resposta real desta versão |
+| Eventos/alarmes em tempo real via polling da Network API local | indisponível | `GET .../alarms` e `GET .../events` retornam 404 explícito nesta versão — não existe esse endpoint na integration API local |
+| Topologia dispositivo→dispositivo (uplink) | confirmado (2026-08-02) | `GET .../devices/{id}` real — campo `uplink.deviceId`, testado num AP (aponta pro switch) e num switch (aponta pro gateway) |
+| Topologia cliente→dispositivo (uplink) | confirmado (2026-08-01) | `GET .../clients` real — campo `uplinkDeviceId` por cliente |
+| DPI/categorização de aplicação por cliente | indisponível | Confirmado ausente em `GET .../clients` real (amostra de 5 clientes, nenhum campo de categoria/app) |
 
 ## 6. UniFi Site Manager API (cloud, oficial v1.0)
 
