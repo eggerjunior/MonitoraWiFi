@@ -179,11 +179,20 @@ LiDAR, comparação entre levantamentos).
 > buildado direto do repo e rodado com `docker run --rm` na rede
 > `monitorawifi_net`) e primeira execução real confirmada contra o site com
 > agente de verdade — reportou corretamente "sem histórico suficiente ainda"
-> (nenhuma anomalia falsa). **Faltam**: acumular histórico real suficiente
-> pro baseline ter efeito prático, cobrir métricas de speed test (só ping
-> por enquanto — infraestrutura já genérica o bastante), motor de
-> correlação/diagnóstico, recomendações com evidência/confiança/impacto/risco,
-> relatórios completos — nenhum começado.
+> (nenhuma anomalia falsa). **Atualização (2026-08-02)**: cobertura de
+> speed test implementada — `download_mbps`/`upload_mbps`/`bufferbloat_ms`
+> (sempre modo "internet", nunca misturado com LAN/HTTP, senão corromperia
+> a estatística) passam pelo mesmo algoritmo de baseline do ping.
+> Validado contra Postgres real com um cenário controlado (queda real de
+> 100→10 Mbps corretamente detectada como anomalia em download, enquanto
+> upload/bufferbloat — que não caíram — corretamente não geraram falso
+> positivo). **Faltam** (deliberadamente adiado, não esquecido): motor de
+> correlação/diagnóstico, recomendações com evidência/confiança/impacto/
+> risco, relatórios completos. Produção ainda tem pouquíssimo histórico
+> real (~1 dia, um agente) — implementar correlação contra esse volume
+> violaria o mesmo princípio que já bloqueia isso aqui há duas atualizações
+> ("não é útil implementar anomalias contra dados sintéticos de poucas
+> horas"). Retomar quando houver semanas de histórico real acumulado.
 
 Anomalias estatísticas explicáveis (baseline por hora/dia da semana), motor de
 correlação/diagnóstico (Internet lenta, Wi-Fi lento, cliente desconectando),
@@ -196,12 +205,30 @@ recomendações com evidência/confiança/impacto/risco, relatórios completos.
 > testado ponta a ponta incluindo restore, cron diário instalado em
 > produção) e **rate limiting nos endpoints de comando sob demanda**
 > (gap real encontrado revisando `docs/security/threat-model.md`, corrigido
-> e testado). **Faltam** (nenhum começado): acessibilidade formal
-> (WCAG/VoiceOver/Dynamic Type — só revisão de código pontual feita ao
-> longo das fases, não uma auditoria dedicada), suíte de testes completa
-> (cobertura por módulo nunca medida formalmente), agendamento do worker
-> (Fase 7), allowlist de alvo para ferramentas de rede (ver threat-model.md
-> §5), manual do usuário e runbooks formais.
+> e testado). **Atualização (2026-08-02)**: mais itens fechados —
+> **allowlist de alvo pras ferramentas de rede** (RFC 1918 obrigatório
+> pra `lan_scan`/`wake_on_lan`/`port_scan`, Fase 5); **cobertura de testes
+> medida pela primeira vez** por módulo (`docs/testing/cobertura.md` —
+> alguns exemplos reais: `api/internal/auth` 51.7%→89.7% depois de cobrir
+> geração/hash de credencial de agente, que não tinha teste próprio apesar
+> de ser código de segurança; `internal/store` de api/worker seguem sem
+> teste automatizado, decisão de arquitetura já existente — nenhum CI
+> sobe Postgres, validação sempre manual contra container real);
+> **versionamento formal aplicado a api e worker** (mesmo esquema de
+> web/iOS/local-agent — `VERSION` + commit injetado via ldflags, exposto
+> em `GET /healthz` pra api e log de boot pro worker); **auditoria de
+> acessibilidade** (`docs/testing/acessibilidade.md` — 4 cores do design
+> system abaixo do mínimo WCAG AA corrigidas, um bug real de
+> `aria-label` faltando no menu recolhido do web, um `outline-none` sem
+> substituto na tela de login; iOS revisado por código, sem dispositivo
+> físico disponível); **runbook de produção**
+> (`docs/deployment/runbook-producao.md`) e **manual do usuário**
+> (`docs/user-guide/manual-do-usuario.md`), ambos com passos reais já
+> testados nesta e em sessões anteriores, não especulativos. **Faltam**:
+> agendamento do worker (Fase 7) — na verdade já resolvido, cron a cada
+> 6h em produção desde 2026-08-01, este item estava desatualizado aqui;
+> nenhuma auditoria WCAG com ferramenta dedicada (axe-core) nem teste com
+> leitor de tela real; nenhuma verificação de VoiceOver em hardware real.
 
 Hardening de segurança, performance, acessibilidade (WCAG, VoiceOver, Dynamic Type),
 suíte de testes completa, preparação App Store/TestFlight
