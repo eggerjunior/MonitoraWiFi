@@ -131,6 +131,19 @@ export interface RdapResult {
   raw: Record<string, unknown>;
 }
 
+export interface HttpRequestCommandResult {
+  url: string;
+  method: string;
+  status_code: number;
+  status_text: string;
+  headers: Record<string, string>;
+  body_snippet: string;
+  body_truncated: boolean;
+  content_length: number;
+  duration_ms: number;
+  executed_at: string;
+}
+
 export interface Command {
   id: string;
   site_id: string;

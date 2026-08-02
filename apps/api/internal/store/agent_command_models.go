@@ -40,11 +40,12 @@ const (
 )
 
 const (
-	AgentCommandTypePing       = "ping"
-	AgentCommandTypeDNSLookup  = "dns_lookup"
-	AgentCommandTypeTraceroute = "traceroute"
-	AgentCommandTypeBatchPing  = "batch_ping"
-	AgentCommandTypeSSLCheck   = "ssl_check"
+	AgentCommandTypePing        = "ping"
+	AgentCommandTypeDNSLookup   = "dns_lookup"
+	AgentCommandTypeTraceroute  = "traceroute"
+	AgentCommandTypeBatchPing   = "batch_ping"
+	AgentCommandTypeSSLCheck    = "ssl_check"
+	AgentCommandTypeHTTPRequest = "http_request"
 )
 
 type AgentCommandStore interface {

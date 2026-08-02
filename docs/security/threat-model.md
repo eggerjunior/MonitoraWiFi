@@ -123,16 +123,21 @@ UniFi, dados de localização física via LiDAR).
   APs/servidores), cada um testado individualmente. O rate limiting por
   usuário (acima) se aplica igual a qualquer outro tipo de comando.
 - ⏳ **Gap real identificado, ainda não corrigido**: os comandos sob demanda
-  (ping/dns_lookup/traceroute/batch_ping) aceitam qualquer `target`/`hostname` informado
-  pelo usuário, sem allowlist de RFC 1918 nem confirmação extra para alvos
-  externos — a mitigação descrita na Seção 3.1 ("todo alvo precisa estar
-  cadastrado... alvo externo exige confirmação explícita") ainda não está
-  implementada para essas três ferramentas. Avaliação de risco: aceitável por
-  ora porque (a) são operações de alvo único, não primitivas de varredura em
-  massa; (b) já têm rate limiting (acima) e auditoria (`requested_by` em
-  `agent_commands`); (c) o caso de uso legítimo primário (diagnosticar
-  Internet) exige testar hosts externos por natureza — uma restrição
-  RFC 1918-only quebraria a funcionalidade central. **Vira bloqueante quando
-  um port scanner de verdade for implementado** (Fase 5, ainda não
-  começado) — aí sim a mitigação completa (allowlist + confirmação +
-  auditoria) é obrigatória antes de expor a funcionalidade.
+  (ping/dns_lookup/traceroute/batch_ping/ssl_check/http_request) aceitam
+  qualquer `target`/`hostname`/`url` informado pelo usuário, sem allowlist de
+  RFC 1918 nem confirmação extra para alvos externos — a mitigação descrita
+  na Seção 3.1 ("todo alvo precisa estar cadastrado... alvo externo exige
+  confirmação explícita") ainda não está implementada para essas
+  ferramentas. Avaliação de risco: aceitável por ora porque (a) são
+  operações de alvo único, não primitivas de varredura em massa; (b) já têm
+  rate limiting (acima) e auditoria (`requested_by` em `agent_commands`);
+  (c) o caso de uso legítimo primário (diagnosticar Internet, checar
+  certificado de um serviço externo, depurar uma API) exige testar hosts
+  externos por natureza — uma restrição RFC 1918-only quebraria a
+  funcionalidade central. `http_request` adicionalmente restringe o
+  esquema da URL a http(s) e o método a um allowlist fixo (GET, POST, PUT,
+  PATCH, DELETE, HEAD, OPTIONS) — não executa nada além de uma requisição
+  HTTP padrão. **Vira bloqueante quando um port scanner ou LAN scanner de
+  verdade for implementado** (Fase 5, ainda não começado) — aí sim a
+  mitigação completa (allowlist + confirmação + auditoria) é obrigatória
+  antes de expor a funcionalidade.

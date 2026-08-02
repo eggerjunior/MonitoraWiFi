@@ -179,6 +179,7 @@ public enum CommandResult: Sendable {
     case dnsLookup(DnsLookupCommandResult)
     case traceroute(TracerouteCommandResult)
     case sslCheck(SslCheckCommandResult)
+    case httpRequest(HttpRequestCommandResult)
 }
 
 extension CommandResult: Decodable {
@@ -193,6 +194,8 @@ extension CommandResult: Decodable {
             self = .traceroute(v)
         } else if let v = try? SslCheckCommandResult(from: decoder) {
             self = .sslCheck(v)
+        } else if let v = try? HttpRequestCommandResult(from: decoder) {
+            self = .httpRequest(v)
         } else {
             throw DecodingError.dataCorruptedError(in: try decoder.singleValueContainer(), debugDescription: "Formato de resultado de comando não reconhecido")
         }
@@ -216,6 +219,30 @@ public struct Command: Decodable, Sendable, Identifiable {
         case status
         case result
         case error
+    }
+}
+
+public struct HttpRequestCommandResult: Codable, Sendable {
+    public let url: String
+    public let method: String
+    public let statusCode: Int
+    public let statusText: String
+    public let headers: [String: String]
+    public let bodySnippet: String
+    public let bodyTruncated: Bool
+    public let contentLength: Int
+    public let durationMs: Double
+
+    enum CodingKeys: String, CodingKey {
+        case url
+        case method
+        case statusCode = "status_code"
+        case statusText = "status_text"
+        case headers
+        case bodySnippet = "body_snippet"
+        case bodyTruncated = "body_truncated"
+        case contentLength = "content_length"
+        case durationMs = "duration_ms"
     }
 }
 

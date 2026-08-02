@@ -175,6 +175,87 @@ func TestPollAndRunCommands_SSLCheck(t *testing.T) {
 	}
 }
 
+func TestPollAndRunCommands_HTTPRequest(t *testing.T) {
+	// Servidor HTTP real — o comando http_request precisa fazer uma
+	// requisição real e devolver status/headers/corpo reais.
+	var receivedMethod, receivedHeader, receivedBody string
+	targetServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedMethod = r.Method
+		receivedHeader = r.Header.Get("X-Teste")
+		body, _ := io.ReadAll(r.Body)
+		receivedBody = string(body)
+		w.Header().Set("X-Resposta", "ok")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(`{"echo":"real"}`))
+	}))
+	defer targetServer.Close()
+
+	var reportedBody map[string]any
+	claimed := false
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/agents/agent-1/commands":
+			if claimed {
+				json.NewEncoder(w).Encode(map[string]any{"items": []map[string]any{}})
+				return
+			}
+			claimed = true
+			params, _ := json.Marshal(map[string]any{
+				"url":     targetServer.URL,
+				"method":  "post",
+				"headers": map[string]string{"X-Teste": "valor-real"},
+				"body":    "corpo-real",
+			})
+			json.NewEncoder(w).Encode(map[string]any{
+				"items": []map[string]any{
+					{"id": "cmd-7", "site_id": "site-1", "type": "http_request", "params": json.RawMessage(params), "status": "claimed"},
+				},
+			})
+		case r.Method == http.MethodPost && r.URL.Path == "/agents/agent-1/commands/cmd-7/result":
+			json.NewDecoder(r.Body).Decode(&reportedBody)
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Errorf("requisição inesperada: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	a := newTestAgentForCommands(t, server.URL)
+	a.pollAndRunCommands(t.Context())
+
+	if receivedMethod != http.MethodPost {
+		t.Fatalf("servidor alvo recebeu método %q, esperado POST", receivedMethod)
+	}
+	if receivedHeader != "valor-real" {
+		t.Fatalf("servidor alvo recebeu header X-Teste=%q, esperado valor-real", receivedHeader)
+	}
+	if receivedBody != "corpo-real" {
+		t.Fatalf("servidor alvo recebeu corpo %q, esperado corpo-real", receivedBody)
+	}
+
+	if reportedBody == nil {
+		t.Fatal("esperava que o agente reportasse um resultado, nenhum recebido")
+	}
+	if reportedBody["status"] != "completed" {
+		t.Fatalf("status reportado = %v, esperado completed: %+v", reportedBody["status"], reportedBody)
+	}
+	result, ok := reportedBody["result"].(map[string]any)
+	if !ok {
+		t.Fatalf("esperava campo result no reporte, recebi: %+v", reportedBody)
+	}
+	if result["status_code"] != float64(http.StatusCreated) {
+		t.Fatalf("status_code = %v, esperado 201", result["status_code"])
+	}
+	if result["body_snippet"] != `{"echo":"real"}` {
+		t.Fatalf("body_snippet = %v, esperado corpo real do servidor", result["body_snippet"])
+	}
+	headers, ok := result["headers"].(map[string]any)
+	if !ok || headers["X-Resposta"] != "ok" {
+		t.Fatalf("esperava header X-Resposta=ok na resposta real, obtive: %+v", result["headers"])
+	}
+}
+
 func TestPollAndRunCommands_TipoNaoSuportado(t *testing.T) {
 	var reportedBody map[string]any
 	claimed := false

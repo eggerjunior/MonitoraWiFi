@@ -22,12 +22,16 @@ final class DiagnosticsViewModel {
     var sslCheckTarget = "example.com"
     var sslCheckPort = "443"
     var rdapQuery = "example.com"
+    var httpRequestURL = "http://localhost"
+    var httpRequestMethod = "GET"
+    var httpRequestBody = ""
 
     private(set) var pingCommand: Command?
     private(set) var batchPingCommand: Command?
     private(set) var dnsCommand: Command?
     private(set) var tracerouteCommand: Command?
     private(set) var sslCheckCommand: Command?
+    private(set) var httpRequestCommand: Command?
     private(set) var rdapResult: RdapResult?
     private(set) var rdapError: String?
     private(set) var isRdapLoading = false
@@ -154,6 +158,22 @@ final class DiagnosticsViewModel {
         isSubmitting = false
     }
 
+    func runHTTPRequest() async {
+        guard let siteId else { return }
+        submitError = nil
+        isSubmitting = true
+        do {
+            let created = try await client.createHTTPRequestCommand(siteId: siteId, url: httpRequestURL, method: httpRequestMethod, body: httpRequestBody.isEmpty ? nil : httpRequestBody)
+            httpRequestCommand = created
+            startPolling(commandId: created.id) { [weak self] updated in self?.httpRequestCommand = updated }
+        } catch let error as APIClient.ClientError {
+            submitError = Self.message(for: error)
+        } catch {
+            submitError = "Erro de rede ao criar o comando."
+        }
+        isSubmitting = false
+    }
+
     func runRdapLookup() async {
         rdapError = nil
         rdapResult = nil
@@ -216,6 +236,7 @@ struct DiagnosticsView: View {
                 dnsLookupSection
                 tracerouteSection
                 sslCheckSection
+                httpRequestSection
             }
 
             if let submitError = viewModel.submitError {
@@ -399,6 +420,41 @@ struct DiagnosticsView: View {
                     LabeledContent("Emissor", value: result.issuer)
                     LabeledContent("Assunto", value: result.subject)
                     LabeledContent("Expira em", value: "\(result.daysUntilExpiry) dia(s)")
+                }
+                if command.status == "failed" {
+                    Text(command.error ?? "Falha não especificada.")
+                        .foregroundStyle(Color.egger(.critical, scheme: colorScheme))
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var httpRequestSection: some View {
+        Section("HTTP client sob demanda") {
+            Picker("Método", selection: $viewModel.httpRequestMethod) {
+                ForEach(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"], id: \.self) { m in
+                    Text(m).tag(m)
+                }
+            }
+            TextField("URL", text: $viewModel.httpRequestURL)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button {
+                Task { await viewModel.runHTTPRequest() }
+            } label: {
+                Text("Executar")
+            }
+            .disabled(viewModel.isSubmitting || viewModel.httpRequestURL.isEmpty)
+
+            if let command = viewModel.httpRequestCommand {
+                StatusRow(status: command.status, colorScheme: colorScheme)
+                if command.status == "completed", case .httpRequest(let result) = command.result {
+                    LabeledContent("Status", value: "\(result.statusCode) \(result.statusText)")
+                    LabeledContent("Tempo", value: String(format: "%.1f ms", result.durationMs))
+                    Text(result.bodySnippet)
+                        .font(.system(.caption, design: .monospaced))
+                        .lineLimit(6)
                 }
                 if command.status == "failed" {
                     Text(command.error ?? "Falha não especificada.")

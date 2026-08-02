@@ -450,6 +450,50 @@ func TestCreateCommand_SSLCheck_PortaInvalida(t *testing.T) {
 	}
 }
 
+func TestCreateCommand_HTTPRequest_RequerURLValida(t *testing.T) {
+	siteID := uuid.New()
+	admin := store.User{ID: uuid.New(), Email: "admin@example.com", PasswordHash: mustHash(t, "senha12345"), Role: store.RoleAdministrator}
+	deps := newAgentTestServer(admin)
+	cookie := loginAndGetCookie(t, deps.server, "admin@example.com", "senha12345")
+	enrollTestAgent(t, deps, siteID)
+
+	noURLBody, _ := json.Marshal(map[string]any{"type": "http_request"})
+	noURLReq := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(noURLBody))
+	noURLReq.AddCookie(cookie)
+	noURLRec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(noURLRec, noURLReq)
+	if noURLRec.Code != http.StatusBadRequest {
+		t.Fatalf("esperava 400 sem url, recebeu %d: %s", noURLRec.Code, noURLRec.Body.String())
+	}
+
+	badSchemeBody, _ := json.Marshal(map[string]any{"type": "http_request", "params": map[string]any{"url": "ftp://example.com"}})
+	badSchemeReq := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(badSchemeBody))
+	badSchemeReq.AddCookie(cookie)
+	badSchemeRec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(badSchemeRec, badSchemeReq)
+	if badSchemeRec.Code != http.StatusBadRequest {
+		t.Fatalf("esperava 400 com esquema não-http(s), recebeu %d: %s", badSchemeRec.Code, badSchemeRec.Body.String())
+	}
+
+	badMethodBody, _ := json.Marshal(map[string]any{"type": "http_request", "params": map[string]any{"url": "https://example.com", "method": "TRACE"}})
+	badMethodReq := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(badMethodBody))
+	badMethodReq.AddCookie(cookie)
+	badMethodRec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(badMethodRec, badMethodReq)
+	if badMethodRec.Code != http.StatusBadRequest {
+		t.Fatalf("esperava 400 com método não suportado, recebeu %d: %s", badMethodRec.Code, badMethodRec.Body.String())
+	}
+
+	okBody, _ := json.Marshal(map[string]any{"type": "http_request", "params": map[string]any{"url": "https://example.com"}})
+	okReq := httptest.NewRequest(http.MethodPost, "/api/v1/sites/"+siteID.String()+"/commands", bytes.NewReader(okBody))
+	okReq.AddCookie(cookie)
+	okRec := httptest.NewRecorder()
+	deps.server.Routes().ServeHTTP(okRec, okReq)
+	if okRec.Code != http.StatusAccepted {
+		t.Fatalf("esperava 202 com url válida, recebeu %d: %s", okRec.Code, okRec.Body.String())
+	}
+}
+
 // TestCreateCommand_RateLimit confirma o gap real de segurança encontrado
 // na revisão do threat model (§5, "rate limiting antes de abrir qualquer
 // endpoint de teste ativo"): sem limite, uma conta comprometida poderia

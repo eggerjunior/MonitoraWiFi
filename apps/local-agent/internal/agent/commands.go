@@ -5,11 +5,15 @@
 package agent
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
+	"net/http"
+	"strings"
 	"time"
 
 	"egger/local-agent/internal/apiclient"
@@ -54,6 +58,8 @@ func (a *Agent) runCommand(ctx context.Context, cmd apiclient.Command) {
 		a.runBatchPingCommand(ctx, cmd)
 	case "ssl_check":
 		a.runSSLCheckCommand(ctx, cmd)
+	case "http_request":
+		a.runHTTPRequestCommand(ctx, cmd)
 	default:
 		// O backend já valida o tipo na criação (CHECK constraint +
 		// validação no handler) — chegar aqui com um tipo desconhecido só
@@ -270,6 +276,88 @@ func (a *Agent) runSSLCheckCommand(ctx context.Context, cmd apiclient.Command) {
 		"subject":           result.Subject,
 		"dns_names":         result.DNSNames,
 		"executed_at":       result.ExecutedAt.Format(time.RFC3339Nano),
+	}
+	if err := a.client.ReportCommandResult(ctx, a.identity.AgentID, a.identity.AgentSecret, cmd.ID, "completed", payload, ""); err != nil {
+		a.logger.Error("erro ao reportar resultado do comando", slog.String("command_id", cmd.ID), slog.Any("error", err))
+	}
+}
+
+type httpRequestCommandParams struct {
+	URL     string            `json:"url"`
+	Method  string            `json:"method"`
+	Headers map[string]string `json:"headers"`
+	Body    string            `json:"body"`
+}
+
+// maxHTTPResponseBodySnippet limita quanto do corpo da resposta é
+// devolvido ao usuário — o objetivo é depurar um serviço (status, headers,
+// tempo), não baixar arquivos grandes através do agente.
+const maxHTTPResponseBodySnippet = 65536
+
+func (a *Agent) runHTTPRequestCommand(ctx context.Context, cmd apiclient.Command) {
+	var params httpRequestCommandParams
+	if err := json.Unmarshal(cmd.Params, &params); err != nil {
+		a.reportCommandFailure(ctx, cmd.ID, "params inválido: "+err.Error())
+		return
+	}
+	method := strings.ToUpper(params.Method)
+	if method == "" {
+		method = http.MethodGet
+	}
+
+	reqCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	var bodyReader io.Reader
+	if params.Body != "" {
+		bodyReader = strings.NewReader(params.Body)
+	}
+	req, err := http.NewRequestWithContext(reqCtx, method, params.URL, bodyReader)
+	if err != nil {
+		a.reportCommandFailure(ctx, cmd.ID, "requisição inválida: "+err.Error())
+		return
+	}
+	for k, v := range params.Headers {
+		req.Header.Set(k, v)
+	}
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	start := time.Now()
+	resp, err := client.Do(req)
+	durationMs := float64(time.Since(start).Microseconds()) / 1000
+	if err != nil {
+		a.reportCommandFailure(ctx, cmd.ID, "erro ao executar requisição: "+err.Error())
+		return
+	}
+	defer resp.Body.Close()
+
+	limited := io.LimitReader(resp.Body, maxHTTPResponseBodySnippet+1)
+	bodyBytes, err := io.ReadAll(limited)
+	if err != nil {
+		a.reportCommandFailure(ctx, cmd.ID, "erro ao ler corpo da resposta: "+err.Error())
+		return
+	}
+	truncated := len(bodyBytes) > maxHTTPResponseBodySnippet
+	if truncated {
+		bodyBytes = bodyBytes[:maxHTTPResponseBodySnippet]
+	}
+
+	headers := make(map[string]string, len(resp.Header))
+	for k, v := range resp.Header {
+		headers[k] = strings.Join(v, ", ")
+	}
+
+	payload := map[string]any{
+		"url":            params.URL,
+		"method":         method,
+		"status_code":    resp.StatusCode,
+		"status_text":    resp.Status,
+		"headers":        headers,
+		"body_snippet":   string(bytes.ToValidUTF8(bodyBytes, []byte("�"))),
+		"body_truncated": truncated,
+		"content_length": resp.ContentLength,
+		"duration_ms":    durationMs,
+		"executed_at":    time.Now().UTC().Format(time.RFC3339Nano),
 	}
 	if err := a.client.ReportCommandResult(ctx, a.identity.AgentID, a.identity.AgentSecret, cmd.ID, "completed", payload, ""); err != nil {
 		a.logger.Error("erro ao reportar resultado do comando", slog.String("command_id", cmd.ID), slog.Any("error", err))

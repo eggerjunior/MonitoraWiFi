@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,11 +20,16 @@ import (
 )
 
 var supportedCommandTypes = map[string]bool{
-	store.AgentCommandTypePing:       true,
-	store.AgentCommandTypeDNSLookup:  true,
-	store.AgentCommandTypeTraceroute: true,
-	store.AgentCommandTypeBatchPing:  true,
-	store.AgentCommandTypeSSLCheck:   true,
+	store.AgentCommandTypePing:        true,
+	store.AgentCommandTypeDNSLookup:   true,
+	store.AgentCommandTypeTraceroute:  true,
+	store.AgentCommandTypeBatchPing:   true,
+	store.AgentCommandTypeSSLCheck:    true,
+	store.AgentCommandTypeHTTPRequest: true,
+}
+
+var supportedHTTPMethods = map[string]bool{
+	"GET": true, "POST": true, "PUT": true, "PATCH": true, "DELETE": true, "HEAD": true, "OPTIONS": true,
 }
 
 // maxBatchPingTargets é um limite de sanidade, não uma primitiva de
@@ -61,6 +68,13 @@ type batchPingCommandParams struct {
 type sslCheckCommandParams struct {
 	Target string `json:"target"`
 	Port   int    `json:"port"`
+}
+
+type httpRequestCommandParams struct {
+	URL     string            `json:"url"`
+	Method  string            `json:"method"`
+	Headers map[string]string `json:"headers"`
+	Body    string            `json:"body"`
 }
 
 // handleCreateCommand valida o tipo/params antes de persistir — nunca
@@ -199,6 +213,30 @@ func (s *Server) handleCreateCommand(w http.ResponseWriter, r *http.Request) {
 		}
 		if p.Port < 1 || p.Port > 65535 {
 			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.port precisa estar entre 1 e 65535")
+			return
+		}
+		req.Params, _ = json.Marshal(p)
+
+	case store.AgentCommandTypeHTTPRequest:
+		var p httpRequestCommandParams
+		if len(req.Params) == 0 {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.url é obrigatório para type=http_request")
+			return
+		}
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params inválido")
+			return
+		}
+		parsed, err := url.Parse(p.URL)
+		if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.url precisa ser uma URL http(s) válida")
+			return
+		}
+		if p.Method == "" {
+			p.Method = "GET"
+		}
+		if !supportedHTTPMethods[strings.ToUpper(p.Method)] {
+			writeError(w, correlationID, http.StatusBadRequest, "invalid_body", "params.method inválido (GET, POST, PUT, PATCH, DELETE, HEAD ou OPTIONS)")
 			return
 		}
 		req.Params, _ = json.Marshal(p)
