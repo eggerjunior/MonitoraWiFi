@@ -101,9 +101,13 @@ em cada card.
 > ADR-008, só aceita destino privado/broadcast), e port scanner (só aceita
 > IPv4 privado literal — nunca hostname — e no máximo 1024 portas,
 > mitigação completa exigida pelo threat model §5 antes de expor a
-> ferramenta). **Fase 5 completa em código e testes locais** — falta apenas
-> o deploy em produção (migrações 0009-0013, releases do agente/API/web/
-> iOS), decisão do usuário sobre quando/como.
+> ferramenta). **Atualização (2026-08-02)**: deploy completo em produção —
+> migrações 0009-0013 aplicadas (backup prévio), API/web reimplantados,
+> agente `agent-v0.5.0` publicado, web 0.6.0 e iOS 0.3.0 (Build 10) no
+> TestFlight. **Fase 5 concluída** nas 4 superfícies (backend, agente,
+> web, iOS). Ver `docs/development-handoff/RELEASE_LOG.md` (2026-08-02)
+> para os detalhes do deploy, incluindo um achado real corrigido na hora
+> (variável de ambiente do web faltando no primeiro redeploy).
 
 Ping, batch ping, DNS lookup, traceroute, port scanner (com allowlist e auditoria),
 SSL/TLS checker, RDAP/WHOIS, HTTP client, LAN scanner, subnet calculator,
