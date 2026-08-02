@@ -1,8 +1,9 @@
-// Comando do worker (Fase 7, início): calcula baseline estatístico por
-// site a partir do histórico de ping_tests e detecta anomalias no período
-// recente. Execução única (não é um daemon/cron ainda — agendamento fica
-// para quando houver decisão de infraestrutura, Fase 8) — pensado para
-// rodar via `docker run --rm` periódico (cron do host) até então.
+// Comando do worker (Fase 7): calcula baseline estatístico por site a
+// partir do histórico de ping_tests e speed_tests (modo "internet") e
+// detecta anomalias no período recente, uma métrica por vez
+// (ping_latency_ms_p50, speedtest_download_mbps, speedtest_upload_mbps,
+// speedtest_bufferbloat_ms). Execução única — agendado via cron do host
+// a cada 6h em produção (Fase 8, ver docs/development-handoff/RELEASE_LOG.md).
 package main
 
 import (
@@ -12,9 +13,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"egger/worker/internal/baseline"
+	"egger/worker/internal/buildinfo"
 	"egger/worker/internal/store"
 )
 
@@ -22,11 +25,37 @@ const (
 	historicalWindow = 30 * 24 * time.Hour // baseline: últimos 30 dias
 	recentWindow     = 24 * time.Hour      // período avaliado contra o baseline
 	zScoreThreshold  = 3.0
-	metricName       = "ping_latency_ms_p50"
 )
+
+// metricFetcher busca a série de uma métrica para um site — mesma
+// assinatura pra ping (Fase 2) e speed test (Fase 4), permitindo tratar
+// as duas fontes de forma uniforme no loop de detecção abaixo.
+type metricFetcher func(ctx context.Context, pool *pgxpool.Pool, siteID uuid.UUID, since time.Time) ([]store.MetricSample, error)
+
+// metrics lista toda métrica coberta pelo baseline estatístico (Fase 7).
+// Cobertura de speed test (download/upload/bufferbloat, sempre modo
+// "internet") fecha o item do roadmap "Faltam... cobrir métricas de speed
+// test (só ping por enquanto)".
+var metrics = map[string]metricFetcher{
+	"ping_latency_ms_p50": func(ctx context.Context, pool *pgxpool.Pool, siteID uuid.UUID, since time.Time) ([]store.MetricSample, error) {
+		samples, err := store.ListPingLatencies(ctx, pool, siteID, since)
+		if err != nil {
+			return nil, err
+		}
+		out := make([]store.MetricSample, len(samples))
+		for i, s := range samples {
+			out[i] = store.MetricSample{ExecutedAt: s.ExecutedAt, Value: s.LatencyMsP50}
+		}
+		return out, nil
+	},
+	"speedtest_download_mbps":  store.ListSpeedTestDownload,
+	"speedtest_upload_mbps":    store.ListSpeedTestUpload,
+	"speedtest_bufferbloat_ms": store.ListSpeedTestBufferbloat,
+}
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	logger.Info("worker iniciado", slog.String("version", buildinfo.Version), slog.String("commit", buildinfo.GitCommit))
 
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
@@ -64,57 +93,71 @@ func run(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger) error {
 	totalAnomalies := 0
 
 	for _, site := range sites {
-		samples, err := store.ListPingLatencies(ctx, pool, site.ID, now.Add(-historicalWindow))
-		if err != nil {
-			logger.Error("erro ao ler ping_tests", slog.String("site_id", site.ID.String()), slog.Any("error", err))
-			continue
-		}
-
-		var historical, recent []baseline.Sample
-		recentStart := now.Add(-recentWindow)
-		for _, s := range samples {
-			sample := baseline.Sample{Time: s.ExecutedAt, Value: s.LatencyMsP50}
-			if s.ExecutedAt.Before(recentStart) {
-				historical = append(historical, sample)
-			} else {
-				recent = append(recent, sample)
+		for metricName, fetch := range metrics {
+			count, err := processMetric(ctx, pool, logger, site.ID, metricName, fetch, now)
+			if err != nil {
+				logger.Error("erro ao processar métrica", slog.String("site_id", site.ID.String()), slog.String("metric", metricName), slog.Any("error", err))
+				continue
 			}
+			totalAnomalies += count
 		}
-
-		if len(historical) == 0 {
-			logger.Info("sem histórico suficiente para baseline ainda",
-				slog.String("site_id", site.ID.String()))
-			continue
-		}
-
-		b := baseline.Compute(historical)
-		anomalies := baseline.Detect(recent, b, zScoreThreshold)
-
-		records := make([]store.AnomalyRecord, 0, len(anomalies))
-		for _, a := range anomalies {
-			records = append(records, store.AnomalyRecord{
-				SiteID:     site.ID,
-				Metric:     metricName,
-				ObservedAt: a.Sample.Time,
-				Value:      a.Sample.Value,
-				BucketMean: a.BucketMean,
-				BucketSize: a.BucketSize,
-				ZScore:     a.ZScore,
-			})
-		}
-		if err := store.UpsertAnomalies(ctx, pool, records); err != nil {
-			logger.Error("erro ao gravar anomalias", slog.String("site_id", site.ID.String()), slog.Any("error", err))
-			continue
-		}
-
-		logger.Info("processamento de baseline concluído",
-			slog.String("site_id", site.ID.String()),
-			slog.Int("historical_samples", len(historical)),
-			slog.Int("recent_samples", len(recent)),
-			slog.Int("anomalies_found", len(anomalies)))
-		totalAnomalies += len(anomalies)
 	}
 
 	logger.Info("worker concluído", slog.Int("sites_processados", len(sites)), slog.Int("anomalias_totais", totalAnomalies))
 	return nil
+}
+
+// processMetric aplica o mesmo algoritmo de baseline (Fase 7) a uma única
+// métrica de um site — extraído do loop principal pra tratar
+// ping/download/upload/bufferbloat de forma idêntica, sem duplicar a
+// lógica de split histórico/recente + detecção + gravação.
+func processMetric(ctx context.Context, pool *pgxpool.Pool, logger *slog.Logger, siteID uuid.UUID, metricName string, fetch metricFetcher, now time.Time) (int, error) {
+	samples, err := fetch(ctx, pool, siteID, now.Add(-historicalWindow))
+	if err != nil {
+		return 0, fmt.Errorf("ler série: %w", err)
+	}
+
+	var historical, recent []baseline.Sample
+	recentStart := now.Add(-recentWindow)
+	for _, s := range samples {
+		sample := baseline.Sample{Time: s.ExecutedAt, Value: s.Value}
+		if s.ExecutedAt.Before(recentStart) {
+			historical = append(historical, sample)
+		} else {
+			recent = append(recent, sample)
+		}
+	}
+
+	if len(historical) == 0 {
+		logger.Info("sem histórico suficiente para baseline ainda",
+			slog.String("site_id", siteID.String()), slog.String("metric", metricName))
+		return 0, nil
+	}
+
+	b := baseline.Compute(historical)
+	anomalies := baseline.Detect(recent, b, zScoreThreshold)
+
+	records := make([]store.AnomalyRecord, 0, len(anomalies))
+	for _, a := range anomalies {
+		records = append(records, store.AnomalyRecord{
+			SiteID:     siteID,
+			Metric:     metricName,
+			ObservedAt: a.Sample.Time,
+			Value:      a.Sample.Value,
+			BucketMean: a.BucketMean,
+			BucketSize: a.BucketSize,
+			ZScore:     a.ZScore,
+		})
+	}
+	if err := store.UpsertAnomalies(ctx, pool, records); err != nil {
+		return 0, fmt.Errorf("gravar anomalias: %w", err)
+	}
+
+	logger.Info("processamento de baseline concluído",
+		slog.String("site_id", siteID.String()),
+		slog.String("metric", metricName),
+		slog.Int("historical_samples", len(historical)),
+		slog.Int("recent_samples", len(recent)),
+		slog.Int("anomalies_found", len(anomalies)))
+	return len(anomalies), nil
 }

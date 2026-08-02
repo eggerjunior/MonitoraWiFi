@@ -69,6 +69,56 @@ func ListPingLatencies(ctx context.Context, pool *pgxpool.Pool, siteID uuid.UUID
 	return out, rows.Err()
 }
 
+// MetricSample é o formato genérico devolvido por qualquer consulta de
+// série usada para baseline — mesmo shape de PingLatencySample, mas
+// reaproveitável por speed test e futuras métricas.
+type MetricSample struct {
+	ExecutedAt time.Time
+	Value      float64
+}
+
+// listSpeedTestColumn é o núcleo comum às três métricas de speed test
+// abaixo — sempre filtra mode='internet' (Fase 7: correlacionar "Internet
+// lenta" exige comparar o mesmo tipo de teste; misturar com modo LAN/HTTP
+// corromperia a estatística, já que são contextos de rede diferentes).
+func listSpeedTestColumn(ctx context.Context, pool *pgxpool.Pool, siteID uuid.UUID, since time.Time, column string) ([]MetricSample, error) {
+	query := `SELECT st.executed_at, st.` + column + `
+		FROM speed_tests st
+		JOIN agents a ON a.id = st.agent_id
+		WHERE a.site_id = $1 AND st.executed_at >= $2 AND st.mode = 'internet' AND st.` + column + ` IS NOT NULL
+		ORDER BY st.executed_at`
+	rows, err := pool.Query(ctx, query, siteID, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []MetricSample
+	for rows.Next() {
+		var s MetricSample
+		if err := rows.Scan(&s.ExecutedAt, &s.Value); err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+// As três funções abaixo passam um nome de coluna fixo (nunca vindo de
+// input externo/dinâmico) — evita construir SQL a partir de uma variável
+// arbitrária, mesmo sendo seguro hoje.
+func ListSpeedTestDownload(ctx context.Context, pool *pgxpool.Pool, siteID uuid.UUID, since time.Time) ([]MetricSample, error) {
+	return listSpeedTestColumn(ctx, pool, siteID, since, "download_mbps")
+}
+
+func ListSpeedTestUpload(ctx context.Context, pool *pgxpool.Pool, siteID uuid.UUID, since time.Time) ([]MetricSample, error) {
+	return listSpeedTestColumn(ctx, pool, siteID, since, "upload_mbps")
+}
+
+func ListSpeedTestBufferbloat(ctx context.Context, pool *pgxpool.Pool, siteID uuid.UUID, since time.Time) ([]MetricSample, error) {
+	return listSpeedTestColumn(ctx, pool, siteID, since, "bufferbloat_ms")
+}
+
 type AnomalyRecord struct {
 	SiteID     uuid.UUID
 	Metric     string
