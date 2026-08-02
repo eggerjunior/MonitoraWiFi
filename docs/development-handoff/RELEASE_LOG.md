@@ -4,6 +4,58 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-02 — Fase 5 completa: deploy das 6 ferramentas restantes em produção
+
+- Commits: `8c265e2` (SSL/TLS checker), `48a319d` (RDAP/WHOIS), `a5afb3c`
+  (HTTP client), `346b648` (LAN scanner), `4e44305` (Wake-on-LAN),
+  `c9a1e73` (port scanner), `77d4ab3` (doc do roadmap). Implementados e
+  testados localmente numa sessão anterior; deploy feito nesta sessão a
+  pedido explícito do usuário.
+- **Backup prévio**: `backup-postgres.sh` rodado antes de qualquer
+  migração (`/opt/data/monitorawifi/backups/backup-20260801-214413.sql.gz`).
+- **Migrações `0009` a `0013` aplicadas em produção** (ssl_check,
+  http_request, lan_scan, wake_on_lan, port_scan adicionados ao CHECK
+  constraint de `agent_commands.type`) — `migrate up` confirmado
+  versão=13, dirty=false. Constraint final verificada via `\d
+  agent_commands` no Postgres real.
+- API e web reconstruídos (`docker build` a partir do checkout de
+  produção, mesmo padrão de sempre) e reimplantados
+  (`monitorawifi-api:77d4ab3c`, depois `monitorawifi-web:c01588a` após o
+  bump de versão). **Achado real corrigido durante o deploy**: o redeploy
+  inicial do container web usando `--env-file` do `.env` compartilhado
+  (pensado pra API) deixou a variável `API_BASE_URL` de fora — o web
+  ficaria tentando falar com `localhost:8080` de dentro do próprio
+  container. Corrigido recriando o container com
+  `-e API_BASE_URL=http://monitorawifi-api:8080/api/v1` explícito, mesmo
+  valor do deploy anterior (confirmado via `docker inspect` do container
+  antigo antes de substituí-lo).
+- Saúde confirmada com serviços reais: `GET /healthz`/`GET /readyz` da
+  API (200, via container `curlimages/curl` na mesma rede Docker — o
+  container distroless da API não tem shell/curl) e `GET /login` do web
+  local (200) e público (`https://wifi.egger.app.br/login`, 200 via
+  `curl` externo).
+- Agente: `VERSION` subido para `0.5.0`, release publicado via workflow
+  `Local Agent release` — rodou a suíte de testes real (incluindo os
+  testes novos com handshake TLS real, servidor HTTP/UDP real, listeners
+  TCP reais) como gate antes de publicar; binários linux/darwin
+  amd64/arm64 em
+  https://github.com/eggerjunior/MonitoraWiFi/releases/tag/agent-v0.5.0.
+  **Pendente**: o agente real já enrolado (mini PC do usuário, Home
+  Assistant OS) não foi atualizado — é hardware do próprio usuário, fora
+  do escopo de acesso desta sessão; ele decide quando atualizar.
+- Web: versão `0.6.0` (changelog atualizado), commit `c01588a`, reimplantado
+  em produção (ver acima).
+- iOS: versão `0.3.0` (Build 10), commit `4935e3d`. `iOS CI (build
+  validation)` rodou verde antes do release (mesmo padrão cauteloso de
+  sempre — validar compilação antes de gastar um upload de TestFlight).
+  `iOS TestFlight release` rodou e **terminou com sucesso**
+  (`ARCHIVE`/`EXPORT`/upload verdes, run
+  https://github.com/eggerjunior/MonitoraWiFi/actions/runs/30726202399,
+  2m22s) — build 10 enviado, processamento no App Store Connect segue
+  assíncrono do lado da Apple.
+- **Resumo**: as 6 ferramentas da Fase 5 estão em produção nas 4
+  superfícies (backend, agente, web, iOS) no fim desta sessão.
+
 ## 2026-08-01 — Fase 5: ping em lote (batch_ping), deploy completo
 
 - Commit `63d1dc92`. Novo tipo de comando sob demanda reaproveitando a fila
