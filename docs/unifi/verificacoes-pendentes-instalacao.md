@@ -68,12 +68,16 @@ ser assumido/simulado antes de resposta real; a Fase 3 (integração UniFi) trat
    Site Manager API (cloud, item 5: ainda não decidido se será habilitada).
    Sem uma dessas duas, a Fase 3 "eventos/alarmes" fica bloqueada
    estruturalmente nesta instalação, não é falta de implementação.
-9. ✅ **Confirmado em 2026-08-02**: topologia **dispositivo → dispositivo**
-   vem pronta em `GET .../devices/{id}` — campo `uplink.deviceId` aponta
-   pro dispositivo upstream (o AP testado aponta pro switch; o switch
-   testado aponta pro Cloud Gateway Max). Não precisa inferir por LLDP,
-   igual ao que já valia pra topologia cliente→dispositivo (`uplinkDeviceId`
-   em `/clients`).
+9. ✅ **Confirmado e implementado em 2026-08-02**: topologia **dispositivo
+   → dispositivo** vem pronta em `GET .../devices/{id}` — campo
+   `uplink.deviceId` aponta pro dispositivo upstream (o AP testado aponta
+   pro switch; o switch testado aponta pro Cloud Gateway Max). Não
+   precisa inferir por LLDP, igual ao que já valia pra topologia
+   cliente→dispositivo (`uplinkDeviceId` em `/clients`). **Em produção**:
+   agente busca o detalhe de cada device pra extrair o uplink, backend
+   persiste (`unifi_devices.uplink_device_id`, migração 0014), web mostra
+   árvore gateway→switch→AP na tela Dispositivos, iOS mostra "Conectado
+   a" por dispositivo.
 10. ✅ **Confirmado em 2026-08-02** (via `GET .../clients` real, 5 clientes
     de amostra): **nenhum campo de DPI/categoria/aplicação** aparece na
     resposta — o objeto de cliente só tem `type`, `id`, `name`,

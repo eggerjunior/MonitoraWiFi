@@ -4,6 +4,34 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-02 — Topologia dispositivo→dispositivo (Fase 3) em produção
+
+- Commit `44d973e`. Confirmado contra a instalação real do usuário (14
+  devices reais, script de verificação rodado pelo próprio usuário
+  contra `192.168.110.1`): `GET .../devices/{id}` traz `uplink.deviceId`
+  — ausente na lista, só no detalhe. Fecha o item 9 das verificações
+  pendentes.
+- Backup prévio de rotina. Migração `0014_unifi_device_uplink` aplicada
+  (versão 13→14, confirmada `dirty=false`).
+- API (`monitorawifi-api:44d973e6`) e web (`monitorawifi-web:44d973e6`)
+  reconstruídos e reimplantados — **desta vez lembrando de
+  `-p 127.0.0.1:8422:8080`** (ver incidente registrado acima). Saudáveis
+  pela rede interna (`/healthz` → `version:"0.2.0"`) e pela rota pública
+  real (`https://wifi.egger.app.br/api/v1/auth/me` → 401 correto,
+  `/login` → 200, `/devices` → 307 auth redirect).
+- Agente: `agent-v0.6.0` publicado (testes reais como gate, incluindo os
+  dois novos casos de topologia). **Pendente do lado do usuário**: o
+  agente real já enrolado (mini PC do usuário) continua rodando a imagem
+  anterior até ele mesmo atualizar — fora do meu acesso, é hardware
+  dele.
+- iOS 0.5.0 (Build 12): `iOS CI` verde antes do `iOS TestFlight release`
+  — ver próxima entrada ou `gh run view` pro resultado do upload.
+- **Nota operacional real**: o disco deste ambiente de desenvolvimento
+  encheu durante o deploy (imagens/cache Docker acumulados nas várias
+  validações contra Postgres real desta sessão) — `docker system prune
+  -af --volumes` liberou 42.85GB. Não afeta a VPS de produção (ambientes
+  Docker completamente separados).
+
 ## 2026-08-02 — Incidente real: agente em produção sem conectividade por ~1h30
 
 - **Causa raiz**: `nginx.ssl.conf` (porta 443, a config ativa — não a de

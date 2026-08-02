@@ -58,10 +58,19 @@ agente (não mock).
 > `unifi_clients` e confirmados via query direta no banco de produção. 13 dos
 > 18 itens de `verificacoes-pendentes-instalacao.md` já confirmados com dados
 > reais (versões, autenticação, VLANs ativas, firmwares, topologia
-> cliente→dispositivo básica). **Faltam**: detecção automática de
-> capability matrix por versão, detalhe de rádio/porta (campos ainda "a
-> validar"), eventos/alarmes, topologia dispositivo→dispositivo, adaptadores
-> SNMP/Syslog/Site Manager/legado (nenhum começado).
+> cliente→dispositivo básica). **Atualização (2026-08-02)**: 17 dos 18
+> itens confirmados (só SNMP em aberto). Detalhe de rádio/porta e
+> eventos/alarmes **confirmados indisponíveis** nesta versão da Network
+> API local (não "a validar" — testado e não vem: só
+> canal/largura/PoE-básico por rádio/porta, sem potência/utilização/
+> contadores/PoE-watts; `/alarms` e `/events` retornam 404 explícito).
+> **Topologia dispositivo→dispositivo implementada e em produção**
+> (`uplink.deviceId`, confirmado via `GET .../devices/{id}` real) — web
+> mostra árvore gateway→switch→AP, iOS mostra "Conectado a". **Faltam**:
+> detecção automática de capability matrix por versão, adaptadores
+> SNMP/Syslog/Site Manager/legado (nenhum começado — eventos/alarmes só
+> viáveis via syslog, não configurado nesta instalação, ou Site Manager
+> API, ainda não decidida).
 
 `UniFiIntegrationProvider` com adaptador Network API local funcional contra a
 instalação real, detecção de versão + capability matrix populada automaticamente,
