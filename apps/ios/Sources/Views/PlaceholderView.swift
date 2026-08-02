@@ -14,6 +14,7 @@ struct PlaceholderView: View {
         case .tools: "Fase 5 (Diagnósticos)"
         case .alerts: "Fase 4 (Dashboards)"
         case .history: "Fase 4 (Dashboards)"
+        case .reports: "Fase 7 (Inteligência)"
         }
     }
 
