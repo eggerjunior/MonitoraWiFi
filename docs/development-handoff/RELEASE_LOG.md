@@ -4,7 +4,48 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
-## 2026-08-02 — Fase 7: motor de correlação/diagnóstico + recomendações + relatórios (implementado, não implantado em produção)
+## 2026-08-02 — Fase 7 em produção
+
+- Commit `005c3b1d`, deploy autorizado explicitamente pelo usuário
+  ("prossegue") em resposta direta à pergunta se deveria implantar.
+  Executado em duas etapas por causa do classificador de segurança do modo
+  automático: bloqueou tanto o `migrate up` no Postgres de produção quanto
+  a troca dos containers `monitorawifi-api`/`monitorawifi-web` (ambas ações
+  de alto risco — schema change num banco real e interrupção breve do site
+  ao vivo). Confirmação explícita do usuário pedida e obtida pra cada uma
+  antes de prosseguir.
+- Backup de rotina do Postgres real antes da migração
+  (`infrastructure/scripts/backup-postgres.sh`,
+  `backup-20260802-200529.sql.gz`, 412K).
+- Migração `0017` aplicada em produção (versão 16→17, confirmada
+  `dirty=false`) — tabelas `diagnoses`/`recommendations`/`reports`
+  confirmadas via `\dt`.
+- Imagens reconstruídas e reimplantadas (`monitorawifi-api:005c3b1d`,
+  `monitorawifi-web:005c3b1d`) **com** `-p 127.0.0.1:8422:8080` (api) e
+  `-p 127.0.0.1:8421:3000` (web) confirmados — mesmo padrão de sempre
+  desde o incidente registrado nas entradas anteriores. `egger-worker`
+  também reconstruído com o mesmo commit e retaggeado `latest` (é o que o
+  cron do host roda a cada 6h — nenhuma mudança adicional necessária pro
+  próximo ciclo agendado já rodar a lógica de correlação nova).
+- Saudável pela rede interna (`/healthz` → `version":"0.6.0","commit":"005c3b1d"`,
+  `/readyz` → banco ok) e pela rota pública real
+  (`https://wifi.egger.app.br/login` → 200, `/api/v1/auth/me` → 401
+  correto, `/reports` → 307 redirect pra login, esperado).
+- **Worker rodado de verdade contra produção** (não só o cron esperado):
+  avaliou 608 amostras históricas + 5760 recentes de `ping_latency_ms_p50`
+  do site real, não achou anomalia (rede dentro do padrão) e reportou
+  corretamente "sem anomalia recente — nada a diagnosticar" — nenhum
+  diagnóstico fabricado. Métricas de speed test ainda reportam "sem
+  histórico suficiente" nesta instalação real (esperado, pouco volume
+  ainda de speed test coletado).
+- Rollback: as imagens anteriores (`monitorawifi-api:2716d10d`,
+  `monitorawifi-web:2716d10d`) não foram removidas — bastaria parar os
+  containers atuais e resubir com a tag anterior; a migração `0017` tem
+  `down` testado (`infrastructure/database/migrations/0017_diagnostics.down.sql`)
+  caso precise reverter o schema também, restaurando o backup acima como
+  alternativa mais simples.
+
+## 2026-08-02 — Fase 7: motor de correlação/diagnóstico + recomendações + relatórios (implementado)
 
 - Retoma o item que o roadmap tinha deliberadamente adiado ("correlação
   exige semanas de histórico real, produção só tem ~1 dia") — decisão
@@ -56,16 +97,9 @@ Record every deploy, TestFlight/App Store upload, web publish and external proce
 - `go build`/`go vet`/`go test` verdes em `apps/api` e `apps/worker`
   (testes novos de handler com fakes + testes do motor de correlação);
   `tsc --noEmit`/`lint`/`build` verdes em `apps/web`.
-- Web 0.12.0, API 0.6.0, worker 0.2.0 (bump de versão sem publicação).
-- **Não implantado em produção nesta entrada** — diferente da maioria das
-  entradas deste log, esta sessão só implementou e validou localmente
-  (containers efêmeros); o usuário não pediu deploy/push desta vez, só
-  implementação + commit local. Pendências reais antes de produção: build
-  e push das imagens Docker atualizadas (`monitorawifi-api`,
-  `monitorawifi-web`, `egger-worker`), aplicar a migração `0017` no
-  Postgres de produção (rotina de backup antes, como sempre), e o cron do
-  worker em produção passa a rodar a lógica de diagnóstico automaticamente
-  no próximo ciclo de 6h depois do deploy.
+- Web 0.12.0, API 0.6.0, worker 0.2.0.
+- Implantado em produção na sequência — ver entrada seguinte
+  ("Fase 7 em produção").
 
 ## 2026-08-02 — Ícone definitivo do app iOS
 
