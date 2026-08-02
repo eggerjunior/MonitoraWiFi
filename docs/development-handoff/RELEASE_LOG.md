@@ -4,6 +4,45 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-02 — Fase 6 (LiDAR): primeira fatia real do levantamento espacial em produção
+
+- Commit `807a88a7` (corrigido de `1a72173`, ver abaixo). Usuário confirmou
+  ter um iPhone com LiDAR disponível pra testar de verdade — desbloqueia a
+  Fase 6, que estava parada desde a Fase 0 por falta de hardware físico
+  neste ambiente de desenvolvimento (Linux, sem Xcode/simulador).
+- **Escopo real implementado** (corte deliberado do ER especulativo
+  original — ver `docs/architecture/05-modelo-dados.md` §6 e
+  `04-estrategia-lidar.md`): sessão ARKit real
+  (`ARWorldTrackingConfiguration` + `sceneReconstruction = .mesh` em
+  aparelhos com LiDAR), captura de posição da câmera + SSID/BSSID atual
+  (`NEHotspotNetwork`) + RTT real medido do próprio ponto ao backend
+  (reaproveitando `/auth/me`) + estado do `NWPathMonitor`. Sem RSSI/canal/
+  PHY rate por amostra — confirmado que nenhuma fonte real disponível
+  hoje expõe isso (nem a Network API local do UniFi, nem o iOS).
+- **Erro real pego pelo iOS CI** (runner macOS de verdade, não um erro
+  hipotético): `NEHotspotNetwork` não é `Sendable`, devolvê-lo inteiro
+  através de uma `continuation` violava Swift 6 strict concurrency
+  (`sending 'network' risks causing data races`). Corrigido extraindo só
+  `ssid`/`bssid` (tipos `Sendable`) dentro do completion handler, antes de
+  atravessar a fronteira `async` — commit `807a88a7`. `iOS CI` ficou verde
+  na segunda tentativa (1m1s).
+- Backend: migração `0016_spatial_surveys` aplicada em produção (versão
+  15→16, backup prévio de rotina), validada antes contra Postgres real
+  efêmero (transação + batch insert). API/web reimplantados
+  (`monitorawifi-api:807a88a7` / `monitorawifi-web:807a88a7`) **com**
+  `-p 127.0.0.1:8422:8080` confirmado via `docker port`. Saudáveis pela
+  rede interna (`/healthz` → 200) e pela rota pública real
+  (`/api/v1/auth/me` → 401 correto, `/login` → 200, `/map` → 307 redirect
+  pra login, esperado pra rota autenticada).
+- Web 0.10.0: `/map` deixa de ser placeholder — lista de levantamentos +
+  scatter 2D top-down (SVG puro) por qualidade de RTT.
+- iOS 0.7.0 (Build 14): `iOS TestFlight release` concluído com sucesso
+  (https://github.com/eggerjunior/MonitoraWiFi/actions/runs/30745690648).
+- **Pendência real de validação de campo, não de implementação**: a
+  sessão AR/LiDAR em si (mesh reconstruction, captura de posição/SSID/RTT
+  em campo) depende do teste do usuário no aparelho físico — nenhuma
+  parte deste ambiente de desenvolvimento consegue exercitar isso.
+
 ## 2026-08-02 — Comparação entre resolvedores DNS (Fase 2, item pendente fechado) em produção
 
 - Commit `f2650978`. Fecha o único item que restava na Fase 2: novo tipo
