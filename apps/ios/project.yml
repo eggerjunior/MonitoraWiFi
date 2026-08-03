@@ -90,6 +90,14 @@ targets:
     settings:
       base:
         SWIFT_VERSION: "6.0"
+        # Declarado explicitamente em vez de confiar na inferência do
+        # XcodeGen a partir de `dependencies` — a mensagem de erro real
+        # ("Could not find test host... TEST_HOST evaluates to...") mostra
+        # que TEST_HOST já resolve pra um valor, mas o binário não existe
+        # ali; tentativa: talvez BUNDLE_LOADER (exigido junto com TEST_HOST
+        # pra um test bundle hospedado de verdade) nunca estivesse setado.
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/EggerNetworkIntelligence.app/EggerNetworkIntelligence"
+        BUNDLE_LOADER: "$(TEST_HOST)"
 
 schemes:
   EggerNetworkIntelligence:
