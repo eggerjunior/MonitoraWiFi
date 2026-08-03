@@ -4,6 +4,26 @@ Generated: 2026-07-31T21:50:53-03:00
 
 Record every deploy, TestFlight/App Store upload, web publish and external processing status here.
 
+## 2026-08-02 — iOS: paridade da Fase 7 + ícone definitivo no TestFlight
+
+- Dois builds em sequência, ambos com sucesso:
+  - **0.7.1 (Build 15)**: só o ícone definitivo (mesmo commit já em
+    produção web/API), https://github.com/eggerjunior/MonitoraWiFi/actions/runs/30772924360.
+  - **0.8.0 (Build 16)**: paridade da Fase 7 — nova aba "Relatórios"
+    (`ReportsView`) espelhando `apps/web/.../reports/page.tsx`: lista
+    diagnósticos e recomendações reais do motor de correlação
+    (confiança/impacto/risco/evidência) e gera relatório sob demanda.
+    Novos modelos e métodos no `APIClient` espelhando os endpoints da
+    Fase 7 (`/diagnoses`, `/recommendations`, `/reports`).
+    https://github.com/eggerjunior/MonitoraWiFi/actions/runs/30773454059.
+- **Erro real pego pelo `iOS CI`** (não hipotético): o novo case
+  `AppSection.reports` quebrou um `switch` exaustivo em
+  `PlaceholderView.swift` que não foi atualizado junto — `iOS CI` falhou
+  na primeira tentativa (`switch must be exhaustive`), corrigido e verde
+  na segunda tentativa antes de disparar o TestFlight.
+- Web/API/worker (Fase 7) já estavam em produção desde a entrada anterior
+  deste log — esta entrada fecha a paridade iOS que tinha ficado pra trás.
+
 ## 2026-08-02 — Fase 7 em produção
 
 - Commit `005c3b1d`, deploy autorizado explicitamente pelo usuário

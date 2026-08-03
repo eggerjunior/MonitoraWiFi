@@ -150,3 +150,9 @@ open EggerNetworkIntelligence.xcodeproj
   placeholder (círculo + "E").
 - ✅ **0.7.1 (Build 15) enviado ao TestFlight com sucesso** — leva o ícone
   definitivo (https://github.com/eggerjunior/MonitoraWiFi/actions/runs/30772924360).
+- ✅ **0.8.0 (Build 16) enviado ao TestFlight com sucesso** — paridade da
+  Fase 7 (Diagnósticos/Recomendações/Relatórios, nova aba "Relatórios",
+  `ReportsView`). `iOS CI` pegou um erro real na primeira tentativa (switch
+  não-exaustivo sobre `AppSection` em `PlaceholderView.swift` faltando o
+  novo case `.reports`), corrigido e verde na segunda
+  (https://github.com/eggerjunior/MonitoraWiFi/actions/runs/30773454059).
