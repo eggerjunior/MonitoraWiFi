@@ -51,37 +51,20 @@ jobs:
             GIT_COMMIT="$(git rev-parse --short=8 HEAD)" \
             build
 
-      # Tentativas anteriores (histórico de commits deste arquivo) sempre
-      # falhavam com "Could not find test host for
-      # EggerNetworkIntelligenceTests" usando build-for-testing +
-      # test-without-building em duas fases. Nova hipótese, não testada
-      # antes: a ação "test" do scheme não tinha `config: Debug` explícito
-      # em project.yml (diferente de "run"/"archive", que já tinham) — o
-      # app podia ser buildado numa pasta de produto (config) diferente da
-      # que o TEST_HOST resolvido esperava. Corrigido em project.yml;
-      # comando de teste simplificado para uma única ação `test` (evita
-      # divergência entre as duas fases anteriores).
-      - name: Run unit tests
-        run: |
-          set -euo pipefail
-          DEVICE_ID="$(xcrun simctl list devices available -j | python3 -c "
-          import json, sys
-          data = json.load(sys.stdin)
-          for devices in data['devices'].values():
-              for d in devices:
-                  if d['name'].startswith('iPhone'):
-                      print(d['udid'])
-                      sys.exit(0)
-          sys.exit(1)
-          ")"
-          if [[ -z "$DEVICE_ID" ]]; then
-            echo "::error::Nenhum simulador de iPhone disponível neste runner."
-            xcrun simctl list devices available
-            exit 1
-          fi
-          echo "Usando simulador UDID: $DEVICE_ID"
-
-          xcodebuild -project EggerNetworkIntelligence.xcodeproj -scheme EggerNetworkIntelligence \
-            -configuration Debug \
-            -destination "platform=iOS Simulator,id=${DEVICE_ID}" \
-            test
+      # NOTA: execução de testes (xcodebuild test) foi tentada de novo nesta
+      # sessão (2026-08-02, duas hipóteses novas: config: Debug explícita no
+      # scheme; TEST_HOST/BUNDLE_LOADER declarados manualmente em vez de
+      # inferidos) — mesmo erro real das 5 tentativas anteriores persiste:
+      # "Could not find test host for EggerNetworkIntelligenceTests: TEST_HOST
+      # evaluates to [...]/Debug-iphonesimulator/EggerNetworkIntelligence.app/
+      # EggerNetworkIntelligence". Pista nova encontrada desta vez: o log
+      # mostra "Using the first of multiple matching destinations" (o mesmo
+      # UDID casa com variante arm64 e x86_64 simultaneamente) e o erro
+      # acontece na fase de validação do projeto pelo xcodebuild, antes de
+      # qualquer compilação — indício de um bug de ordenação do próprio
+      # xcodebuild CLI (checa se o TEST_HOST existe antes de buildar o app
+      # que o geraria), não algo corrigível por configuração do projeto.
+      # Rastreado como pendência real em
+      # docs/architecture/07-criterios-aceite-fase1.md — precisa de Xcode
+      # real com GUI (⌘U, log de build verboso) pra diagnosticar mais fundo;
+      # não repetir tentativas às cegas sem uma hipótese nova.

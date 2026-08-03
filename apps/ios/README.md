@@ -48,11 +48,29 @@ próprio template de referência da skill `ildemar_ios-native-testflight`
 sugere que essa fragilidade de "hosted unit test" sob `xcodebuild` headless é
 conhecida o suficiente para ter sido evitada ali também.
 
-`Tests/` continua com os 3 arquivos de teste (Swift Testing) escritos e
+`Tests/` continua com os 4 arquivos de teste (Swift Testing) escritos e
 corretos por inspeção — só não validados por execução ainda. Próximo passo
 real: investigar em uma sessão com Xcode de verdade (abrir o projeto gerado,
 rodar `⌘U`, ver se o problema se reproduz na GUI ou é específico de
 `xcodebuild` headless) antes de tentar mais correções às cegas.
+
+**Atualização (2026-08-02)**: retentado com duas hipóteses novas, nenhuma
+resolveu — (1) a ação `test` do scheme não tinha `config: Debug` explícito
+em `project.yml` (diferente de `run`/`archive`, que já tinham) —
+corrigido, mas o erro persistiu exatamente igual; (2) `TEST_HOST`/
+`BUNDLE_LOADER` declarados manualmente em vez de inferidos do
+`dependencies:` do XcodeGen — também não mudou nada. Achado novo desta
+rodada: o log mostra `xcodebuild: WARNING: Using the first of multiple
+matching destinations` (o mesmo UDID de simulador casa com variante
+arm64 *e* x86_64 ao mesmo tempo) e o erro acontece na fase de validação
+do projeto pelo `xcodebuild`, antes de qualquer compilação real — indício
+de um bug de ordenação do próprio `xcodebuild` CLI (checa se o
+`TEST_HOST` existe antes de buildar o app que o geraria), não algo
+corrigível só por configuração do projeto. `test: config: Debug` e
+`TEST_HOST`/`BUNDLE_LOADER` explícitos ficaram em `project.yml` (mais
+corretos/explícitos de qualquer forma, não fazem mal), mas a execução de
+testes no CI foi removida de novo — não faz sentido deixar um step
+permanentemente vermelho sem uma hipótese nova pra tentar.
 
 ## Estrutura
 
