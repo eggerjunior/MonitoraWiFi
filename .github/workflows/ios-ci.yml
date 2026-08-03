@@ -51,15 +51,37 @@ jobs:
             GIT_COMMIT="$(git rev-parse --short=8 HEAD)" \
             build
 
-      # NOTA: execução de testes (xcodebuild test) foi tentada nesta CI e
-      # removida — falha em "Could not find test host for
-      # EggerNetworkIntelligenceTests" mesmo com a dependência do target do
-      # app corretamente declarada em project.yml, com build-for-testing/
-      # test-without-building e com destino de simulador por UDID único
-      # (várias tentativas registradas no histórico de commits deste
-      # arquivo). É consistente com o próprio template de referência da
-      # skill ildemar_ios-native-testflight, que também só valida build, não
-      # roda testes headless. Rastreado como pendência real (não escondida)
-      # em docs/architecture/07-criterios-aceite-fase1.md — investigar em
-      # sessão com acesso a um Xcode real antes de confiar nos testes
-      # unitários do iOS como validados por CI.
+      # Tentativas anteriores (histórico de commits deste arquivo) sempre
+      # falhavam com "Could not find test host for
+      # EggerNetworkIntelligenceTests" usando build-for-testing +
+      # test-without-building em duas fases. Nova hipótese, não testada
+      # antes: a ação "test" do scheme não tinha `config: Debug` explícito
+      # em project.yml (diferente de "run"/"archive", que já tinham) — o
+      # app podia ser buildado numa pasta de produto (config) diferente da
+      # que o TEST_HOST resolvido esperava. Corrigido em project.yml;
+      # comando de teste simplificado para uma única ação `test` (evita
+      # divergência entre as duas fases anteriores).
+      - name: Run unit tests
+        run: |
+          set -euo pipefail
+          DEVICE_ID="$(xcrun simctl list devices available -j | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          for devices in data['devices'].values():
+              for d in devices:
+                  if d['name'].startswith('iPhone'):
+                      print(d['udid'])
+                      sys.exit(0)
+          sys.exit(1)
+          ")"
+          if [[ -z "$DEVICE_ID" ]]; then
+            echo "::error::Nenhum simulador de iPhone disponível neste runner."
+            xcrun simctl list devices available
+            exit 1
+          fi
+          echo "Usando simulador UDID: $DEVICE_ID"
+
+          xcodebuild -project EggerNetworkIntelligence.xcodeproj -scheme EggerNetworkIntelligence \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=${DEVICE_ID}" \
+            test

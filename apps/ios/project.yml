@@ -101,6 +101,12 @@ schemes:
         EggerNetworkIntelligence: [run, test, profile, analyze, archive]
         EggerNetworkIntelligenceTests: [test]
     test:
+      # Sem `config` explícito aqui, a ação de teste não herdava
+      # necessariamente Debug (como `run`/`archive` já declaram) — suspeita
+      # real de causa do "Could not find test host": o app pode ter sido
+      # buildado numa pasta de produto (config) diferente da que o
+      # TEST_HOST resolvido esperava.
+      config: Debug
       targets:
         - EggerNetworkIntelligenceTests
     run:
